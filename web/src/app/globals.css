@@ -1,0 +1,97 @@
+﻿@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-brand-50: #eef5fd;
+  --color-brand-100: #d6e6f9;
+  --color-brand-200: #a9c9f0;
+  --color-brand-300: #6fa3e3;
+  --color-brand-400: #3a7dd0;
+  --color-brand-500: #1763b7;
+  --color-brand-600: #0b4f9c;
+  --color-brand-700: #093f7d;
+  --color-brand-800: #08325f;
+  --color-brand-900: #062447;
+  --font-sans: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+}
+
+:root {
+  color-scheme: light;
+}
+.dark {
+  color-scheme: dark;
+}
+
+body {
+  @apply bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 antialiased;
+}
+
+@utility card {
+  @apply rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900;
+}
+@utility btn {
+  @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+}
+@utility btn-primary {
+  @apply btn bg-brand-600 text-white hover:bg-brand-700;
+}
+@utility btn-outline {
+  @apply btn border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800;
+}
+@utility btn-ghost {
+  @apply btn text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800;
+}
+@utility input {
+  @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200 dark:border-slate-700 dark:bg-slate-900 dark:focus:ring-brand-800;
+}
+@utility label {
+  @apply mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400;
+}
+@utility chip {
+  @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium;
+}
+@utility page-title {
+  @apply text-2xl font-bold tracking-tight text-slate-900 dark:text-white;
+}
+
+
+@keyframes flash-target {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(11 79 156 / 0); background-color: transparent; }
+  30% { box-shadow: 0 0 0 3px rgb(11 79 156 / 0.6); background-color: rgb(250 204 21 / 0.35); }
+}
+.flash-target {
+  animation: flash-target 0.9s ease-in-out 3;
+}
+
+.tree-layout {
+  display: grid;
+  grid-template-columns: minmax(190px, 1fr) 100px minmax(160px, 220px) 100px minmax(190px, 1fr);
+  align-items: center;
+  min-width: 850px;
+  min-height: 170px;
+}
+.tree-side { align-self: stretch; display: flex; flex-direction: column; justify-content: center; }
+.tree-label { margin-bottom: 12px; text-align: center; color: #64748b; font-size: 11px; font-weight: 700; letter-spacing: .12em; }
+.tree-list { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; flex: 1; }
+.tree-list-before::after, .tree-list-after::before { content: ""; position: absolute; top: 18px; bottom: 18px; width: 1px; background: #94a3b8; }
+.tree-list-before::after { right: -1px; }
+.tree-list-after::before { left: -1px; }
+.tree-course, .tree-current { display: flex; flex-direction: column; justify-content: center; min-height: 58px; padding: 9px 14px; border-radius: 8px; text-align: left; line-height: 1.25; }
+.tree-course { position: relative; width: calc(100% - 22px); border: 1px solid #cbd5e1; background: #fff; color: #475569; }
+.tree-list-before .tree-course::after, .tree-list-after .tree-course::before { content: ""; position: absolute; top: 50%; width: 11px; height: 1px; background: #94a3b8; }
+.tree-list-before .tree-course::after { right: -12px; }
+.tree-list-after .tree-course::before { left: -12px; }
+.tree-course-link { cursor: pointer; transition: border-color .15s, background-color .15s; }
+.tree-course-link:hover { border-color: #3a7dd0; background: #eef5fd; }
+.tree-course-missing { border-color: #fbbf24; background: #fffbeb; }
+.tree-current { position: relative; border: 1px solid #e9925c; background: #e9925c; color: #45220d; text-align: center; }
+.tree-code { font-size: 17px; font-weight: 700; }
+.tree-name { margin-top: 3px; font-size: 12px; }
+.tree-term { margin-top: 5px; font-size: 11px; font-weight: 700; }
+.tree-connector { position: relative; height: 1px; background: #94a3b8; }
+.tree-relation { position: absolute; left: 50%; bottom: 7px; transform: translateX(-50%); color: #64748b; white-space: nowrap; font-size: 12px; }
+.tree-empty { color: #94a3b8; font-size: 12px; text-align: center; }
+.dark .tree-course { border-color: #475569; background: #0f172a; color: #e2e8f0; }
+.dark .tree-course-link:hover { border-color: #6fa3e3; background: #172554; }
+.dark .tree-course-missing { border-color: #b45309; background: #451a03; }

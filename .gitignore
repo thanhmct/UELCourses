@@ -10,3 +10,5 @@ node_modules/
 *.db
 .env
 .env.local
+*.log
+.next-preview/
