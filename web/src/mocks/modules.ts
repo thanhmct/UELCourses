@@ -1,18 +1,25 @@
-// DỮ LIỆU MẪU — chỉ dùng để demo khi API chưa chạy. Không phải dữ liệu thật của UEL.
-// Định dạng mô phỏng dữ liệu thật: mã môn "EIE3004" / "MI71", mã lớp "251EIE300401"
-// (251 = năm học 2025, học kỳ 1; tiếp theo là mã môn và số thứ tự lớp).
+// DỮ LIỆU ĐỒNG BỘ: Kết hợp dữ liệu chuẩn từ CTĐT (programs_catalog.json),
+// danh sách lớp học phần UIS thực tế (courses.json) và các môn mẫu.
 import type { ClassSection, EquivalentItem, ModuleDetail, Semester } from "@/lib/types";
 import { periodEndTime, periodStartTime } from "@/lib/periods";
+import catalog from "@/data/programs_catalog.json";
+import rawCourses from "@/data/courses.json";
+import plannedCourses from "@/data/courses_2026_2027_planned.json";
+import { parseSchedules } from "@/lib/schedule";
 
 export const mockSemesters: Semester[] = [
-  { id: "251", name: "Học kỳ 1 năm học 2025–2026", year: 2025, term: 1, is_current: false },
-  { id: "252", name: "Học kỳ 2 năm học 2025–2026", year: 2025, term: 2, is_current: false },
-  { id: "261", name: "Học kỳ 1 năm học 2026–2027", year: 2026, term: 1, is_current: true },
+  { id: "2026-2027-1", name: "Học kỳ 1 năm học 2026–2027", year: "2026-2027", term: 1, is_current: true },
+  { id: "2026-2027-2", name: "Học kỳ 2 năm học 2026–2027", year: "2026-2027", term: 2, is_current: false },
+  { id: "2026-2027-3", name: "Học kỳ 3 (Hè) năm học 2026–2027", year: "2026-2027", term: 3, is_current: false },
+  { id: "251", name: "Học kỳ 1 năm học 2025–2026", year: "2025-2026", term: 1, is_current: false },
+  { id: "252", name: "Học kỳ 2 năm học 2025–2026", year: "2025-2026", term: 2, is_current: false },
+  { id: "261", name: "Học kỳ 1 năm học 2026–2027 (Mẫu)", year: "2026-2027", term: 1, is_current: false },
 ];
 
 type M = Omit<ModuleDetail, "has_equivalents" | "semesters"> & { semesters?: string[] };
 
 const plan = (terms: number[], pct = 100) => [
+  { academic_year: "2025-2026", terms, open_pct: pct },
   { academic_year: "2026-2027", terms, open_pct: pct },
 ];
 
@@ -35,7 +42,93 @@ const base: M[] = [
   { code: "MI71", name: "Giáo dục thể chất 1", credits: 1, type: "Điều kiện", faculty: "Giáo dục thể chất", description: "Học phần điều kiện, không tính vào điểm trung bình.", prerequisites: [], equivalents: [], offering_plan: plan([1, 2, 3]) },
 ];
 
-export const mockModules: ModuleDetail[] = base.map((m) => ({
+interface RawCourseItem {
+  CurriculumID?: string;
+  ScheduleStudyUnitAlias?: string;
+  ScheduleStudyUnitName?: string;
+  Credits?: number;
+  StudyUnitTypeName?: string;
+  ProfessorName?: string;
+  StudentQuotas?: number;
+  BeginDate?: string;
+  EndDate?: string;
+  Schedules?: string;
+  Faculty?: string;
+  ClassStudent?: string;
+  MinStudentQuotas?: number;
+  RegisteredStudents?: number;
+  AvailableSeats?: number;
+  Rooms?: string;
+}
+
+// Trích xuất toàn bộ học phần từ catalog.details (86 CTĐT)
+const realModulesMap = new Map<string, M>();
+const details = (catalog as unknown as {
+  details: Record<
+    string,
+    {
+      program?: { faculty?: string };
+      blocks?: Array<{
+        modules?: Array<{
+          code: string;
+          name: string;
+          credits: number;
+          required: boolean;
+          prereq?: string[];
+          equivalents?: string[];
+        }>;
+      }>;
+    }
+  >;
+}).details || {};
+
+for (const det of Object.values(details)) {
+  const fac = det.program?.faculty;
+  for (const block of det.blocks || []) {
+    for (const m of block.modules || []) {
+      if (!m.code || realModulesMap.has(m.code)) continue;
+      realModulesMap.set(m.code, {
+        code: m.code,
+        name: m.name || m.code,
+        credits: m.credits || 0,
+        type: m.required ? "Bắt buộc" : "Tự chọn",
+        faculty: fac,
+        prerequisites: m.prereq || [],
+        equivalents: (m.equivalents || []).map((eq) => ({ code: eq, name: eq, credits: m.credits || 0 })),
+        is_english: m.code.endsWith("E") || m.name.includes("(E)"),
+        offering_plan: plan([1, 2]),
+      });
+    }
+  }
+}
+
+// Bổ sung các môn từ danh sách lớp nếu chưa có trong catalog
+const typedRawCourses = (rawCourses as RawCourseItem[]) || [];
+for (const c of typedRawCourses) {
+  if (c.CurriculumID && !realModulesMap.has(c.CurriculumID)) {
+    realModulesMap.set(c.CurriculumID, {
+      code: c.CurriculumID,
+      name: c.ScheduleStudyUnitName || c.CurriculumID,
+      credits: c.Credits || 0,
+      type: c.StudyUnitTypeName || "Lý thuyết",
+      faculty: c.Faculty || "Đào tạo",
+      prerequisites: [],
+      equivalents: [],
+      is_english: c.CurriculumID.endsWith("E") || (c.ScheduleStudyUnitName || "").includes("(E)"),
+      offering_plan: plan([1]),
+    });
+  }
+}
+
+const existingCodes = new Set(base.map((m) => m.code));
+const allModulesList: M[] = [...base];
+for (const [code, m] of realModulesMap.entries()) {
+  if (!existingCodes.has(code)) {
+    allModulesList.push(m);
+  }
+}
+
+export const mockModules: ModuleDetail[] = allModulesList.map((m) => ({
   ...m,
   has_equivalents: m.equivalents.length > 0,
   semesters: m.semesters ?? mockSemesters.map((s) => s.id),
@@ -56,28 +149,74 @@ function L(weekday: number, start: number, end: number, room: string, weeks?: st
 const lecturers = ["TS. Nguyễn Văn A", "ThS. Trần Thị B", "TS. Lê Văn C", "PGS.TS. Phạm Thị D", "ThS. Võ Văn E"];
 const rooms = ["A.101", "A.205", "B.203", "B.302", "C.105", "C.401", "D.201"];
 
-// [weekday, start, end] — morning 1–3 / 4–6, afternoon 7–9 / 10–12, evening 13–15
 const slots: [number, number, number][] = [
   [2, 1, 3], [2, 4, 6], [2, 7, 9], [3, 1, 3], [3, 7, 9], [3, 10, 12], [4, 1, 3], [4, 4, 6],
   [4, 7, 9], [5, 1, 3], [5, 7, 9], [5, 13, 15], [6, 1, 3], [6, 4, 6], [6, 7, 9], [7, 1, 3], [7, 7, 9],
 ];
 
+// Tạo các lớp học phần thực tế từ courses.json
+const realSections: ClassSection[] = typedRawCourses.map((c) => {
+  const code = c.CurriculumID || "";
+  const alias = c.ScheduleStudyUnitAlias || "";
+  const rawSchedules = c.Schedules || "";
+  const parsed = parseSchedules(rawSchedules);
+  return {
+    class_code: alias,
+    module_code: code,
+    lecturer: c.ProfessorName || undefined,
+    quota: c.StudentQuotas,
+    quota_min: c.MinStudentQuotas,
+    quota_max: c.StudentQuotas,
+    registered: c.RegisteredStudents,
+    available: c.AvailableSeats,
+    student_groups: c.ClassStudent ? c.ClassStudent.split(",").map((s) => s.trim()) : undefined,
+    rooms: c.Rooms ? [c.Rooms] : undefined,
+    start_date: c.BeginDate ? c.BeginDate.split("T")[0] : undefined,
+    end_date: c.EndDate ? c.EndDate.split("T")[0] : undefined,
+    lessons: parsed,
+  };
+});
+
+interface PlannedCourseItem {
+  CurriculumID?: string;
+  ScheduleStudyUnitAlias?: string;
+  ScheduleStudyUnitName?: string;
+  Credits?: number;
+  SemesterID?: string;
+  Term?: number;
+  StudentGroups?: string;
+  Cohorts?: string[];
+}
+
+const typedPlanned = (plannedCourses as PlannedCourseItem[]) || [];
+
 function buildSections(semesterId: string): ClassSection[] {
-  const out: ClassSection[] = [];
-  const yy = Number(semesterId.slice(0, 2));
-  const term = Number(semesterId.slice(2));
+  if (semesterId.startsWith("2026-2027")) {
+    const plannedForSem = typedPlanned.filter((p) => p.SemesterID === semesterId);
+    if (plannedForSem.length > 0) {
+      return plannedForSem.map((p) => ({
+        class_code: p.ScheduleStudyUnitAlias || "",
+        module_code: p.CurriculumID || "",
+        student_groups: p.StudentGroups ? p.StudentGroups.split(",").map((s) => s.trim()) : undefined,
+        lessons: [],
+      }));
+    }
+  }
+  const out: ClassSection[] = [...realSections];
+  const yy = Number(semesterId.slice(0, 2)) || 25;
+  const term = Number(semesterId.slice(2)) || 1;
   const year = 2000 + yy;
   const start = term === 1 ? `${year}-09-07` : `${year + 1}-02-08`;
   const end = term === 1 ? `${year}-12-27` : `${year + 1}-05-30`;
-  mockModules.forEach((m, mi) => {
-    const count = 2 + ((mi + term) % 2);
+
+  // Chỉ bổ sung lớp tự sinh cho các môn base nếu chưa có trong realSections
+  const coveredCodes = new Set(realSections.map((s) => s.module_code));
+  base.forEach((m, mi) => {
+    if (coveredCodes.has(m.code)) return;
+    const count = 2;
     for (let k = 0; k < count; k++) {
       const s1 = slots[(mi * 3 + k * 5 + term) % slots.length];
       const lessons = [L(s1[0], s1[1], s1[2], rooms[(mi + k) % rooms.length])];
-      if (m.credits >= 3 && k % 2 === 0) {
-        const s2 = slots[(mi * 3 + k * 5 + term + 8) % slots.length];
-        if (s2[0] !== s1[0]) lessons.push(L(s2[0], s2[1], s2[1] + 1, rooms[(mi + k + 3) % rooms.length], "4-12"));
-      }
       const quotaMax = 60 + ((mi * 7 + k * 13) % 4) * 20;
       const registered = Math.min(quotaMax, (mi * 17 + k * 29 + term * 11) % (quotaMax + 10));
       out.push({
@@ -90,7 +229,7 @@ function buildSections(semesterId: string): ClassSection[] {
         registered,
         available: quotaMax - registered,
         student_groups: [`K${yy - 1}40${(mi + k) % 9 + 1}${m.is_english ? "E" : ""}`],
-        rooms: [...new Set(lessons.map((l) => l.room))],
+        rooms: [...new Set(lessons.map((l) => l.room).filter((r): r is string => Boolean(r)))],
         start_date: start,
         end_date: end,
         lessons,
@@ -102,7 +241,7 @@ function buildSections(semesterId: string): ClassSection[] {
 
 const sectionCache = new Map<string, ClassSection[]>();
 export function mockSections(semesterId: string): ClassSection[] {
-  const id = mockSemesters.some((s) => s.id === semesterId) ? semesterId : mockSemesters[mockSemesters.length - 1].id;
+  const id = mockSemesters.some((s) => s.id === semesterId) ? semesterId : mockSemesters[0].id;
   if (!sectionCache.has(id)) sectionCache.set(id, buildSections(id));
   return sectionCache.get(id)!;
 }
