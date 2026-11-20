@@ -1,0 +1,49 @@
+{
+  "note": "DỮ LIỆU MẪU cho kiểm thử pipeline RAG — không phải văn bản chính thức của UEL.",
+  "documents": [
+    {
+      "doc_id": "QC-DT-2015-MAU",
+      "title": "Quy chế đào tạo đại học hệ chính quy theo hệ thống tín chỉ năm 2015 (MẪU)",
+      "decision_no": "321/QĐ-ĐHKTL",
+      "issued_date": "2015-08-20",
+      "effective_from": "2015-09-01",
+      "effective_to": "2021-07-31",
+      "superseded_by": "QC-DT-2021-MAU",
+      "applies_to_cohorts": ["K15-K20"],
+      "file": "qc-tin-chi-2015-mau.html",
+      "is_sample": true
+    },
+    {
+      "doc_id": "QC-DT-2021-MAU",
+      "title": "Quy chế đào tạo trình độ đại học theo hệ thống tín chỉ (MẪU)",
+      "decision_no": "1001/QĐ-ĐHKTL",
+      "issued_date": "2021-07-15",
+      "effective_from": "2021-08-01",
+      "effective_to": null,
+      "applies_to_cohorts": ["K21", "K22"],
+      "file": "qc-dao-tao-2021-mau.txt",
+      "is_sample": true
+    },
+    {
+      "doc_id": "QC-DT-2023-MAU",
+      "title": "Quy chế đào tạo trình độ đại học áp dụng từ khóa K23 (MẪU)",
+      "decision_no": "789/QĐ-ĐHKTL",
+      "issued_date": "2023-07-20",
+      "effective_from": "2023-08-15",
+      "applies_to_cohorts": ["K23"],
+      "file": "qc-dao-tao-2023-mau.txt",
+      "is_sample": true
+    },
+    {
+      "doc_id": "QD-CDR-NN-TH-MAU",
+      "title": "Quy định chuẩn đầu ra ngoại ngữ và tin học (MẪU)",
+      "decision_no": "456/QĐ-ĐHKTL",
+      "issued_date": "2021-12-10",
+      "effective_from": "2022-01-01",
+      "effective_to": "2027-01-15",
+      "applies_to_cohorts": ["all"],
+      "file": "qd-chuan-dau-ra-nn-th-2022-mau.txt",
+      "is_sample": true
+    }
+  ]
+}

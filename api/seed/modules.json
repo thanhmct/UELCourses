@@ -1,0 +1,470 @@
+[
+  {
+    "code": "SAMPLE.LLCT101",
+    "name": "Triết học Mác – Lênin",
+    "credits": 3,
+    "type": "Bắt buộc",
+    "faculty": "Khoa Lý luận chính trị",
+    "prerequisites": [],
+    "description": "Thế giới quan và phương pháp luận duy vật biện chứng.",
+    "is_sample": true
+  },
+  {
+    "code": "SAMPLE.LLCT102",
+    "name": "Kinh tế chính trị Mác – Lênin",
+    "credits": 2,
+    "type": "Bắt buộc",
+    "faculty": "Khoa Lý luận chính trị",
+    "prerequisites": [
+      "SAMPLE.LLCT101"
+    ],
+    "description": "Các phạm trù, quy luật kinh tế cơ bản.",
+    "is_sample": true
+  },
+  {
+    "code": "SAMPLE.LLCT103",
+    "name": "Chủ nghĩa xã hội khoa học",
+    "credits": 2,
+    "type": "Bắt buộc",
+    "faculty": "Khoa Lý luận chính trị",
+    "prerequisites": [
+      "SAMPLE.LLCT102"
+    ],
+    "description": null,
+    "is_sample": true
+  },
+  {
+    "code": "SAMPLE.LLCT104",
+    "name": "Tư tưởng Hồ Chí Minh",
+    "credits": 2,
+    "type": "Bắt buộc",
+    "faculty": "Khoa Lý luận chính trị",
+    "prerequisites": [],
+    "description": null,
+    "is_sample": true
+  },
+  {
+    "code": "SAMPLE.LLCT105",
+    "name": "Lịch sử Đảng Cộng sản Việt Nam",
+    "credits": 2,
+    "type": "Bắt buộc",
+    "faculty": "Khoa Lý luận chính trị",
+    "prerequisites": [],
+    "description": null,
+    "is_sample": true
+  },
+  {
+    "code": "SAMPLE.PL101",
+    "name": "Pháp luật đại cương",
+    "credits": 2,
+    "type": "Bắt buộc",
+    "faculty": "Khoa Luật",
+    "prerequisites": [],
+    "description": "Những vấn đề cơ bản về nhà nước và pháp luật.",
+    "is_sample": true
+  },
+  {
+    "code": "SAMPLE.TOAN101",
+    "name": "Toán cao cấp",
+    "credits": 3,
+    "type": "Bắt buộc",
+    "faculty": "Khoa Toán kinh tế",
+    "prerequisites": [],
+    "description": "Giải tích và đại số tuyến tính cho khối kinh tế.",
+    "is_sample": true
+  },
+  {
+    "code": "SAMPLE.TOAN102",
+    "name": "Lý thuyết xác suất và thống kê toán",
+    "credits": 3,
+    "type": "Bắt buộc",
+    "faculty": "Khoa Toán kinh tế",
+    "prerequisites": [
+      "SAMPLE.TOAN101"
+    ],
+    "description": null,
+    "is_sample": true
+  },
+  {
+    "code": "SAMPLE.TOAN201",
+    "name": "Kinh tế lượng",
+    "credits": 3,
+    "type": "Bắt buộc",
+    "faculty": "Khoa Toán kinh tế",
+    "prerequisites": [
+      "SAMPLE.TOAN102"
+    ],
+    "description": "Mô hình hồi quy và kiểm định.",
+    "is_sample": true
+  },
+  {
+    "code": "SAMPLE.TOAN202",
+    "name": "Phân tích dữ liệu với Python",
+    "credits": 3,
+    "type": "Tự chọn",
+    "faculty": "Khoa Toán kinh tế",
+    "prerequisites": [
+      "SAMPLE.TOAN102"
+    ],
+    "description": null,
+    "is_sample": true
+  },
+  {
+    "code": "SAMPLE.KT101",
+    "name": "Kinh tế vi mô",
+    "credits": 3,
+    "type": "Bắt buộc",
+    "faculty": "Khoa Kinh tế",
+    "prerequisites": [],
+    "description": "Hành vi người tiêu dùng, doanh nghiệp và thị trường.",
+    "is_sample": true
+  },
+  {
+    "code": "SAMPLE.KT102",
+    "name": "Kinh tế vĩ mô",
+    "credits": 3,
+    "type": "Bắt buộc",
+    "faculty": "Khoa Kinh tế",
+    "prerequisites": [
+      "SAMPLE.KT101"
+    ],
+    "description": "Sản lượng, lạm phát, thất nghiệp, chính sách.",
+    "is_sample": true
+  },
+  {
+    "code": "SAMPLE.KT201",
+    "name": "Kinh tế phát triển",
+    "credits": 3,
+    "type": "Tự chọn",
+    "faculty": "Khoa Kinh tế",
+    "prerequisites": [
+      "SAMPLE.KT102"
+    ],
+    "description": null,
+    "is_sample": true
+  },
+  {
+    "code": "SAMPLE.KT202",
+    "name": "Kinh tế công",
+    "credits": 3,
+    "type": "Tự chọn",
+    "faculty": "Khoa Kinh tế",
+    "prerequisites": [
+      "SAMPLE.KT102"
+    ],
+    "description": null,
+    "is_sample": true
+  },
+  {
+    "code": "SAMPLE.KTDN201",
+    "name": "Kinh tế quốc tế",
+    "credits": 3,
+    "type": "Bắt buộc",
+    "faculty": "Khoa Kinh tế đối ngoại",
+    "prerequisites": [
+      "SAMPLE.KT102"
+    ],
+    "description": null,
+    "is_sample": true
+  },
+  {
+    "code": "SAMPLE.KTDN202",
+    "name": "Thương mại quốc tế",
+    "credits": 3,
+    "type": "Bắt buộc",
+    "faculty": "Khoa Kinh tế đối ngoại",
+    "prerequisites": [
+      "SAMPLE.KTDN201"
+    ],
+    "description": null,
+    "is_sample": true
+  },
+  {
+    "code": "SAMPLE.KTDN203",
+    "name": "Logistics và vận tải quốc tế",
+    "credits": 3,
+    "type": "Tự chọn",
+    "faculty": "Khoa Kinh tế đối ngoại",
+    "prerequisites": [],
+    "description": null,
+    "is_sample": true
+  },
+  {
+    "code": "SAMPLE.KTDN204",
+    "name": "Thanh toán quốc tế",
+    "credits": 3,
+    "type": "Tự chọn",
+    "faculty": "Khoa Kinh tế đối ngoại",
+    "prerequisites": [],
+    "description": null,
+    "is_sample": true
+  },
+  {
+    "code": "SAMPLE.TCNH201",
+    "name": "Tài chính tiền tệ",
+    "credits": 3,
+    "type": "Bắt buộc",
+    "faculty": "Khoa Tài chính – Ngân hàng",
+    "prerequisites": [
+      "SAMPLE.KT102"
+    ],
+    "description": null,
+    "is_sample": true
+  },
+  {
+    "code": "SAMPLE.TCNH202",
+    "name": "Tài chính doanh nghiệp",
+    "credits": 3,
+    "type": "Bắt buộc",
+    "faculty": "Khoa Tài chính – Ngân hàng",
+    "prerequisites": [
+      "SAMPLE.TCNH201"
+    ],
+    "description": null,
+    "is_sample": true
+  },
+  {
+    "code": "SAMPLE.TCNH203",
+    "name": "Ngân hàng thương mại",
+    "credits": 3,
+    "type": "Tự chọn",
+    "faculty": "Khoa Tài chính – Ngân hàng",
+    "prerequisites": [
+      "SAMPLE.TCNH201"
+    ],
+    "description": null,
+    "is_sample": true
+  },
+  {
+    "code": "SAMPLE.TCNH204",
+    "name": "Đầu tư tài chính",
+    "credits": 3,
+    "type": "Tự chọn",
+    "faculty": "Khoa Tài chính – Ngân hàng",
+    "prerequisites": [],
+    "description": null,
+    "is_sample": true
+  },
+  {
+    "code": "SAMPLE.TCNH205",
+    "name": "Thuế",
+    "credits": 2,
+    "type": "Tự chọn",
+    "faculty": "Khoa Tài chính – Ngân hàng",
+    "prerequisites": [],
+    "description": null,
+    "is_sample": true
+  },
+  {
+    "code": "SAMPLE.KTKT201",
+    "name": "Nguyên lý kế toán",
+    "credits": 3,
+    "type": "Bắt buộc",
+    "faculty": "Khoa Kế toán – Kiểm toán",
+    "prerequisites": [],
+    "description": null,
+    "is_sample": true
+  },
+  {
+    "code": "SAMPLE.KTKT202",
+    "name": "Kế toán tài chính",
+    "credits": 3,
+    "type": "Bắt buộc",
+    "faculty": "Khoa Kế toán – Kiểm toán",
+    "prerequisites": [
+      "SAMPLE.KTKT201"
+    ],
+    "description": null,
+    "is_sample": true
+  },
+  {
+    "code": "SAMPLE.KTKT203",
+    "name": "Kiểm toán căn bản",
+    "credits": 3,
+    "type": "Tự chọn",
+    "faculty": "Khoa Kế toán – Kiểm toán",
+    "prerequisites": [
+      "SAMPLE.KTKT201"
+    ],
+    "description": null,
+    "is_sample": true
+  },
+  {
+    "code": "SAMPLE.QTKD201",
+    "name": "Quản trị học",
+    "credits": 3,
+    "type": "Bắt buộc",
+    "faculty": "Khoa Quản trị kinh doanh",
+    "prerequisites": [],
+    "description": null,
+    "is_sample": true
+  },
+  {
+    "code": "SAMPLE.QTKD202",
+    "name": "Marketing căn bản",
+    "credits": 3,
+    "type": "Bắt buộc",
+    "faculty": "Khoa Quản trị kinh doanh",
+    "prerequisites": [],
+    "description": null,
+    "is_sample": true
+  },
+  {
+    "code": "SAMPLE.QTKD203",
+    "name": "Quản trị nguồn nhân lực",
+    "credits": 3,
+    "type": "Tự chọn",
+    "faculty": "Khoa Quản trị kinh doanh",
+    "prerequisites": [
+      "SAMPLE.QTKD201"
+    ],
+    "description": null,
+    "is_sample": true
+  },
+  {
+    "code": "SAMPLE.QTKD204",
+    "name": "Khởi nghiệp và đổi mới sáng tạo",
+    "credits": 2,
+    "type": "Tự chọn",
+    "faculty": "Khoa Quản trị kinh doanh",
+    "prerequisites": [],
+    "description": null,
+    "is_sample": true
+  },
+  {
+    "code": "SAMPLE.HTTT201",
+    "name": "Tin học ứng dụng",
+    "credits": 3,
+    "type": "Bắt buộc",
+    "faculty": "Khoa Hệ thống thông tin",
+    "prerequisites": [],
+    "description": null,
+    "is_sample": true
+  },
+  {
+    "code": "SAMPLE.HTTT202",
+    "name": "Cơ sở dữ liệu",
+    "credits": 3,
+    "type": "Bắt buộc",
+    "faculty": "Khoa Hệ thống thông tin",
+    "prerequisites": [
+      "SAMPLE.HTTT201"
+    ],
+    "description": null,
+    "is_sample": true
+  },
+  {
+    "code": "SAMPLE.HTTT203",
+    "name": "Lập trình Python",
+    "credits": 3,
+    "type": "Tự chọn",
+    "faculty": "Khoa Hệ thống thông tin",
+    "prerequisites": [],
+    "description": null,
+    "is_sample": true
+  },
+  {
+    "code": "SAMPLE.HTTT204",
+    "name": "Thương mại điện tử",
+    "credits": 3,
+    "type": "Tự chọn",
+    "faculty": "Khoa Hệ thống thông tin",
+    "prerequisites": [],
+    "description": null,
+    "is_sample": true
+  },
+  {
+    "code": "SAMPLE.LUAT201",
+    "name": "Luật hiến pháp",
+    "credits": 3,
+    "type": "Bắt buộc",
+    "faculty": "Khoa Luật",
+    "prerequisites": [
+      "SAMPLE.PL101"
+    ],
+    "description": null,
+    "is_sample": true
+  },
+  {
+    "code": "SAMPLE.LUAT202",
+    "name": "Luật dân sự 1",
+    "credits": 3,
+    "type": "Bắt buộc",
+    "faculty": "Khoa Luật",
+    "prerequisites": [
+      "SAMPLE.PL101"
+    ],
+    "description": null,
+    "is_sample": true
+  },
+  {
+    "code": "SAMPLE.LUAT203",
+    "name": "Luật hình sự",
+    "credits": 3,
+    "type": "Bắt buộc",
+    "faculty": "Khoa Luật",
+    "prerequisites": [
+      "SAMPLE.PL101"
+    ],
+    "description": null,
+    "is_sample": true
+  },
+  {
+    "code": "SAMPLE.LUAT204",
+    "name": "Luật hành chính",
+    "credits": 3,
+    "type": "Tự chọn",
+    "faculty": "Khoa Luật",
+    "prerequisites": [
+      "SAMPLE.LUAT201"
+    ],
+    "description": null,
+    "is_sample": true
+  },
+  {
+    "code": "SAMPLE.LKT201",
+    "name": "Luật hợp đồng",
+    "credits": 3,
+    "type": "Bắt buộc",
+    "faculty": "Khoa Luật kinh tế",
+    "prerequisites": [
+      "SAMPLE.LUAT202"
+    ],
+    "description": null,
+    "is_sample": true
+  },
+  {
+    "code": "SAMPLE.LKT202",
+    "name": "Pháp luật về doanh nghiệp",
+    "credits": 3,
+    "type": "Bắt buộc",
+    "faculty": "Khoa Luật kinh tế",
+    "prerequisites": [
+      "SAMPLE.PL101"
+    ],
+    "description": null,
+    "is_sample": true
+  },
+  {
+    "code": "SAMPLE.NN101",
+    "name": "Tiếng Anh tổng quát 1",
+    "credits": 3,
+    "type": "Bắt buộc",
+    "faculty": "Trung tâm Ngoại ngữ",
+    "prerequisites": [],
+    "description": null,
+    "is_sample": true
+  },
+  {
+    "code": "SAMPLE.NN102",
+    "name": "Tiếng Anh tổng quát 2",
+    "credits": 3,
+    "type": "Bắt buộc",
+    "faculty": "Trung tâm Ngoại ngữ",
+    "prerequisites": [
+      "SAMPLE.NN101"
+    ],
+    "description": null,
+    "is_sample": true
+  }
+]

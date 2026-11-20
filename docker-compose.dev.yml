@@ -1,0 +1,29 @@
+# Ghi đè cho môi trường phát triển: mount source code, tự reload khi sửa file.
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+
+services:
+  db:
+    ports:
+      - "5432:5432"   # để xem DB bằng DBeaver/pgAdmin khi dev
+
+  api:
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    user: root        # tránh lỗi quyền ghi khi mount thư mục từ Windows
+    environment:
+      WATCHFILES_FORCE_POLLING: "true"   # reload hoạt động với ổ đĩa Windows mount vào
+    volumes:
+      - ./api:/app
+      - /app/.venv          # không dùng venv Windows bên trong container
+      - /app/.venv-rag
+      - apidata:/app/data
+
+  web:
+    build:
+      target: dev
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+      WATCHPACK_POLLING: "true"
+    volumes:
+      - ./web:/app
+      - /app/node_modules   # giữ node_modules Linux của container
+      - /app/.next

@@ -1,0 +1,9 @@
+.venv
+.venv-rag
+__pycache__
+**/__pycache__
+.pytest_cache
+data
+*.db
+.env
+token.txt

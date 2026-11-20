@@ -1,0 +1,17 @@
+# Backend UELPlan — đã kiểm tra cài đặt trên Python 3.14.7 (Windows).
+fastapi==0.165.0
+starlette==1.10.0
+uvicorn[standard]==0.54.0
+SQLAlchemy==2.1.9
+pydantic==2.14.4
+pydantic-settings==2.16.3
+python-multipart==0.0.34
+httpx==0.28.1
+psycopg[binary]==3.3.9
+openpyxl==3.1.5
+
+# Test
+pytest==9.2.0
+respx==0.23.1
+
+# Postgres: đặt DATABASE_URL=postgresql+psycopg://user:pass@host:5432/uelplan

@@ -1,0 +1,618 @@
+{
+  "_note": "DỮ LIỆU GIẢ LẬP – mô phỏng phản hồi của GET /api/feedback/stats; KHÔNG dùng trong khóa luận",
+  "total": 60,
+  "average_rating": 3.95,
+  "by_page": [
+    {
+      "page": "/",
+      "count": 11,
+      "average_rating": 4.273
+    },
+    {
+      "page": "/equivalents",
+      "count": 8,
+      "average_rating": 3.75
+    },
+    {
+      "page": "/modules",
+      "count": 13,
+      "average_rating": 4.0
+    },
+    {
+      "page": "/planner",
+      "count": 5,
+      "average_rating": 3.8
+    },
+    {
+      "page": "/regulations",
+      "count": 8,
+      "average_rating": 4.0
+    },
+    {
+      "page": "/regulations/ask",
+      "count": 4,
+      "average_rating": 4.0
+    },
+    {
+      "page": "/timetable",
+      "count": 11,
+      "average_rating": 3.727
+    }
+  ],
+  "by_category": [
+    {
+      "category": "bug",
+      "count": 8,
+      "average_rating": 3.5
+    },
+    {
+      "category": "content",
+      "count": 19,
+      "average_rating": 4.0
+    },
+    {
+      "category": "other",
+      "count": 14,
+      "average_rating": 4.0
+    },
+    {
+      "category": "praise",
+      "count": 10,
+      "average_rating": 3.8
+    },
+    {
+      "category": "suggestion",
+      "count": 9,
+      "average_rating": 4.333
+    }
+  ],
+  "rating_distribution": {
+    "1": 2,
+    "2": 3,
+    "3": 12,
+    "4": 22,
+    "5": 21
+  },
+  "items": [
+    {
+      "id": 1,
+      "page": "/timetable",
+      "rating": 4,
+      "category": "suggestion",
+      "message": "Trùng lịch hiển thị tốt.",
+      "app_version": "0.1.0",
+      "created_at": "2026-03-10T09:00:00"
+    },
+    {
+      "id": 2,
+      "page": "/regulations/ask",
+      "rating": 3,
+      "category": "content",
+      "message": "Trang chậm khi tải nhiều lớp.",
+      "app_version": "0.1.0",
+      "created_at": "2026-03-10T18:00:00"
+    },
+    {
+      "id": 3,
+      "page": "/planner",
+      "rating": 3,
+      "category": "content",
+      "message": "Trích dẫn rất hữu ích.",
+      "app_version": "0.1.0",
+      "created_at": "2026-03-11T03:00:00"
+    },
+    {
+      "id": 4,
+      "page": "/regulations",
+      "rating": 3,
+      "category": "other",
+      "message": "Trích dẫn rất hữu ích.",
+      "app_version": "0.1.0",
+      "created_at": "2026-03-11T12:00:00"
+    },
+    {
+      "id": 5,
+      "page": "/regulations",
+      "rating": 4,
+      "category": "content",
+      "message": "",
+      "app_version": "0.1.0",
+      "created_at": "2026-03-11T21:00:00"
+    },
+    {
+      "id": 6,
+      "page": "/equivalents",
+      "rating": 5,
+      "category": "other",
+      "message": "Trích dẫn rất hữu ích.",
+      "app_version": "0.1.0",
+      "created_at": "2026-03-12T06:00:00"
+    },
+    {
+      "id": 7,
+      "page": "/regulations",
+      "rating": 5,
+      "category": "praise",
+      "message": "Trích dẫn rất hữu ích.",
+      "app_version": "0.1.0",
+      "created_at": "2026-03-12T15:00:00"
+    },
+    {
+      "id": 8,
+      "page": "/timetable",
+      "rating": 3,
+      "category": "content",
+      "message": "Trích dẫn rất hữu ích.",
+      "app_version": "0.1.0",
+      "created_at": "2026-03-13T00:00:00"
+    },
+    {
+      "id": 9,
+      "page": "/",
+      "rating": 4,
+      "category": "praise",
+      "message": "Trang chậm khi tải nhiều lớp.",
+      "app_version": "0.1.0",
+      "created_at": "2026-03-13T09:00:00"
+    },
+    {
+      "id": 10,
+      "page": "/modules",
+      "rating": 3,
+      "category": "content",
+      "message": "Trích dẫn rất hữu ích.",
+      "app_version": "0.1.0",
+      "created_at": "2026-03-13T18:00:00"
+    },
+    {
+      "id": 11,
+      "page": "/",
+      "rating": 3,
+      "category": "other",
+      "message": "Trùng lịch hiển thị tốt.",
+      "app_version": "0.1.0",
+      "created_at": "2026-03-14T03:00:00"
+    },
+    {
+      "id": 12,
+      "page": "/modules",
+      "rating": 4,
+      "category": "bug",
+      "message": "Trích dẫn rất hữu ích.",
+      "app_version": "0.1.0",
+      "created_at": "2026-03-14T12:00:00"
+    },
+    {
+      "id": 13,
+      "page": "/modules",
+      "rating": 4,
+      "category": "other",
+      "message": "Trích dẫn rất hữu ích.",
+      "app_version": "0.1.0",
+      "created_at": "2026-03-14T21:00:00"
+    },
+    {
+      "id": 14,
+      "page": "/",
+      "rating": 5,
+      "category": "content",
+      "message": "Trích dẫn rất hữu ích.",
+      "app_version": "0.1.0",
+      "created_at": "2026-03-15T06:00:00"
+    },
+    {
+      "id": 15,
+      "page": "/timetable",
+      "rating": 2,
+      "category": "content",
+      "message": "Trùng lịch hiển thị tốt.",
+      "app_version": "0.1.0",
+      "created_at": "2026-03-15T15:00:00"
+    },
+    {
+      "id": 16,
+      "page": "/",
+      "rating": 4,
+      "category": "suggestion",
+      "message": "Lọc theo khoa chưa nhớ lựa chọn.",
+      "app_version": "0.1.0",
+      "created_at": "2026-03-16T00:00:00"
+    },
+    {
+      "id": 17,
+      "page": "/",
+      "rating": 4,
+      "category": "suggestion",
+      "message": "Lọc theo khoa chưa nhớ lựa chọn.",
+      "app_version": "0.1.0",
+      "created_at": "2026-03-16T09:00:00"
+    },
+    {
+      "id": 18,
+      "page": "/regulations",
+      "rating": 4,
+      "category": "bug",
+      "message": "Lọc theo khoa chưa nhớ lựa chọn.",
+      "app_version": "0.1.0",
+      "created_at": "2026-03-16T18:00:00"
+    },
+    {
+      "id": 19,
+      "page": "/planner",
+      "rating": 3,
+      "category": "praise",
+      "message": "Trang chậm khi tải nhiều lớp.",
+      "app_version": "0.1.0",
+      "created_at": "2026-03-17T03:00:00"
+    },
+    {
+      "id": 20,
+      "page": "/",
+      "rating": 5,
+      "category": "content",
+      "message": "Trích dẫn rất hữu ích.",
+      "app_version": "0.1.0",
+      "created_at": "2026-03-17T12:00:00"
+    },
+    {
+      "id": 21,
+      "page": "/equivalents",
+      "rating": 1,
+      "category": "praise",
+      "message": "Trùng lịch hiển thị tốt.",
+      "app_version": "0.1.0",
+      "created_at": "2026-03-17T21:00:00"
+    },
+    {
+      "id": 22,
+      "page": "/timetable",
+      "rating": 4,
+      "category": "content",
+      "message": "Trang chậm khi tải nhiều lớp.",
+      "app_version": "0.1.0",
+      "created_at": "2026-03-18T06:00:00"
+    },
+    {
+      "id": 23,
+      "page": "/",
+      "rating": 5,
+      "category": "content",
+      "message": "Trang chậm khi tải nhiều lớp.",
+      "app_version": "0.1.0",
+      "created_at": "2026-03-18T15:00:00"
+    },
+    {
+      "id": 24,
+      "page": "/regulations",
+      "rating": 4,
+      "category": "suggestion",
+      "message": "Trang chậm khi tải nhiều lớp.",
+      "app_version": "0.1.0",
+      "created_at": "2026-03-19T00:00:00"
+    },
+    {
+      "id": 25,
+      "page": "/modules",
+      "rating": 4,
+      "category": "suggestion",
+      "message": "Lọc theo khoa chưa nhớ lựa chọn.",
+      "app_version": "0.1.0",
+      "created_at": "2026-03-19T09:00:00"
+    },
+    {
+      "id": 26,
+      "page": "/equivalents",
+      "rating": 1,
+      "category": "bug",
+      "message": "Trích dẫn rất hữu ích.",
+      "app_version": "0.1.0",
+      "created_at": "2026-03-19T18:00:00"
+    },
+    {
+      "id": 27,
+      "page": "/planner",
+      "rating": 4,
+      "category": "bug",
+      "message": "Trùng lịch hiển thị tốt.",
+      "app_version": "0.1.0",
+      "created_at": "2026-03-20T03:00:00"
+    },
+    {
+      "id": 28,
+      "page": "/modules",
+      "rating": 4,
+      "category": "praise",
+      "message": "",
+      "app_version": "0.1.0",
+      "created_at": "2026-03-20T12:00:00"
+    },
+    {
+      "id": 29,
+      "page": "/",
+      "rating": 4,
+      "category": "other",
+      "message": "Trích dẫn rất hữu ích.",
+      "app_version": "0.1.0",
+      "created_at": "2026-03-20T21:00:00"
+    },
+    {
+      "id": 30,
+      "page": "/modules",
+      "rating": 5,
+      "category": "content",
+      "message": "Trích dẫn rất hữu ích.",
+      "app_version": "0.1.0",
+      "created_at": "2026-03-21T06:00:00"
+    },
+    {
+      "id": 31,
+      "page": "/equivalents",
+      "rating": 4,
+      "category": "praise",
+      "message": "Trích dẫn rất hữu ích.",
+      "app_version": "0.1.0",
+      "created_at": "2026-03-21T15:00:00"
+    },
+    {
+      "id": 32,
+      "page": "/",
+      "rating": 3,
+      "category": "praise",
+      "message": "Trích dẫn rất hữu ích.",
+      "app_version": "0.1.0",
+      "created_at": "2026-03-22T00:00:00"
+    },
+    {
+      "id": 33,
+      "page": "/modules",
+      "rating": 5,
+      "category": "praise",
+      "message": "Trùng lịch hiển thị tốt.",
+      "app_version": "0.2.0",
+      "created_at": "2026-03-22T09:00:00"
+    },
+    {
+      "id": 34,
+      "page": "/modules",
+      "rating": 5,
+      "category": "other",
+      "message": "Trích dẫn rất hữu ích.",
+      "app_version": "0.2.0",
+      "created_at": "2026-03-22T18:00:00"
+    },
+    {
+      "id": 35,
+      "page": "/equivalents",
+      "rating": 5,
+      "category": "content",
+      "message": "Trùng lịch hiển thị tốt.",
+      "app_version": "0.2.0",
+      "created_at": "2026-03-23T03:00:00"
+    },
+    {
+      "id": 36,
+      "page": "/timetable",
+      "rating": 4,
+      "category": "bug",
+      "message": "Trùng lịch hiển thị tốt.",
+      "app_version": "0.2.0",
+      "created_at": "2026-03-23T12:00:00"
+    },
+    {
+      "id": 37,
+      "page": "/modules",
+      "rating": 5,
+      "category": "content",
+      "message": "Trùng lịch hiển thị tốt.",
+      "app_version": "0.2.0",
+      "created_at": "2026-03-23T21:00:00"
+    },
+    {
+      "id": 38,
+      "page": "/modules",
+      "rating": 3,
+      "category": "other",
+      "message": "Lọc theo khoa chưa nhớ lựa chọn.",
+      "app_version": "0.2.0",
+      "created_at": "2026-03-24T06:00:00"
+    },
+    {
+      "id": 39,
+      "page": "/timetable",
+      "rating": 5,
+      "category": "suggestion",
+      "message": "",
+      "app_version": "0.2.0",
+      "created_at": "2026-03-24T15:00:00"
+    },
+    {
+      "id": 40,
+      "page": "/timetable",
+      "rating": 4,
+      "category": "suggestion",
+      "message": "Lọc theo khoa chưa nhớ lựa chọn.",
+      "app_version": "0.2.0",
+      "created_at": "2026-03-25T00:00:00"
+    },
+    {
+      "id": 41,
+      "page": "/timetable",
+      "rating": 2,
+      "category": "other",
+      "message": "Lọc theo khoa chưa nhớ lựa chọn.",
+      "app_version": "0.2.0",
+      "created_at": "2026-03-25T09:00:00"
+    },
+    {
+      "id": 42,
+      "page": "/regulations",
+      "rating": 3,
+      "category": "bug",
+      "message": "Trùng lịch hiển thị tốt.",
+      "app_version": "0.2.0",
+      "created_at": "2026-03-25T18:00:00"
+    },
+    {
+      "id": 43,
+      "page": "/regulations/ask",
+      "rating": 3,
+      "category": "content",
+      "message": "Trùng lịch hiển thị tốt.",
+      "app_version": "0.2.0",
+      "created_at": "2026-03-26T03:00:00"
+    },
+    {
+      "id": 44,
+      "page": "/planner",
+      "rating": 4,
+      "category": "praise",
+      "message": "",
+      "app_version": "0.2.0",
+      "created_at": "2026-03-26T12:00:00"
+    },
+    {
+      "id": 45,
+      "page": "/planner",
+      "rating": 5,
+      "category": "content",
+      "message": "Trích dẫn rất hữu ích.",
+      "app_version": "0.2.0",
+      "created_at": "2026-03-26T21:00:00"
+    },
+    {
+      "id": 46,
+      "page": "/modules",
+      "rating": 2,
+      "category": "content",
+      "message": "",
+      "app_version": "0.2.0",
+      "created_at": "2026-03-27T06:00:00"
+    },
+    {
+      "id": 47,
+      "page": "/modules",
+      "rating": 3,
+      "category": "bug",
+      "message": "Trùng lịch hiển thị tốt.",
+      "app_version": "0.2.0",
+      "created_at": "2026-03-27T15:00:00"
+    },
+    {
+      "id": 48,
+      "page": "/regulations/ask",
+      "rating": 5,
+      "category": "suggestion",
+      "message": "Trích dẫn rất hữu ích.",
+      "app_version": "0.2.0",
+      "created_at": "2026-03-28T00:00:00"
+    },
+    {
+      "id": 49,
+      "page": "/timetable",
+      "rating": 4,
+      "category": "content",
+      "message": "Lọc theo khoa chưa nhớ lựa chọn.",
+      "app_version": "0.2.0",
+      "created_at": "2026-03-28T09:00:00"
+    },
+    {
+      "id": 50,
+      "page": "/equivalents",
+      "rating": 4,
+      "category": "other",
+      "message": "Trùng lịch hiển thị tốt.",
+      "app_version": "0.2.0",
+      "created_at": "2026-03-28T18:00:00"
+    },
+    {
+      "id": 51,
+      "page": "/regulations",
+      "rating": 4,
+      "category": "other",
+      "message": "",
+      "app_version": "0.2.0",
+      "created_at": "2026-03-29T03:00:00"
+    },
+    {
+      "id": 52,
+      "page": "/modules",
+      "rating": 5,
+      "category": "content",
+      "message": "",
+      "app_version": "0.2.0",
+      "created_at": "2026-03-29T12:00:00"
+    },
+    {
+      "id": 53,
+      "page": "/",
+      "rating": 5,
+      "category": "other",
+      "message": "Trích dẫn rất hữu ích.",
+      "app_version": "0.2.0",
+      "created_at": "2026-03-29T21:00:00"
+    },
+    {
+      "id": 54,
+      "page": "/timetable",
+      "rating": 4,
+      "category": "other",
+      "message": "Trùng lịch hiển thị tốt.",
+      "app_version": "0.2.0",
+      "created_at": "2026-03-30T06:00:00"
+    },
+    {
+      "id": 55,
+      "page": "/equivalents",
+      "rating": 5,
+      "category": "other",
+      "message": "Lọc theo khoa chưa nhớ lựa chọn.",
+      "app_version": "0.2.0",
+      "created_at": "2026-03-30T15:00:00"
+    },
+    {
+      "id": 56,
+      "page": "/",
+      "rating": 5,
+      "category": "bug",
+      "message": "",
+      "app_version": "0.2.0",
+      "created_at": "2026-03-31T00:00:00"
+    },
+    {
+      "id": 57,
+      "page": "/equivalents",
+      "rating": 5,
+      "category": "praise",
+      "message": "Trùng lịch hiển thị tốt.",
+      "app_version": "0.2.0",
+      "created_at": "2026-03-31T09:00:00"
+    },
+    {
+      "id": 58,
+      "page": "/timetable",
+      "rating": 5,
+      "category": "content",
+      "message": "Lọc theo khoa chưa nhớ lựa chọn.",
+      "app_version": "0.2.0",
+      "created_at": "2026-03-31T18:00:00"
+    },
+    {
+      "id": 59,
+      "page": "/regulations/ask",
+      "rating": 5,
+      "category": "other",
+      "message": "Trang chậm khi tải nhiều lớp.",
+      "app_version": "0.2.0",
+      "created_at": "2026-04-01T03:00:00"
+    },
+    {
+      "id": 60,
+      "page": "/regulations",
+      "rating": 5,
+      "category": "suggestion",
+      "message": "",
+      "app_version": "0.2.0",
+      "created_at": "2026-04-01T12:00:00"
+    }
+  ]
+}

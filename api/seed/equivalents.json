@@ -1,0 +1,82 @@
+[
+  {
+    "MaMon": "SAMPLE.TOAN202",
+    "TenMon": "Phân tích dữ liệu với Python",
+    "STC": 3,
+    "MaMonTuongDuong": "SAMPLE.HTTT203",
+    "TenMonTuongDuong": "Lập trình Python",
+    "STCTuongDuong": 3
+  },
+  {
+    "MaMon": "SAMPLE.KT201",
+    "TenMon": "Kinh tế phát triển",
+    "STC": 3,
+    "MaMonTuongDuong": "SAMPLE.KT202",
+    "TenMonTuongDuong": "Kinh tế công",
+    "STCTuongDuong": 3
+  },
+  {
+    "MaMon": "SAMPLE.KTDN204",
+    "TenMon": "Thanh toán quốc tế",
+    "STC": 3,
+    "MaMonTuongDuong": "SAMPLE.TCNH203",
+    "TenMonTuongDuong": "Ngân hàng thương mại",
+    "STCTuongDuong": 3
+  },
+  {
+    "MaMon": "SAMPLE.LUAT204",
+    "TenMon": "Luật hành chính",
+    "STC": 3,
+    "MaMonTuongDuong": "SAMPLE.LKT202",
+    "TenMonTuongDuong": "Pháp luật về doanh nghiệp",
+    "STCTuongDuong": 3
+  },
+  {
+    "MaMon": "SAMPLE.QTKD204",
+    "TenMon": "Khởi nghiệp và đổi mới sáng tạo",
+    "STC": 2,
+    "MaMonTuongDuong": "SAMPLE.TCNH205",
+    "TenMonTuongDuong": "Thuế",
+    "STCTuongDuong": 2
+  },
+  {
+    "MaMon": "SAMPLE.HTTT204",
+    "TenMon": "Thương mại điện tử",
+    "STC": 3,
+    "MaMonTuongDuong": "SAMPLE.KTDN203",
+    "TenMonTuongDuong": "Logistics và vận tải quốc tế",
+    "STCTuongDuong": 3
+  },
+  {
+    "MaMon": "SAMPLE.KTKT203",
+    "TenMon": "Kiểm toán căn bản",
+    "STC": 3,
+    "MaMonTuongDuong": "SAMPLE.TCNH204",
+    "TenMonTuongDuong": "Đầu tư tài chính",
+    "STCTuongDuong": 3
+  },
+  {
+    "MaMon": "SAMPLE.OLD.KT100",
+    "TenMon": "Kinh tế học đại cương (CTĐT cũ)",
+    "STC": 3,
+    "MaMonTuongDuong": "SAMPLE.KT101",
+    "TenMonTuongDuong": "Kinh tế vi mô",
+    "STCTuongDuong": 3
+  },
+  {
+    "MaMon": "SAMPLE.OLD.TH100",
+    "TenMon": "Tin học đại cương (CTĐT cũ)",
+    "STC": 2,
+    "MaMonTuongDuong": "SAMPLE.HTTT201",
+    "TenMonTuongDuong": "Tin học ứng dụng",
+    "STCTuongDuong": 3
+  },
+  {
+    "MaMon": "SAMPLE.OLD.AV100",
+    "TenMon": "Anh văn 1 (CTĐT cũ)",
+    "STC": 3,
+    "MaMonTuongDuong": "SAMPLE.NN101",
+    "TenMonTuongDuong": "Tiếng Anh tổng quát 1",
+    "STCTuongDuong": 3
+  }
+]
