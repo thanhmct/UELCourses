@@ -41,6 +41,20 @@ export interface GpaResult {
   };
 }
 
+/** Đổi điểm thang 10 sang điểm chữ theo GRADE_10_SCALE (A+ ≥ 9.0, A ≥ 8.5, …, dưới 4.0 là F). null nếu điểm không hợp lệ. */
+export function scoreToLetter(score: number): string | null {
+  if (!Number.isFinite(score) || score < 0 || score > 10) return null;
+  if (score >= 9) return "A+";
+  if (score >= 8.5) return "A";
+  if (score >= 8) return "B+";
+  if (score >= 7) return "B";
+  if (score >= 6.5) return "C+";
+  if (score >= 5.5) return "C";
+  if (score >= 5) return "D+";
+  if (score >= 4) return "D";
+  return "F";
+}
+
 export function gradeToPoints(grade: string): number | null {
   const norm = grade.trim().toUpperCase();
   if (norm in GRADE_POINTS) return GRADE_POINTS[norm];

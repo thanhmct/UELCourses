@@ -42,7 +42,7 @@ export const useWorkspace = create<WorkspaceState>()(
         return q;
       },
     }),
-    { name: "uelplan-reg-workspace", partialize: (s) => ({ tabs: s.tabs, active: s.active }) },
+    { name: "uelcourses-reg-workspace", partialize: (s) => ({ tabs: s.tabs, active: s.active }) },
   ),
 );
 
@@ -87,6 +87,6 @@ export const useRegNotes = create<NotesState>()(
           return { notes };
         }),
     }),
-    { name: "uelplan-reg-notes" },
+    { name: "uelcourses-reg-notes" },
   ),
 );

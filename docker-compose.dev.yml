@@ -27,3 +27,44 @@ services:
       - ./web:/app
       - /app/node_modules   # giữ node_modules Linux của container
       - /app/.next
+
+  # Container làm việc DÙNG CHUNG cho Claude / Gemini / ChatGPT (cùng môi trường, cùng database `db`).
+  #   .\scripts\dev.ps1 up   ->   .\scripts\dev.ps1 setup   ->   .\scripts\dev.ps1 run <lệnh>
+  workspace:
+    build:
+      context: ./docker
+      dockerfile: workspace.Dockerfile
+    working_dir: /workspace
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-uelplan}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-uelplan}
+      DATA_DIR: /workspace/data/db
+      REGULATIONS_DIR: /workspace/regulations
+      RAW_DATA_DIR: /workspace/data/raw
+      AUTO_SEED: "false"
+      CORS_ORIGINS: http://localhost:3000,http://localhost:3001
+      LLM_PROVIDER: ${LLM_PROVIDER:-none}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      NEXT_TELEMETRY_DISABLED: "1"
+    volumes:
+      - .:/workspace
+      - workspace_venv:/opt/venv
+      - workspace_node_modules:/workspace/web/node_modules
+    ports:
+      - "8001:8000"   # uvicorn chạy trong workspace
+      - "3001:3000"   # next dev chạy trong workspace
+
+  # Container RIÊNG cho việc chạy LÂU (parse đề cương, OCR, import lớn). Phiên khác có thể khởi động lại `workspace`
+  # (vd để chạy dev server) và sẽ giết mọi tiến trình đang chạy trong đó — `jobs` không bị ảnh hưởng.
+  #   .\scripts\dev.ps1 job python -m app.cli parse-outlines
+  jobs:
+    extends:
+      service: workspace
+    ports: !reset []
+    command: ["sleep", "infinity"]
+
+volumes:
+  workspace_venv:
+  workspace_node_modules:

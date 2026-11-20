@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Phân tích khảo sát UELPlan (Design Thinking: Vòng 0 nhu cầu, Vòng 1..n thử nghiệm).
+"""Phân tích khảo sát UELCourses (Design Thinking: Vòng 0 nhu cầu, Vòng 1..n thử nghiệm).
 
 Đầu vào
   * Một hoặc nhiều CSV xuất từ Google Forms. Mỗi tiêu đề câu hỏi bắt đầu bằng mã trong
-    ngoặc vuông, ví dụ "[SUS3] Tôi thấy UELPlan dễ sử dụng." (xem research/05-test/survey-feedback.md
+    ngoặc vuông, ví dụ "[SUS3] Tôi thấy UELCourses dễ sử dụng." (xem research/05-test/survey-feedback.md
     và research/01-empathize/survey-needs.md). Mã kết thúc bằng "_M" là câu chọn nhiều đáp án.
     Gán nhãn vòng bằng cú pháp NHÃN=đường_dẫn (V1=a.csv V2=b.csv); nếu không có nhãn, dùng cột
     [ROUND] trong file, cuối cùng là tên file.
@@ -779,7 +779,7 @@ def df_records(df):
 
 
 def write_outputs(out: Path, ctx: dict) -> None:
-    md = ["# Kết quả phân tích khảo sát UELPlan", "",
+    md = ["# Kết quả phân tích khảo sát UELCourses", "",
           f"_Tạo lúc {datetime.now():%Y-%m-%d %H:%M} bởi `research/analysis/analyze_survey.py`._", ""]
     if ctx.get("synthetic"):
         md += ["> **CẢNH BÁO: dữ liệu đầu vào được đánh dấu là GIẢ LẬP – không dùng kết quả này trong khóa luận.**", ""]
@@ -880,16 +880,16 @@ SAMPLE_QUESTIONS = [
     ("PID", "[PID] Mã người tham gia"),
     ("COHORT", "[COHORT] Khóa tuyển sinh"),
     ("DEVICE", "[DEVICE] Thiết bị bạn dùng trong buổi thử"),
-    ("SUS1", "[SUS1] Tôi nghĩ rằng tôi sẽ muốn sử dụng UELPlan thường xuyên."),
-    ("SUS2", "[SUS2] Tôi thấy UELPlan phức tạp một cách không cần thiết."),
-    ("SUS3", "[SUS3] Tôi thấy UELPlan dễ sử dụng."),
-    ("SUS4", "[SUS4] Tôi nghĩ rằng tôi sẽ cần sự hỗ trợ của người am hiểu kỹ thuật để có thể sử dụng UELPlan."),
-    ("SUS5", "[SUS5] Tôi thấy các chức năng của UELPlan được kết hợp với nhau tốt."),
-    ("SUS6", "[SUS6] Tôi thấy UELPlan có quá nhiều điểm thiếu nhất quán."),
-    ("SUS7", "[SUS7] Tôi nghĩ rằng hầu hết mọi người sẽ học cách sử dụng UELPlan rất nhanh."),
-    ("SUS8", "[SUS8] Tôi thấy UELPlan rất rườm rà, bất tiện khi sử dụng."),
-    ("SUS9", "[SUS9] Tôi cảm thấy rất tự tin khi sử dụng UELPlan."),
-    ("SUS10", "[SUS10] Tôi cần học nhiều thứ trước khi có thể bắt đầu sử dụng UELPlan."),
+    ("SUS1", "[SUS1] Tôi nghĩ rằng tôi sẽ muốn sử dụng UELCourses thường xuyên."),
+    ("SUS2", "[SUS2] Tôi thấy UELCourses phức tạp một cách không cần thiết."),
+    ("SUS3", "[SUS3] Tôi thấy UELCourses dễ sử dụng."),
+    ("SUS4", "[SUS4] Tôi nghĩ rằng tôi sẽ cần sự hỗ trợ của người am hiểu kỹ thuật để có thể sử dụng UELCourses."),
+    ("SUS5", "[SUS5] Tôi thấy các chức năng của UELCourses được kết hợp với nhau tốt."),
+    ("SUS6", "[SUS6] Tôi thấy UELCourses có quá nhiều điểm thiếu nhất quán."),
+    ("SUS7", "[SUS7] Tôi nghĩ rằng hầu hết mọi người sẽ học cách sử dụng UELCourses rất nhanh."),
+    ("SUS8", "[SUS8] Tôi thấy UELCourses rất rườm rà, bất tiện khi sử dụng."),
+    ("SUS9", "[SUS9] Tôi cảm thấy rất tự tin khi sử dụng UELCourses."),
+    ("SUS10", "[SUS10] Tôi cần học nhiều thứ trước khi có thể bắt đầu sử dụng UELCourses."),
     ("FT_SEARCH", "[FT_SEARCH] Tìm kiếm và lọc học phần"),
     ("FT_TIMETABLE", "[FT_TIMETABLE] Xếp thời khóa biểu, cảnh báo trùng lịch"),
     ("FT_DRAG", "[FT_DRAG] Kéo-thả đổi lớp, nhiều phương án TKB"),
@@ -900,9 +900,9 @@ SAMPLE_QUESTIONS = [
     ("AI_ACCURATE", "[AI_ACCURATE] Câu trả lời của AI đúng với điều tôi cần biết."),
     ("AI_COHORT", "[AI_COHORT] Câu trả lời áp dụng đúng cho khóa của tôi."),
     ("AI_CITATION", "[AI_CITATION] Phần trích dẫn (số quyết định, Điều, Khoản) giúp tôi kiểm chứng câu trả lời."),
-    ("AI_TRUST", "[AI_TRUST] Tôi tin tưởng câu trả lời của AI trong UELPlan."),
+    ("AI_TRUST", "[AI_TRUST] Tôi tin tưởng câu trả lời của AI trong UELCourses."),
     ("AI_USEFUL", "[AI_USEFUL] AI quy chế giúp tôi tiết kiệm thời gian so với tự tìm văn bản."),
-    ("NPS", "[NPS] Bạn có khả năng giới thiệu UELPlan cho một người bạn cùng trường ở mức nào?"),
+    ("NPS", "[NPS] Bạn có khả năng giới thiệu UELCourses cho một người bạn cùng trường ở mức nào?"),
     ("NPS_WHY", "[NPS_WHY] Lý do chính cho điểm số trên là gì?"),
     ("OPEN_IMPROVE", "[OPEN_IMPROVE] Nếu chỉ được cải thiện một điều, bạn sẽ chọn điều gì?"),
 ]
@@ -1171,7 +1171,7 @@ def main(argv=None) -> int:
             stream.reconfigure(encoding="utf-8")
         except (AttributeError, ValueError):
             pass
-    ap = argparse.ArgumentParser(description="Phân tích khảo sát/kiểm thử UELPlan (SUS, NPS, Likert, tác vụ, feedback).")
+    ap = argparse.ArgumentParser(description="Phân tích khảo sát/kiểm thử UELCourses (SUS, NPS, Likert, tác vụ, feedback).")
     ap.add_argument("inputs", nargs="*", help="CSV Google Forms, dạng NHÃN=đường_dẫn hoặc đường_dẫn")
     ap.add_argument("--tasks", nargs="+", help="CSV phiếu quan sát tác vụ")
     ap.add_argument("--feedback-json", nargs="+", help="JSON lưu từ GET /api/feedback/stats")

@@ -11,7 +11,7 @@ Hai kỹ thuật được kết hợp:
 
 $$\text{RICE} = \frac{\text{Reach} \times \text{Impact} \times \text{Confidence}}{\text{Effort}}$$
 
-| Thành phần | Định nghĩa trong UELPlan | Thang |
+| Thành phần | Định nghĩa trong UELCourses | Thang |
 |---|---|---|
 | Reach (R) | % sinh viên dự kiến dùng tính năng trong một học kỳ | 0–100 |
 | Impact (I) | Mức giảm khó khăn cho người dùng mỗi lần dùng | 3 = rất lớn, 2 = lớn, 1 = trung bình, 0,5 = nhỏ, 0,25 = rất nhỏ |

@@ -5,10 +5,12 @@ import shutil
 import tempfile
 from pathlib import Path
 
-_TMP = Path(tempfile.mkdtemp(prefix="uelplan-test-"))
+_TMP = Path(tempfile.mkdtemp(prefix="uelcourses-test-"))
 os.environ["DATA_DIR"] = str(_TMP)
 os.environ["DATABASE_URL"] = f"sqlite:///{(_TMP / 'test.db').as_posix()}"
 os.environ["AUTO_SEED"] = "false"
+os.environ["MIN_PROGRAM_COHORT"] = "0"  # test dùng chương trình mẫu K22; test_legacy_codes.py bật lại riêng
+os.environ["SKIP_LEGACY_CODES"] = "false"  # test định dạng dùng mã mẫu 4 ký tự; test_legacy_codes.py bật lại riêng
 os.environ["RAW_DATA_DIR"] = str(_TMP / "raw")  # không bao giờ đọc file thật trong test
 os.environ.pop("ADMIN_KEY", None)
 

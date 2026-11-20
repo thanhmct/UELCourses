@@ -1,6 +1,6 @@
-# Nghiên cứu người dùng UELPlan theo Design Thinking
+# Nghiên cứu người dùng UELCourses theo Design Thinking
 
-Thư mục này chứa toàn bộ tài liệu nghiên cứu người dùng (UX research) của khóa luận **UELPlan**, nền tảng lập kế hoạch học tập cho sinh viên Trường Đại học Kinh tế – Luật (UEL), ĐHQG-HCM. Tài liệu được viết để có thể trích trực tiếp vào chương Phương pháp nghiên cứu và chương Đánh giá của khóa luận.
+Thư mục này chứa toàn bộ tài liệu nghiên cứu người dùng (UX research) của khóa luận **UELCourses**, nền tảng lập kế hoạch học tập cho sinh viên Trường Đại học Kinh tế – Luật (UEL), ĐHQG-HCM. Tài liệu được viết để có thể trích trực tiếp vào chương Phương pháp nghiên cứu và chương Đánh giá của khóa luận.
 
 > Quy ước: mọi nội dung đánh dấu **`[GIẢ ĐỊNH – cập nhật sau khảo sát]`** là giả thuyết làm việc của nhóm, **chưa** được kiểm chứng bằng dữ liệu thật. Dữ liệu trong `analysis/sample_*.csv` và `analysis/sample_feedback_stats.json` là **dữ liệu giả lập** chỉ dùng để chạy thử script, tuyệt đối không đưa vào kết quả khóa luận.
 
@@ -10,7 +10,7 @@ Nghiên cứu áp dụng quy trình Design Thinking năm bước của Hasso Pla
 
 Cách tiếp cận là **phương pháp hỗn hợp (mixed methods)**: định lượng (khảo sát diện rộng, SUS, NPS, chỉ số tác vụ) kết hợp định tính (phỏng vấn sâu, think-aloud, câu hỏi mở được phân tích theo chủ đề – Braun & Clarke, 2006).
 
-| Bước | Hoạt động trong UELPlan | Tài liệu |
+| Bước | Hoạt động trong UELCourses | Tài liệu |
 |---|---|---|
 | Empathize | Khảo sát nhu cầu diện rộng; phỏng vấn sâu 5–8 SV | `01-empathize/survey-needs.md`, `01-empathize/interview-guide.md` |
 | Define | Persona, hành trình người dùng, phát biểu vấn đề "How might we…" | `02-define/personas.md`, `02-define/journey-map.md`, `02-define/problem-statements.md` |
@@ -81,7 +81,7 @@ research\.venv\Scripts\python research\analysis\analyze_survey.py --make-sample 
 
 `research/data/` và `research/analysis/output/` nằm trong `research/.gitignore` để tránh commit dữ liệu thật có thể chứa thông tin cá nhân.
 
-Quy ước để script tự nhận diện câu hỏi: **mỗi tiêu đề câu hỏi trên Google Forms bắt đầu bằng mã trong ngoặc vuông**, ví dụ `[SUS1] Tôi nghĩ rằng tôi sẽ muốn sử dụng UELPlan thường xuyên.` hoặc `[NPS] …`. Mã của từng câu đã ghi sẵn trong các bảng hỏi. Kết quả gồm `summary.md`, `summary.json`, các bảng CSV và biểu đồ PNG.
+Quy ước để script tự nhận diện câu hỏi: **mỗi tiêu đề câu hỏi trên Google Forms bắt đầu bằng mã trong ngoặc vuông**, ví dụ `[SUS1] Tôi nghĩ rằng tôi sẽ muốn sử dụng UELCourses thường xuyên.` hoặc `[NPS] …`. Mã của từng câu đã ghi sẵn trong các bảng hỏi. Kết quả gồm `summary.md`, `summary.json`, các bảng CSV và biểu đồ PNG.
 
 **Dữ liệu thật** (CSV phản hồi có thông tin cá nhân) nên đặt ngoài thư mục được chia sẻ công khai hoặc ẩn danh hóa trước (xóa cột email/liên hệ); không commit dữ liệu có thông tin định danh.
 

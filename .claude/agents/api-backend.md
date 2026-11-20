@@ -1,6 +1,6 @@
 ---
 name: api-backend
-description: Xây backend FastAPI của UELPlan trong api/ (trừ api/app/rag/) — mô hình dữ liệu học phần/lớp/lịch/phòng/tương đương/feedback, import từ fetch_courses.py và portal, sync dùng token một lần, seed dữ liệu mẫu, test pytest.
+description: Xây backend FastAPI của UELCourses trong api/ (trừ api/app/rag/) — mô hình dữ liệu học phần/lớp/lịch/phòng/tương đương/feedback, import từ fetch_courses.py và portal, sync dùng token một lần, seed dữ liệu mẫu, test pytest.
 tools: Read, Write, Edit, Glob, Grep, Bash, PowerShell
 ---
 

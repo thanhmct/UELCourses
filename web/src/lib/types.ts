@@ -11,6 +11,8 @@ export interface Semester {
 export interface ModuleRef {
   code: string;
   name: string;
+  /** tên tiếng Anh (null/thiếu nếu chưa có nguồn) — hiển thị khi giao diện ở chế độ EN */
+  name_en?: string | null;
   credits: number;
 }
 
@@ -22,12 +24,44 @@ export interface OfferingPlan {
 }
 
 export interface ModuleSummary extends ModuleRef {
+  grading_basis?: string;
+  final_assessment?: string;
   type: string;
   faculty?: string;
+  /** mô tả học phần (từ DB hoặc đề cương) */
+  description?: string | null;
+  /** link Drive (PDF) đề cương của học phần */
+  outline_url?: string | null;
   has_equivalents: boolean;
   /** taught in English */
   is_english?: boolean;
   offering_plan?: OfferingPlan[];
+  department?: string;
+  /** 'en' | 'vi' (from API) */
+  language_track?: 'en' | 'vi';
+  is_talent_program?: boolean;
+  /** code of the counterpart module (EN <-> VI) */
+  counterpart_code?: string | null;
+  /** semesters with open classes, e.g. 2026-2027-1 */
+  open_semesters?: { semester: string; classes: number }[];
+  has_outline?: boolean;
+}
+
+export interface FacetCount {
+  value: string;
+  count: number;
+}
+
+export interface ModuleFacets {
+  total: number;
+  language: FacetCount[];
+  talent: FacetCount[];
+  credits: FacetCount[];
+  faculty: FacetCount[];
+  department: FacetCount[];
+  type: FacetCount[];
+  semester: FacetCount[];
+  has_outline: FacetCount[];
 }
 
 export interface ModuleDetail extends ModuleSummary {
@@ -46,6 +80,10 @@ export interface Lesson {
   end_time: string;
   room?: string;
   weeks?: string;
+  /** ISO date of the first session */
+  date_start?: string | null;
+  /** ISO date of the last session; equal to date_start = one-off session */
+  date_end?: string | null;
 }
 
 export interface ClassSection {
@@ -203,6 +241,7 @@ export interface ProgramSummary {
 export interface ProgramModule {
   code: string;
   name: string;
+  name_en?: string | null;
   credits: number;
   required: boolean;
   suggested_term?: number | null;
@@ -229,6 +268,7 @@ export type RelationType = "prereq" | "previous" | "coreq" | "equivalent";
 export interface ProgramGraphNode {
   code: string;
   name: string;
+  name_en?: string | null;
   credits: number;
   required: boolean;
   suggested_term?: number | null;
@@ -244,6 +284,7 @@ export interface ProgramGraph {
 export interface ModuleTreeNode {
   code: string;
   name: string;
+  name_en?: string | null;
   type: string;
   children: ModuleTreeNode[];
 }

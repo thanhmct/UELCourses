@@ -1,4 +1,4 @@
-# Chạy UELPlan bằng Docker
+# Chạy UELCourses bằng Docker
 
 ## 1. Cài đặt (một lần)
 

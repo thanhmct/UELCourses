@@ -1,4 +1,4 @@
-# Persona người dùng UELPlan
+# Persona người dùng UELCourses
 
 > **Trạng thái:** bản nháp trước khảo sát. Toàn bộ persona dưới đây là **proto-persona** (Gothelf & Seiden, 2013) xây dựng từ hiểu biết của nhóm về sinh viên UEL, **chưa** dựa trên dữ liệu thực nghiệm. Mọi chi tiết mang nhãn `[GIẢ ĐỊNH – cập nhật sau khảo sát]` cho tới khi được xác nhận bằng khảo sát nhu cầu (`01-empathize/survey-needs.md`) và phỏng vấn sâu (`01-empathize/interview-guide.md`).
 

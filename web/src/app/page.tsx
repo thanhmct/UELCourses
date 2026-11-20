@@ -1,46 +1,45 @@
+"use client";
 import Link from "next/link";
+import { useT } from "@/i18n";
 
 const FEATURES = [
-  { href: "/today", title: "Lịch học hôm nay", desc: "Xem nhanh các tiết học diễn ra trong ngày, phòng học và thời gian bắt đầu." },
-  { href: "/modules", title: "Tra cứu học phần", desc: "Tìm theo mã, tên; lọc theo số tín chỉ, loại học phần, có học phần tương đương." },
-  { href: "/programs", title: "CTĐT Hệ thống thông tin quản lý", desc: "Xem môn theo học kỳ, môn bắt buộc và các quan hệ học trước, học sau trong CTĐT 2025." },
-  { href: "/timetable", title: "Thời khóa biểu", desc: "Chọn lớp, phát hiện trùng lịch, kéo-thả đổi lớp, chia sẻ qua link, xuất ảnh PNG và lịch .ics." },
-  { href: "/planner", title: "Kế hoạch nhiều học kỳ & GPA", desc: "Sắp xếp môn theo từng kỳ, theo dõi tổng tín chỉ, tính điểm GPA và mô phỏng mục tiêu tốt nghiệp." },
-  { href: "/venues", title: "Phòng học", desc: "Xem lịch sử dụng phòng và tìm phòng trống theo khung giờ." },
-  { href: "/equivalents", title: "Học phần tương đương", desc: "Tra cứu học phần thay thế, nhóm theo môn gốc." },
-  { href: "/regulations", title: "Quy chế & Hỏi AI", desc: "Đọc văn bản theo Điều/Khoản, hỏi đáp có trích dẫn nguyên văn, so sánh giữa các khóa." },
+  { href: "/today", t: "home.f.today.t", d: "home.f.today.d" },
+  { href: "/modules", t: "home.f.modules.t", d: "home.f.modules.d" },
+  { href: "/programs", t: "home.f.programs.t", d: "home.f.programs.d" },
+  { href: "/timetable", t: "home.f.timetable.t", d: "home.f.timetable.d" },
+  { href: "/planner", t: "home.f.planner.t", d: "home.f.planner.d" },
+  { href: "/venues", t: "home.f.venues.t", d: "home.f.venues.d" },
+  { href: "/equivalents", t: "home.f.equiv.t", d: "home.f.equiv.d" },
+  { href: "/regulations", t: "home.f.reg.t", d: "home.f.reg.d" },
 ];
 
 export default function Home() {
+  const { t } = useT();
   return (
-    <div className="space-y-10">
-      <section className="overflow-hidden rounded-2xl bg-gradient-to-br from-brand-600 to-brand-800 px-6 py-12 text-white sm:px-10">
-        <p className="text-sm font-semibold uppercase tracking-widest text-brand-200">Dành cho sinh viên UEL</p>
-        <h1 className="mt-2 max-w-2xl text-3xl font-bold leading-tight sm:text-4xl">
-          Lên kế hoạch học tập rõ ràng, xếp lịch không trùng, hiểu đúng quy chế.
-        </h1>
-        <p className="mt-3 max-w-xl text-brand-100">
-          UELPlan gom tra cứu học phần, thời khóa biểu, kế hoạch nhiều kỳ và quy chế học vụ vào một nơi — dữ liệu lưu ngay trên trình duyệt của bạn.
-        </p>
-        <div className="mt-6 flex flex-wrap gap-3">
-          <Link href="/timetable" className="btn bg-white text-brand-700 hover:bg-brand-50">Xếp thời khóa biểu</Link>
-          <Link href="/regulations" className="btn border border-white/40 text-white hover:bg-white/10">Hỏi về quy chế</Link>
+    <div className="space-y-4">
+      <section className="overflow-hidden rounded-md bg-brand-600 px-5 py-6 text-white sm:px-8">
+        <p className="text-xs font-semibold uppercase tracking-widest text-brand-200">{t("home.kicker")}</p>
+        <h1 className="mt-2 max-w-2xl text-2xl font-bold leading-tight">{t("home.h1")}</h1>
+        <p className="mt-2 max-w-xl text-sm text-brand-100">{t("home.lead")}</p>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <Link href="/timetable" className="btn bg-white text-brand-700 hover:bg-brand-50">{t("home.ctaTT")}</Link>
+          <Link href="/regulations" className="btn border border-white/40 text-white hover:bg-white/10">{t("home.ctaReg")}</Link>
         </div>
       </section>
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {FEATURES.map((f) => (
-          <Link key={f.href} href={f.href} className="card group transition hover:border-brand-400 hover:shadow-md">
-            <h2 className="font-semibold text-brand-700 group-hover:underline dark:text-brand-300">{f.title}</h2>
-            <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{f.desc}</p>
+          <Link key={f.href} href={f.href} className="card group hover:border-brand-400">
+            <h2 className="font-semibold text-brand-700 group-hover:underline dark:text-brand-300">{t(f.t)}</h2>
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{t(f.d)}</p>
           </Link>
         ))}
       </section>
       <section className="card text-sm text-slate-600 dark:text-slate-400">
-        <h2 className="mb-1 font-semibold text-slate-900 dark:text-white">Bắt đầu nhanh</h2>
+        <h2 className="mb-1 font-semibold text-slate-900 dark:text-white">{t("home.quick")}</h2>
         <ol className="list-decimal space-y-1 pl-5">
-          <li>Vào <Link className="text-brand-600 underline" href="/settings">Cài đặt</Link> chọn khóa tuyển sinh để lọc đúng quy chế.</li>
-          <li>Tìm môn ở <Link className="text-brand-600 underline" href="/modules">Học phần</Link> và thêm vào thời khóa biểu hoặc kế hoạch.</li>
-          <li>Bấm <strong>Góp ý</strong> ở góc phải để giúp nhóm cải thiện UELPlan.</li>
+          <li>{t("home.s1a")}<Link className="text-brand-600 underline" href="/settings">{t("nav.settings")}</Link>{t("home.s1b")}</li>
+          <li>{t("home.s2a")}<Link className="text-brand-600 underline" href="/modules">{t("nav.modules")}</Link>{t("home.s2b")}</li>
+          <li>{t("home.s3a")}<strong>{t("nav.feedback")}</strong>{t("home.s3b")}</li>
         </ol>
       </section>
     </div>

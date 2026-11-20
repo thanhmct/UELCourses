@@ -14,7 +14,8 @@ import {
 import { forwardRef, useMemo, useState } from "react";
 import type { ClassSection, Lesson } from "@/lib/types";
 import { assignLanes } from "@/lib/conflicts";
-import { PERIOD_COUNT, SESSION_BOUNDARIES, WEEKDAYS, periodStartTime, weekdayLabel } from "@/lib/periods";
+import { PERIOD_COUNT, SESSION_BOUNDARIES, WEEKDAYS, periodStartTime, timeToColumn } from "@/lib/periods";
+import { useT, weekdayName } from "@/i18n";
 
 const isBoundary = (p: number) => p === SESSION_BOUNDARIES.morningEnd || p === SESSION_BOUNDARIES.afternoonEnd;
 
@@ -34,49 +35,108 @@ interface Props {
   alternatives: Record<string, ClassSection[]>;
   colors: Record<string, string>;
   onChangeClass: (code: string, classCode: string) => void;
+  /** show the module name inside each block */
+  showNames?: boolean;
 }
 
-const ROW_H = 44;
+/** Width of one period column (px), height of one stacked lane (px), width of the day-label column (px). */
+const COL_W = 68;
+const LANE_H = 52;
+const LABEL_W = 64;
 
 type Item =
   | { kind: "block"; block: GridBlock; start_period: number; end_period: number }
   | { kind: "ghost"; code: string; section: ClassSection; lesson: Lesson; idx: number; start_period: number; end_period: number };
 
-function Block({ block, lane, lanes, dimmed }: { block: GridBlock; lane: number; lanes: number; dimmed: boolean }) {
+/** Horizontal extent from the clock times (handles half periods); falls back to whole periods. */
+function span(l: Lesson): { left: number; width: number } {
+  const a = (l.start_time ? timeToColumn(l.start_time) : null) ?? l.start_period - 1;
+  const b = (l.end_time ? timeToColumn(l.end_time) : null) ?? l.end_period;
+  const left = Math.max(0, a);
+  const right = Math.max(left + 0.4, b);
+  return { left, width: right - left };
+}
+
+function posStyle(l: Lesson, lane: number) {
+  const { left, width } = span(l);
+  return {
+    left: left * COL_W + 1,
+    width: width * COL_W - 2,
+    top: lane * LANE_H + 2,
+    height: LANE_H - 4,
+  };
+}
+
+/** "2026-09-14" -> "14/09" */
+export function shortDate(iso?: string | null): string {
+  return iso && /^\d{4}-\d{2}-\d{2}/.test(iso) ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}` : "";
+}
+
+/** Lesson calendar info: one-off session (date_start == date_end) or a date range. */
+export function lessonDates(l: Lesson): { oneTime: boolean; text: string } {
+  const a = shortDate(l.date_start);
+  const b = shortDate(l.date_end);
+  if (!a && !b) return { oneTime: false, text: "" };
+  if (a && b && l.date_start === l.date_end) return { oneTime: true, text: a };
+  return { oneTime: false, text: a && b ? `${a}–${b}` : a || b };
+}
+
+function Block({ block, lane, dimmed, showName }: { block: GridBlock; lane: number; dimmed: boolean; showName: boolean }) {
+  const { t } = useT();
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: block.key,
     data: { code: block.code },
   });
   const l = block.lesson;
+  const dates = lessonDates(l);
+  const day = weekdayName(t, l.weekday);
   return (
     <div
       ref={setNodeRef}
       {...listeners}
       {...attributes}
-      title={`${block.code} ${block.name}\nLớp ${block.class_code}\nTiết ${l.start_period}–${l.end_period} (${l.start_time}–${l.end_time})${l.room ? `\nPhòng ${l.room}` : ""}${block.conflict ? "\n⚠ Trùng lịch" : ""}\nKéo để đổi lớp`}
-      aria-label={`${block.code} lớp ${block.class_code}, ${weekdayLabel(l.weekday)} tiết ${l.start_period} đến ${l.end_period}${block.conflict ? ", trùng lịch" : ""}. Kéo để đổi lớp.`}
-      className={`absolute cursor-grab touch-none overflow-hidden rounded-md border-l-4 p-1 text-[11px] leading-tight shadow-sm select-none active:cursor-grabbing ${
-        block.conflict ? "ring-2 ring-red-500 bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-100" : "text-slate-900 dark:text-white"
+      title={`${block.code} ${block.name}\n${t("tt.blockTitle", {
+        cls: block.class_code,
+        s: l.start_period,
+        e: l.end_period,
+        st: l.start_time,
+        et: l.end_time,
+        room: l.room ? `\n${t("tt.room", { room: l.room })}` : "",
+      })}${dates.text ? `\n${dates.oneTime ? `${t("tt.oneTime")}: ${dates.text}` : dates.text}` : ""}${block.conflict ? `\n⚠ ${t("tt.conflictShort")}` : ""}`}
+      aria-label={t("tt.block", {
+        code: block.code,
+        cls: block.class_code,
+        day,
+        s: l.start_period,
+        e: l.end_period,
+        conflict: block.conflict ? t("tt.blockConflict") : "",
+      })}
+      className={`absolute cursor-grab touch-none overflow-hidden rounded px-1.5 py-1 text-[11px] leading-tight text-white select-none active:cursor-grabbing ${
+        block.conflict ? "ring-2 ring-inset ring-red-600" : ""
       } ${isDragging ? "z-20 opacity-90 shadow-lg" : "z-10"} ${dimmed && !isDragging ? "opacity-40" : ""}`}
       style={{
-        top: (l.start_period - 1) * ROW_H + 1,
-        height: (l.end_period - l.start_period + 1) * ROW_H - 2,
-        left: `calc(${(lane / lanes) * 100}% + 1px)`,
-        width: `calc(${100 / lanes}% - 2px)`,
-        borderLeftColor: block.conflict ? "#dc2626" : block.color,
-        backgroundColor: block.conflict ? undefined : `${block.color}22`,
+        ...posStyle(l, lane),
+        backgroundColor: block.conflict ? "#b91c1c" : block.color,
         transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
       }}
     >
-      <div className="font-semibold">{block.code}</div>
-      <div className="truncate">{block.name}</div>
-      <div className="truncate opacity-80">{l.room ?? ""}{l.weeks ? ` · T${l.weeks}` : ""}</div>
-      {block.conflict && <div className="font-bold text-red-700 dark:text-red-300">Trùng lịch</div>}
+      <div className="truncate text-xs font-bold">{block.code}</div>
+      {showName && <div className="truncate">{block.name}</div>}
+      <div className="truncate opacity-90">
+        {block.class_code}
+        {l.room ? ` · ${l.room}` : ""}
+      </div>
+      {dates.text && (
+        <div className="truncate opacity-90">
+          {dates.oneTime ? `${t("tt.oneTime")} · ${dates.text}` : dates.text}
+        </div>
+      )}
+      {block.conflict && <div className="truncate font-bold">{t("tt.conflictShort")}</div>}
     </div>
   );
 }
 
-function Ghost({ item, lane, lanes, color }: { item: Extract<Item, { kind: "ghost" }>; lane: number; lanes: number; color: string }) {
+function Ghost({ item, lane, color }: { item: Extract<Item, { kind: "ghost" }>; lane: number; color: string }) {
   const { setNodeRef, isOver } = useDroppable({
     id: `alt|${item.code}|${item.section.class_code}|${item.idx}`,
     data: { code: item.code, classCode: item.section.class_code },
@@ -85,14 +145,8 @@ function Ghost({ item, lane, lanes, color }: { item: Extract<Item, { kind: "ghos
   return (
     <div
       ref={setNodeRef}
-      className={`absolute z-0 overflow-hidden rounded-md border-2 border-dashed p-1 text-[10px] leading-tight ${isOver ? "bg-brand-100 dark:bg-brand-900" : "bg-white/70 dark:bg-slate-800/70"}`}
-      style={{
-        top: (l.start_period - 1) * ROW_H + 1,
-        height: (l.end_period - l.start_period + 1) * ROW_H - 2,
-        left: `calc(${(lane / lanes) * 100}% + 1px)`,
-        width: `calc(${100 / lanes}% - 2px)`,
-        borderColor: color,
-      }}
+      className={`absolute z-0 overflow-hidden rounded border-2 border-dashed px-1.5 py-1 text-[10px] leading-tight ${isOver ? "bg-brand-100 dark:bg-brand-900" : "bg-white/70 dark:bg-slate-800/70"}`}
+      style={{ ...posStyle(l, lane), borderColor: color }}
     >
       <div className="font-semibold">{item.section.class_code}</div>
       <div className="truncate opacity-80">{l.room ?? ""}</div>
@@ -100,10 +154,12 @@ function Ghost({ item, lane, lanes, color }: { item: Extract<Item, { kind: "ghos
   );
 }
 
+/** Weekly timetable: one row per weekday, one column per period (with real start times). */
 export const TimetableGrid = forwardRef<HTMLDivElement, Props>(function TimetableGrid(
-  { blocks, alternatives, colors, onChangeClass },
+  { blocks, alternatives, colors, onChangeClass, showNames = true },
   ref,
 ) {
+  const { t } = useT();
   const [dragCode, setDragCode] = useState<string | null>(null);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -134,6 +190,9 @@ export const TimetableGrid = forwardRef<HTMLDivElement, Props>(function Timetabl
     return map;
   }, [blocks, alternatives, dragCode, currentClass]);
 
+  // Sunday row only when a session falls on Sunday
+  const days = WEEKDAYS.filter((d) => d !== 8 || (byDay.get(8)?.length ?? 0) > 0);
+
   function onDragStart(e: DragStartEvent) {
     setDragCode((e.active.data.current as { code: string }).code);
   }
@@ -143,55 +202,57 @@ export const TimetableGrid = forwardRef<HTMLDivElement, Props>(function Timetabl
     setDragCode(null);
   }
 
+  const width = LABEL_W + PERIOD_COUNT * COL_W;
   return (
     <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={() => setDragCode(null)}>
-      <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
-        <div ref={ref} className="min-w-[760px] bg-white dark:bg-slate-900">
-          <div className="grid grid-cols-[56px_repeat(7,minmax(0,1fr))] border-b border-slate-200 text-center text-xs font-semibold dark:border-slate-800">
-            <div className="py-2 text-slate-400">Tiết</div>
-            {WEEKDAYS.map((d) => (
-              <div key={d} className="py-2">{weekdayLabel(d)}</div>
+      <div className="overflow-x-auto rounded-md border border-slate-200 dark:border-slate-800" role="region" aria-label={t("tt.gridAria")} tabIndex={0}>
+        <div ref={ref} className="bg-white dark:bg-slate-900" style={{ width, minWidth: width }}>
+          <div className="flex border-b border-slate-200 text-center text-[10px] text-slate-500 dark:border-slate-800">
+            <div className="shrink-0 py-1 font-semibold" style={{ width: LABEL_W }}>{t("tt.periodHeader")}</div>
+            {Array.from({ length: PERIOD_COUNT }, (_, i) => (
+              <div
+                key={i}
+                className={`shrink-0 border-l py-1 ${isBoundary(i) ? "border-slate-300 dark:border-slate-600" : "border-slate-100 dark:border-slate-800"}`}
+                style={{ width: COL_W }}
+              >
+                <div className="text-xs font-semibold text-slate-700 dark:text-slate-200">{periodStartTime(i + 1)}</div>
+                <div>{t("period.n", { n: i + 1 })}</div>
+              </div>
             ))}
           </div>
-          <div className="grid grid-cols-[56px_repeat(7,minmax(0,1fr))]">
-            <div>
-              {Array.from({ length: PERIOD_COUNT }, (_, i) => (
+          {days.map((d) => {
+            const laid = assignLanes(byDay.get(d) ?? []);
+            const rows = Math.max(1, ...laid.map((x) => x.lane + 1));
+            return (
+              <div key={d} className="flex border-b border-slate-200 last:border-b-0 dark:border-slate-800" role="row" aria-label={weekdayName(t, d)}>
                 <div
-                  key={i}
-                  className={`flex flex-col items-center justify-center border-b text-[10px] text-slate-500 ${isBoundary(i + 1) ? "border-slate-300 dark:border-slate-600" : "border-slate-100 dark:border-slate-800"}`}
-                  style={{ height: ROW_H }}
+                  className="flex shrink-0 items-center justify-center bg-slate-50 text-xs font-semibold text-slate-700 dark:bg-slate-800/60 dark:text-slate-200"
+                  style={{ width: LABEL_W }}
+                  role="rowheader"
                 >
-                  <span className="font-semibold">{i + 1}</span>
-                  <span>{periodStartTime(i + 1)}</span>
+                  {weekdayName(t, d, true)}
                 </div>
-              ))}
-            </div>
-            {WEEKDAYS.map((d) => {
-              const items = byDay.get(d) ?? [];
-              const laid = assignLanes(items);
-              return (
-                <div key={d} className="relative border-l border-slate-100 dark:border-slate-800" style={{ height: ROW_H * PERIOD_COUNT }}>
+                <div className="relative" style={{ width: PERIOD_COUNT * COL_W, height: rows * LANE_H }}>
                   {Array.from({ length: PERIOD_COUNT }, (_, i) => (
                     <div
                       key={i}
-                      className={`absolute inset-x-0 border-b ${isBoundary(i + 1) ? "border-slate-300 dark:border-slate-600" : "border-slate-100 dark:border-slate-800"}`}
-                      style={{ top: i * ROW_H, height: ROW_H }}
+                      className={`absolute inset-y-0 border-l ${isBoundary(i + 1) ? "border-slate-300 dark:border-slate-600" : "border-slate-100 dark:border-slate-800"} ${i < SESSION_BOUNDARIES.morningEnd || i >= SESSION_BOUNDARIES.afternoonEnd ? "bg-white dark:bg-slate-900" : "bg-slate-50/70 dark:bg-slate-800/30"}`}
+                      style={{ left: i * COL_W, width: COL_W }}
                     />
                   ))}
-                  {laid.map(({ item, lane, lanes }) =>
+                  {laid.map(({ item, lane }) =>
                     item.kind === "block" ? (
-                      <Block key={item.block.key} block={item.block} lane={lane} lanes={lanes} dimmed={!!dragCode && dragCode !== item.block.code} />
+                      <Block key={item.block.key} block={item.block} lane={lane} dimmed={!!dragCode && dragCode !== item.block.code} showName={showNames} />
                     ) : (
-                      <Ghost key={`g-${item.section.class_code}-${item.idx}`} item={item} lane={lane} lanes={lanes} color={colors[item.code] ?? "#0b4f9c"} />
+                      <Ghost key={`g-${item.section.class_code}-${item.idx}`} item={item} lane={lane} color={colors[item.code] ?? "#0b4f9c"} />
                     ),
                   )}
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </DndContext>
   );
 });
-

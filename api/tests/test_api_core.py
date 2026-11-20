@@ -80,7 +80,8 @@ def test_import_classes_and_query(client):
     body = r.json()
     assert body["imported"] == 3
     assert body["skipped"] == 1
-    assert body["unparsed_schedules"] == 1
+    # "Lịch sẽ thông báo sau" không có thứ/tiết -> là ghi chú (notes), không tính là lịch lỗi.
+    assert body["unparsed_schedules"] == 0
     assert body["semesters"] == ["2026-2027-1", "2026-2027-2"]
 
     # Re-import idempotent
@@ -94,8 +95,8 @@ def test_import_classes_and_query(client):
     c1 = classes[0]
     assert c1["quota"] == 80 and c1["semester"] == "2026-2027-1" and c1["start_date"] == "2026-09-07"
     assert c1["lessons"] == [
-        {"weekday": 2, "start_period": 1, "end_period": 3, "start_time": "07:00", "end_time": "09:30", "room": "B.101", "weeks": None},
-        {"weekday": 5, "start_period": 6, "end_period": 8, "start_time": "11:25", "end_time": "14:10", "room": "A.203", "weeks": None},
+        {"weekday": 2, "start_period": 1, "end_period": 3, "start_time": "07:00", "end_time": "09:30", "room": "B.101", "weeks": None, "date_start": None, "date_end": None},
+        {"weekday": 5, "start_period": 6, "end_period": 8, "start_time": "11:25", "end_time": "14:10", "room": "A.203", "weeks": None, "date_start": None, "date_end": None},
     ]
     c2 = classes[1]
     assert c2["lessons"] == [] and c2["schedule_raw"] == "Lịch sẽ thông báo sau" and c2["schedule_parsed"] is False

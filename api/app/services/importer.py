@@ -3,6 +3,8 @@ dữ liệu mẫu. Các importer Excel/portal dùng chung `ImportContext` ở đ
 
 from __future__ import annotations
 
+from app.services.legacy import skip_legacy_code
+
 import json
 import re
 from datetime import date, datetime
@@ -111,6 +113,21 @@ def split_student_groups(value) -> list[str]:
         return []
     items = value if isinstance(value, list) else re.split(r"[,;\n]+", str(value))
     return [s.strip() for s in items if str(s).strip()]
+
+
+_SCHEDULE_HINT_RE = re.compile(r"(?i)th[ứu]\s*\d|chủ\s*nhật|\bcn\b|tiết|tiet")
+
+
+def parse_quota(value) -> tuple[int | None, int | None]:
+    """"30-70" -> (30, 70); "50" -> (None, 50); rỗng -> (None, None)."""
+    if value is None:
+        return None, None
+    s = str(value).strip()
+    m = re.fullmatch(r"(\d+)\s*[-–]\s*(\d+)", s)
+    if m:
+        return int(m.group(1)), int(m.group(2))
+    n = to_int(s)
+    return None, n
 
 
 def cohorts_from_groups(groups: list[str]) -> list[str]:
@@ -228,6 +245,13 @@ class ImportContext:
             m.department = clip(department, 256)
         if is_english:
             m.is_english = True
+        # Phân loại ngôn ngữ / CNTN ngay khi nạp (API upload không chạy classify-languages).
+        from app.services.language import is_talent, language_of
+
+        m.language_track, m.language_basis = language_of(m.code, m.name)
+        m.is_talent_program = is_talent(m.code, m.name)
+        if m.language_track == "en":
+            m.is_english = True
         if not self.is_sample:
             m.is_sample = False
         _refresh_module_search(m)
@@ -278,6 +302,8 @@ class ImportContext:
                 weekday=pl.weekday, start_period=pl.start_period, end_period=pl.end_period,
                 start_time=pl.start_time, end_time=pl.end_time, room=pl.room,
                 weeks=clip(pl.weeks, 256), raw=pl.raw,
+                date_start=date.fromisoformat(pl.date_start) if pl.date_start else None,
+                date_end=date.fromisoformat(pl.date_end) if pl.date_end else None,
             ))
         db.flush()
         self.lessons += len(lessons)
@@ -337,7 +363,7 @@ def import_classes(db: Session, rows: list[dict], *, is_sample: bool = False,
     for r in rows:
         module_code = clip(get_ci(r, "CurriculumID", "CurriculumCode", "StudyUnitCode"), 64)
         class_code = clip(get_ci(r, "ScheduleStudyUnitAlias", "ScheduleStudyUnitID", "ScheduleStudyUnitCode"), 128)
-        if not module_code or not class_code:
+        if not module_code or not class_code or skip_legacy_code(module_code):
             ctx.skipped += 1
             continue
         name = clip(get_ci(r, "ScheduleStudyUnitName", "CurriculumName", "StudyUnitName"), 512) or module_code
@@ -349,12 +375,17 @@ def import_classes(db: Session, rows: list[dict], *, is_sample: bool = False,
         if sem_id:
             ctx.semester(sem_id, begin, end)
         result = parse_schedules(r.get("Schedules", get_ci(r, "Schedules", "Schedule")))
-        if result.unparsed or (result.raw and not result.lessons):
+        # Đoạn không có "Thứ"/"Tiết" (vd "Giảng bằng Tiếng anh") là ghi chú, không phải lịch lỗi.
+        notes = [u.strip() for u in result.unparsed if not _SCHEDULE_HINT_RE.search(u)]
+        real_unparsed = [u for u in result.unparsed if _SCHEDULE_HINT_RE.search(u)]
+        if real_unparsed:
             ctx.unparsed += 1
-        quota = to_int(get_ci(r, "StudentQuotas", "Quota"))
+        quota_min, quota = parse_quota(get_ci(r, "StudentQuotas", "Quota"))
+        groups = split_student_groups(get_ci(r, "ClassOfStudentID", "ClassOfStudent", "StudentClass"))
         ctx.upsert_class(
             module_code, class_code, sem_id, result.lessons, schedule_raw=result.raw,
-            lecturer=clip(get_ci(r, "ProfessorName", "Lecturer"), 512), quota=quota,
+            lecturer=clip(get_ci(r, "ProfessorName", "Lecturer"), 512), quota=quota, quota_min=quota_min,
+            student_groups=groups or None, notes=notes or None,
             start_date=begin, end_date=end, study_type=clip(get_ci(r, "StudyUnitTypeName"), 128),
         )
     return ctx.result()

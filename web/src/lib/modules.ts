@@ -1,4 +1,4 @@
-import type { ClassSection, OfferingPlan } from "./types";
+import type { ClassSection, ModuleSummary, OfferingPlan } from "./types";
 
 /** "Dự kiến mở: HK1, HK3 năm 2026-2027; HK2 năm 2027-2028" */
 export function formatOfferingPlan(plan?: OfferingPlan[] | null): string {
@@ -25,4 +25,28 @@ export function capacityText(s: ClassSection): string {
   else if (typeof cap === "number") parts.push(`Tối đa ${cap}`);
   if (left !== null) parts.push(left === 0 ? "Hết chỗ" : `còn ${left} chỗ`);
   return parts.join(" · ") || "—";
+}
+
+/** Terms (1..3) a module is planned to open in the given academic year ("2026-2027"); all years if omitted. */
+export function openTerms(m: Pick<ModuleSummary, "offering_plan">, year?: string): Set<number> {
+  const s = new Set<number>();
+  for (const p of m.offering_plan ?? []) if (!year || p.academic_year === year) p.terms?.forEach((t) => s.add(t));
+  return s;
+}
+
+/** "2026-2027-1" -> { year: "2026-2027", term: 1 } (null if the id has another shape). */
+export function parseSemesterId(id: string): { year: string; term: number } | null {
+  const m = /^(\d{4}-\d{4})-(\d+)$/.exec(id);
+  return m ? { year: m[1], term: Number(m[2]) } : null;
+}
+
+/** Open classes per term (1..3) in an academic year, from open_semesters. Terms with no classes are absent. */
+export function openClassesByTerm(m: Pick<ModuleSummary, "open_semesters">, year?: string): Map<number, number> {
+  const out = new Map<number, number>();
+  for (const s of m.open_semesters ?? []) {
+    const p = parseSemesterId(s.semester);
+    if (!p || (year && p.year !== year) || !(s.classes > 0)) continue;
+    out.set(p.term, (out.get(p.term) ?? 0) + s.classes);
+  }
+  return out;
 }

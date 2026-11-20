@@ -5,9 +5,11 @@ import { COHORTS } from "@/lib/cohort";
 import { diffWords } from "@/lib/vault";
 import type { CompareResponse } from "@/lib/types";
 import { Loading } from "@/components/ui";
+import { useT } from "@/i18n";
 
 /** Side-by-side comparison of one topic between two cohorts, with word-level differences marked. */
 export function ComparePanel({ defaultCohort }: { defaultCohort: string }) {
+  const { t } = useT();
   const [topic, setTopic] = useState("tín chỉ tối đa học kỳ");
   const [a, setA] = useState(defaultCohort || "K22");
   const [b, setB] = useState(defaultCohort === "K25" ? "K22" : "K25");
@@ -30,19 +32,19 @@ export function ComparePanel({ defaultCohort }: { defaultCohort: string }) {
   return (
     <div className="space-y-3">
       <form className="grid gap-2 sm:grid-cols-[1fr_auto_auto_auto]" onSubmit={(e) => { e.preventDefault(); run(); }}>
-        <input className="input" value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="Chủ đề, VD: cảnh báo học tập" aria-label="Chủ đề so sánh" />
-        <select className="input" value={a} onChange={(e) => setA(e.target.value)} aria-label="Khóa A">{COHORTS.map((c) => <option key={c}>{c}</option>)}</select>
-        <select className="input" value={b} onChange={(e) => setB(e.target.value)} aria-label="Khóa B">{COHORTS.map((c) => <option key={c}>{c}</option>)}</select>
-        <button className="btn-primary" disabled={busy || a === b}>So sánh</button>
+        <input className="input" value={topic} onChange={(e) => setTopic(e.target.value)} placeholder={t("cmp.topicPh")} aria-label={t("cmp.topic")} />
+        <select className="input" value={a} onChange={(e) => setA(e.target.value)} aria-label={t("cmp.cohortA")}>{COHORTS.map((c) => <option key={c}>{c}</option>)}</select>
+        <select className="input" value={b} onChange={(e) => setB(e.target.value)} aria-label={t("cmp.cohortB")}>{COHORTS.map((c) => <option key={c}>{c}</option>)}</select>
+        <button className="btn-primary" disabled={busy || a === b}>{t("cmp.run")}</button>
       </form>
-      {a === b && <p className="text-xs text-amber-600">Chọn hai khóa khác nhau.</p>}
+      {a === b && <p className="text-xs text-amber-600">{t("cmp.sameCohorts")}</p>}
       {busy && <Loading />}
       {res && rowA && rowB && (
         <>
           {res.differences.length > 0 ? (
             <ul className="rounded-lg bg-brand-50 p-2 text-sm dark:bg-brand-900/30">{res.differences.map((d, i) => <li key={i}>• {d}</li>)}</ul>
           ) : (
-            <p className="text-sm text-slate-500">Không phát hiện khác biệt.</p>
+            <p className="text-sm text-slate-500">{t("cmp.none")}</p>
           )}
           <div className="grid gap-3 md:grid-cols-2">
             {[{ row: rowA, side: "del" as const }, { row: rowB, side: "add" as const }].map(({ row, side }) => (
@@ -63,7 +65,7 @@ export function ComparePanel({ defaultCohort }: { defaultCohort: string }) {
               </div>
             ))}
           </div>
-          <p className="text-[11px] text-slate-500">Phần tô đỏ chỉ có ở {a}, phần tô xanh chỉ có ở {b}.</p>
+          <p className="text-[11px] text-slate-500">{t("cmp.legend", { a, b })}</p>
         </>
       )}
     </div>

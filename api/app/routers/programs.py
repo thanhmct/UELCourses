@@ -76,7 +76,8 @@ def list_programs(cohort: str | None = Query(None, description="vd K24"), q: str
 def _pm_out(pm: ProgramModule, eq: dict[str, set[str]]) -> ProgramModuleOut:
     m = pm.module
     return ProgramModuleOut(
-        code=pm.module_code, name=m.name if m else None, credits=m.credits if m else None, required=pm.required,
+        code=pm.module_code, name=m.name if m else None, name_en=m.name_en if m else None,
+        credits=m.credits if m else None, required=pm.required,
         suggested_term=pm.suggested_term, suggested_semester=pm.suggested_semester,
         suggested_order=pm.suggested_order, prereq=pm.prereq_tree, previous=pm.previous_tree, coreq=pm.coreq_tree,
         equivalents=sorted(eq.get(pm.module_code, set())), prereq_raw=pm.prereq_raw,
@@ -107,12 +108,13 @@ def program_graph(program_id: str, db: Session = Depends(get_db)):
                            .order_by(ModuleRelation.source, ModuleRelation.target)))
     nodes = {pm.module_code: GraphNode(
         code=pm.module_code, name=pm.module.name if pm.module else None,
+        name_en=pm.module.name_en if pm.module else None,
         credits=pm.module.credits if pm.module else None, required=pm.required,
         suggested_term=pm.suggested_term, suggested_order=pm.suggested_order, block=pm.block,
     ) for pm in p.modules}
     extra = {c for r in rels for c in (r.source, r.target)} - nodes.keys()
     for m in db.scalars(select(Module).where(Module.code.in_(extra))) if extra else []:
-        nodes[m.code] = GraphNode(code=m.code, name=m.name, credits=m.credits, in_program=False)
+        nodes[m.code] = GraphNode(code=m.code, name=m.name, name_en=m.name_en, credits=m.credits, in_program=False)
     for c in extra - nodes.keys():
         nodes[c] = GraphNode(code=c, in_program=False)
     edges = [GraphEdge(source=r.source, target=r.target, type=r.type) for r in rels]
@@ -143,7 +145,9 @@ def module_tree(
     for k in adj:
         adj[k] = sorted(set(adj[k]))
     codes = {code} | {c for v in adj.values() for c, _ in v} | set(adj)
-    names = dict(db.execute(select(Module.code, Module.name).where(Module.code.in_(codes))).all())
+    name_rows = db.execute(select(Module.code, Module.name, Module.name_en).where(Module.code.in_(codes))).all()
+    names = {c: n for c, n, _ in name_rows}
+    names_en = {c: e for c, _, e in name_rows}
     if code not in names and code not in adj and not any(code == c for v in adj.values() for c, _ in v):
         raise HTTPException(404, f"Không tìm thấy học phần {code}.")
     trees: dict[str, tuple] = {}
@@ -153,7 +157,7 @@ def module_tree(
 
     def build(c: str, rtype: str, path: tuple[str, ...], level: int) -> TreeNode:
         pt, vt = trees.get(c, (None, None))
-        node = TreeNode(code=c, name=names.get(c), type=rtype, prereq_tree=pt, previous_tree=vt)
+        node = TreeNode(code=c, name=names.get(c), name_en=names_en.get(c), type=rtype, prereq_tree=pt, previous_tree=vt)
         if c in path:
             node.cycle = True
             return node

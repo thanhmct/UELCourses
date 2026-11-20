@@ -3,9 +3,11 @@ import { useRef, useState, type ReactNode } from "react";
 import { getMarkdown } from "@/lib/vaultCache";
 import { anchorToLabel, extractSection } from "@/lib/vault";
 import { useWorkspace } from "@/lib/workspace";
+import { useT } from "@/i18n";
 
 /** Internal link to doc#anchor: click opens it in the workspace, hover shows a clause preview. */
 export function WikiLink({ target, children, className = "" }: { target: string; children: ReactNode; className?: string }) {
+  const { t } = useT();
   const [doc, anchor] = target.split("#");
   const open = useWorkspace((s) => s.open);
   const [preview, setPreview] = useState<{ title: string; text: string } | null>(null);
@@ -17,11 +19,11 @@ export function WikiLink({ target, children, className = "" }: { target: string;
       setShow(true);
       if (preview) return;
       const md = await getMarkdown(doc);
-      if (!md) return setPreview({ title: doc, text: "Không tải được văn bản." });
+      if (!md) return setPreview({ title: doc, text: t("wiki.loadFail") });
       const text = anchor ? extractSection(md.markdown, anchor) : md.frontmatter?.title ?? null;
       setPreview({
         title: `${md.frontmatter?.decision_no ?? doc}${anchor ? ` · ${anchorToLabel(anchor)}` : ""}`,
-        text: text ?? "Không tìm thấy đoạn được dẫn chiếu.",
+        text: text ?? t("wiki.notFound"),
       });
     }, 250);
   };
@@ -48,7 +50,7 @@ export function WikiLink({ target, children, className = "" }: { target: string;
           role="tooltip"
           className="absolute left-0 top-full z-40 mt-1 block w-72 max-w-[80vw] rounded-lg border border-slate-200 bg-white p-3 text-left text-xs font-normal not-italic text-slate-700 shadow-xl dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
         >
-          <span className="mb-1 block font-semibold text-slate-900 dark:text-white">{preview?.title ?? "Đang tải…"}</span>
+          <span className="mb-1 block font-semibold text-slate-900 dark:text-white">{preview?.title ?? t("wiki.loading")}</span>
           <span className="block max-h-40 overflow-hidden whitespace-pre-line">{preview?.text ?? ""}</span>
         </span>
       )}

@@ -12,6 +12,8 @@ Cột được nhận diện theo TÊN (không dấu, không phân biệt hoa th
 
 from __future__ import annotations
 
+from app.services.legacy import skip_legacy_code
+
 import io
 import re
 from collections import Counter
@@ -170,7 +172,7 @@ def import_uis_classes(db: Session, src: bytes | str | Path, *, semester: str | 
     for row in rows[first:]:
         code = clip(cell(row, "code"), 64)
         class_code = clip(cell(row, "class_code"), 128)
-        if not code or not class_code:
+        if not code or not class_code or skip_legacy_code(code):
             if any(v not in (None, "") for v in row):
                 ctx.skipped += 1
             continue

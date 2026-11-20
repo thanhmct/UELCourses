@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useT } from "@/i18n";
 
 export function PwaRegister() {
+  const { t } = useT();
   const [isOffline, setIsOffline] = useState(false);
 
   useEffect(() => {
@@ -37,7 +39,7 @@ export function PwaRegister() {
       role="alert"
     >
       <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
-      <span>Đang chạy ở chế độ <strong>Ngoại tuyến (Offline PWA)</strong> — Dữ liệu được tải từ bộ nhớ đệm cục bộ.</span>
+      <span>{t("pwa.offlineA")}<strong>{t("pwa.offlineMode")}</strong>{t("pwa.offlineB")}</span>
     </div>
   );
 }

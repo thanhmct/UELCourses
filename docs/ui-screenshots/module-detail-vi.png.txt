@@ -1,0 +1,19 @@
+UELCourses
+Tìm nhanh
+Ctrl K
+VI
+Hôm nay
+Thời khóa biểu
+Học phần
+Phòng học
+Kế hoạch
+CTĐT
+Tương đương
+Quy chế & AI
+Cài đặt
+Góp ý
+
+Đang tải…
+
+UELCourses — dự án khóa luận, không phải sản phẩm chính thức của Trường ĐH Kinh tế – Luật. Bố cục lấy cảm hứng từ NUSMods (NUS) và các công cụ lập thời khóa biểu mã nguồn mở.
+Góp ý

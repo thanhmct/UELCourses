@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
-import { BADGE_LABEL, type EffectiveBadge } from "@/lib/regulations";
+import type { EffectiveBadge } from "@/lib/regulations";
+import { useT } from "@/i18n";
 
 export function PageHeader({ title, subtitle, actions }: { title: string; subtitle?: ReactNode; actions?: ReactNode }) {
   return (
-    <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+    <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
       <div>
         <h1 className="page-title">{title}</h1>
         {subtitle && <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{subtitle}</p>}
@@ -13,16 +14,17 @@ export function PageHeader({ title, subtitle, actions }: { title: string; subtit
   );
 }
 
-export function Loading({ text = "Đang tải…" }: { text?: string }) {
-  return <p className="py-8 text-center text-sm text-slate-500" role="status">{text}</p>;
+export function Loading({ text }: { text?: string }) {
+  const { t } = useT();
+  return <p className="py-8 text-center text-sm text-slate-500" role="status">{text ?? t("common.loading")}</p>;
 }
 
 export function Empty({ children }: { children: ReactNode }) {
-  return <p className="rounded-lg border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500 dark:border-slate-700">{children}</p>;
+  return <p className="rounded-md border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500 dark:border-slate-700">{children}</p>;
 }
 
 export function ErrorBox({ children }: { children: ReactNode }) {
-  return <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-300">{children}</p>;
+  return <p className="rounded-md bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-300">{children}</p>;
 }
 
 const BADGE_CLS: Record<EffectiveBadge, string> = {
@@ -34,13 +36,26 @@ const BADGE_CLS: Record<EffectiveBadge, string> = {
 };
 
 export function EffectiveBadgeChip({ badge }: { badge: EffectiveBadge }) {
-  return <span className={`chip ${BADGE_CLS[badge]}`}>{BADGE_LABEL[badge]}</span>;
+  const { t } = useT();
+  return <span className={`chip ${BADGE_CLS[badge]}`}>{t(`rbadge.${badge}`)}</span>;
 }
 
+/** EN = taught in English. */
 export function EnBadge() {
+  const { t } = useT();
   return (
-    <span className="chip bg-sky-100 font-bold text-sky-800 dark:bg-sky-900/40 dark:text-sky-200" title="Môn dạy bằng tiếng Anh">
-      EN
+    <span className="chip bg-sky-100 font-bold text-sky-800 dark:bg-sky-900/40 dark:text-sky-200" title={t("badge.enTitle")}>
+      {t("badge.en")}
+    </span>
+  );
+}
+
+/** CNTN = talent programme. */
+export function CntnBadge() {
+  const { t } = useT();
+  return (
+    <span className="chip bg-amber-100 font-bold text-amber-800 dark:bg-amber-900/40 dark:text-amber-200" title={t("badge.cntnTitle")}>
+      {t("badge.cntn")}
     </span>
   );
 }

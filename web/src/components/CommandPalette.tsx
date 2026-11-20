@@ -8,6 +8,7 @@ import { getMarkdown } from "@/lib/vaultCache";
 import { extractOutline } from "@/lib/vault";
 import { useWorkspace } from "@/lib/workspace";
 import type { RegulationDoc } from "@/lib/types";
+import { useT } from "@/i18n";
 import { NAV } from "./Header";
 
 const usePalette = create<{ open: boolean; set: (v: boolean) => void }>((set) => ({ open: false, set: (open) => set({ open }) }));
@@ -16,12 +17,17 @@ export const openCommandPalette = () => usePalette.getState().set(true);
 interface ArticleItem {
   doc: RegulationDoc;
   anchor: string;
-  label: string;
+  number: string;
+  title: string;
 }
+
+const GROUP = "text-xs text-slate-500 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1";
+const ITEM = "cursor-pointer rounded-lg px-3 py-2 text-sm text-slate-800 data-[selected=true]:bg-brand-50 dark:text-slate-100 dark:data-[selected=true]:bg-slate-800";
 
 /** Global Ctrl+K palette: jump to a page, document or article, or hand a question to the AI. */
 export function CommandPalette() {
   const { open, set } = usePalette();
+  const { t } = useT();
   const [search, setSearch] = useState("");
   const [docs, setDocs] = useState<RegulationDoc[]>([]);
   const [articles, setArticles] = useState<ArticleItem[]>([]);
@@ -46,7 +52,7 @@ export function CommandPalette() {
       const items = await Promise.all(
         r.data.map(async (d) => {
           const md = await getMarkdown(d.doc_id);
-          return md ? extractOutline(md.markdown).map((o) => ({ doc: d, anchor: o.anchor, label: `Điều ${o.number}. ${o.title}` })) : [];
+          return md ? extractOutline(md.markdown).map((o) => ({ doc: d, anchor: o.anchor, number: o.number, title: o.title })) : [];
         }),
       );
       setArticles(items.flat());
@@ -67,20 +73,20 @@ export function CommandPalette() {
     <Command.Dialog
       open={open}
       onOpenChange={(v) => (v ? set(true) : close())}
-      label="Tìm nhanh"
+      label={t("pal.label")}
       overlayClassName="fixed inset-0 z-50 bg-black/40"
       contentClassName="fixed left-1/2 top-[12vh] z-50 w-[min(640px,calc(100vw-2rem))] -translate-x-1/2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900"
     >
       <Command.Input
         value={search}
         onValueChange={setSearch}
-        placeholder="Tìm văn bản, Điều, trang… hoặc gõ câu hỏi cho AI"
+        placeholder={t("pal.placeholder")}
         className="w-full border-b border-slate-200 bg-transparent px-4 py-3 text-sm outline-none dark:border-slate-700"
       />
       <Command.List className="max-h-[60vh] overflow-y-auto p-2 text-sm">
-        <Command.Empty className="px-3 py-4 text-slate-500">Không có kết quả.</Command.Empty>
+        <Command.Empty className="px-3 py-4 text-slate-500">{t("pal.empty")}</Command.Empty>
         {search.trim().length > 3 && (
-          <Command.Group heading="Hỏi AI" className="text-xs text-slate-500 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1">
+          <Command.Group heading={t("pal.askGroup")} className={GROUP}>
             <Command.Item
               value={`ask ${search}`}
               onSelect={() => {
@@ -88,37 +94,37 @@ export function CommandPalette() {
                 if (path !== "/regulations") router.push("/regulations");
                 close();
               }}
-              className="cursor-pointer rounded-lg px-3 py-2 text-sm text-slate-800 data-[selected=true]:bg-brand-50 dark:text-slate-100 dark:data-[selected=true]:bg-slate-800"
+              className={ITEM}
             >
-              ✦ Hỏi AI: “{search.trim()}”
+              {t("pal.ask", { q: search.trim() })}
             </Command.Item>
           </Command.Group>
         )}
-        <Command.Group heading="Văn bản" className="text-xs text-slate-500 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1">
+        <Command.Group heading={t("pal.docs")} className={GROUP}>
           {docs.map((d) => (
-            <Command.Item key={d.doc_id} value={`${d.decision_no} ${d.title} ${d.doc_id}`} onSelect={() => goDoc(d.doc_id)} className="cursor-pointer rounded-lg px-3 py-2 text-sm text-slate-800 data-[selected=true]:bg-brand-50 dark:text-slate-100 dark:data-[selected=true]:bg-slate-800">
+            <Command.Item key={d.doc_id} value={`${d.decision_no} ${d.title} ${d.doc_id}`} onSelect={() => goDoc(d.doc_id)} className={ITEM}>
               <span className="font-semibold">{d.decision_no}</span> <span className="text-slate-500">— {d.title}</span>
             </Command.Item>
           ))}
         </Command.Group>
         {search.trim() && (
-          <Command.Group heading="Điều" className="text-xs text-slate-500 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1">
+          <Command.Group heading={t("pal.articles")} className={GROUP}>
             {articles.map((a) => (
-              <Command.Item key={`${a.doc.doc_id}#${a.anchor}`} value={`${a.label} ${a.doc.decision_no} ${a.doc.doc_id}#${a.anchor}`} onSelect={() => goDoc(a.doc.doc_id, a.anchor)} className="cursor-pointer rounded-lg px-3 py-2 text-sm text-slate-800 data-[selected=true]:bg-brand-50 dark:text-slate-100 dark:data-[selected=true]:bg-slate-800">
-                {a.label} <span className="text-slate-500">· {a.doc.decision_no}</span>
+              <Command.Item key={`${a.doc.doc_id}#${a.anchor}`} value={`${a.number} ${a.title} ${a.doc.decision_no} ${a.doc.doc_id}#${a.anchor}`} onSelect={() => goDoc(a.doc.doc_id, a.anchor)} className={ITEM}>
+                {t("pal.articleLabel", { n: a.number, title: a.title })} <span className="text-slate-500">· {a.doc.decision_no}</span>
               </Command.Item>
             ))}
           </Command.Group>
         )}
-        <Command.Group heading="Trang" className="text-xs text-slate-500 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1">
-          {[...NAV, { href: "/regulations/graph", label: "Đồ thị văn bản" }].map((n) => (
-            <Command.Item key={n.href} value={`trang ${n.label} ${n.href}`} onSelect={() => { router.push(n.href); close(); }} className="cursor-pointer rounded-lg px-3 py-2 text-sm text-slate-800 data-[selected=true]:bg-brand-50 dark:text-slate-100 dark:data-[selected=true]:bg-slate-800">
+        <Command.Group heading={t("pal.pages")} className={GROUP}>
+          {[...NAV.map((n) => ({ href: n.href, label: t(n.labelKey) })), { href: "/regulations/graph", label: t("pal.graph") }].map((n) => (
+            <Command.Item key={n.href} value={`trang ${n.label} ${n.href}`} onSelect={() => { router.push(n.href); close(); }} className={ITEM}>
               {n.label}
             </Command.Item>
           ))}
         </Command.Group>
       </Command.List>
-      <p className="border-t border-slate-200 px-4 py-2 text-[11px] text-slate-500 dark:border-slate-700">↑↓ chọn · Enter mở · Esc đóng</p>
+      <p className="border-t border-slate-200 px-4 py-2 text-[11px] text-slate-500 dark:border-slate-700">{t("pal.hint")}</p>
     </Command.Dialog>
   );
 }

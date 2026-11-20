@@ -2,309 +2,390 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { usePlanner } from "@/lib/store";
+import { api } from "@/lib/api";
 import {
   calculateGpa,
   GRADE_10_SCALE,
   GRADE_POINTS,
+  scoreToLetter,
   simulateTargetGpa,
   type GradeItem,
 } from "@/lib/gpa";
+import { useT } from "@/i18n";
+import { moduleName } from "@/i18n/names";
 
-const GRADES_STORAGE_KEY = "uelplan-user-grades";
+const GRADES_STORAGE_KEY = "uelcourses-user-grades";
+const SCORES_STORAGE_KEY = "uelcourses-user-scores";
+const DONE_GROUP = "__completed__";
+
+/** Chuỗi mã môn nhập tay: tách bằng dấu phẩy, chấm phẩy, khoảng trắng hoặc xuống dòng; bỏ trùng, viết hoa. */
+function parseCodes(input: string): string[] {
+  const seen = new Set<string>();
+  for (const raw of input.split(/[\s,;]+/)) {
+    const c = raw.trim().toUpperCase();
+    if (c) seen.add(c);
+  }
+  return [...seen];
+}
+
+/** lib/gpa returns Vietnamese classification labels; map them to translation keys for display. */
+const CLASS_KEY: Record<string, string> = {
+  "Xuất sắc": "gpa.cls.excellent",
+  "Giỏi": "gpa.cls.good",
+  "Khá": "gpa.cls.fair",
+  "Trung bình": "gpa.cls.average",
+  "Yếu / Kém": "gpa.cls.weak",
+};
+
+/** Ô thêm nhiều mã môn cùng lúc vào bảng điểm; từng mã có dòng báo kết quả riêng. */
+function AddCodesBox() {
+  const planner = usePlanner((s) => s.terms);
+  const [text, setText] = useState("");
+  const [target, setTarget] = useState<string>(DONE_GROUP);
+  const [busy, setBusy] = useState(false);
+  const [report, setReport] = useState<{ code: string; ok: boolean; msg: string }[]>([]);
+
+  const add = async () => {
+    const codes = parseCodes(text);
+    if (codes.length === 0) return;
+    setBusy(true);
+    const rows: { code: string; ok: boolean; msg: string }[] = [];
+    for (const code of codes) {
+      try {
+        const detail = (await api.module(code)).data;
+        if (!detail) {
+          rows.push({ code, ok: false, msg: "không tìm thấy trong danh mục học phần" });
+          continue;
+        }
+        const st = usePlanner.getState();
+        st.addToBacklog({
+          code,
+          name: detail.name,
+          name_en: detail.name_en ?? null,
+          credits: detail.credits ?? 0,
+          prerequisites: detail.prerequisites ?? [],
+          equivalents: detail.equivalents ?? [],
+        });
+        if (target === DONE_GROUP) {
+          if (!st.completed.includes(code)) st.toggleCompleted(code);
+        } else {
+          st.move(code, target);
+        }
+        rows.push({ code, ok: true, msg: detail.name });
+      } catch {
+        rows.push({ code, ok: false, msg: "lỗi tải dữ liệu, thử lại sau" });
+      }
+    }
+    setReport(rows);
+    setBusy(false);
+    if (rows.every((r) => r.ok)) setText("");
+  };
+
+  return (
+    <div className="card space-y-3">
+      <div>
+        <h4 className="text-sm font-semibold text-slate-900 dark:text-white">Thêm môn vào bảng điểm</h4>
+        <p className="text-xs text-slate-500">Nhập nhiều mã cùng lúc, cách nhau bằng dấu phẩy hoặc xuống dòng. Mỗi mã được báo kết quả riêng.</p>
+      </div>
+      <textarea
+        rows={2}
+        aria-label="Mã học phần cần thêm"
+        className="input font-mono text-sm"
+        placeholder="VD: BIM5011, BFF4002, TKE2001"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+      />
+      <div className="flex flex-wrap items-center gap-2">
+        <label htmlFor="add-target" className="text-xs font-semibold text-slate-600 dark:text-slate-300">Thêm vào</label>
+        <select id="add-target" className="input w-auto py-1 text-xs" value={target} onChange={(e) => setTarget(e.target.value)}>
+          <option value={DONE_GROUP}>Đã hoàn thành</option>
+          {planner.map((term) => (
+            <option key={term.id} value={term.id}>{term.name}</option>
+          ))}
+        </select>
+        <button type="button" className="btn-primary" onClick={add} disabled={busy || !text.trim()}>
+          {busy ? "Đang thêm…" : "Thêm môn"}
+        </button>
+      </div>
+      {report.length > 0 && (
+        <ul className="space-y-1 text-xs">
+          {report.map((r) => (
+            <li key={r.code} className={r.ok ? "text-emerald-700 dark:text-emerald-300" : "text-red-600 dark:text-red-400"}>
+              {r.ok ? "✓" : "✗"} <span className="font-mono font-bold">{r.code}</span> — {r.msg}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 export function GpaCalculator() {
-  const planner = usePlanner();
+  const { t, lang } = useT();
+const planner = usePlanner();
   const [grades, setGrades] = useState<Record<string, string>>({});
-  const [targetDegree, setTargetDegree] = useState<number>(3.2); // Default: Giỏi (3.2)
+  const [scores, setScores] = useState<Record<string, number>>({}); // điểm thang 10 người dùng nhập
+  const [targetDegree, setTargetDegree] = useState<number>(3.2); // default: Giỏi (3.2)
   const [totalProgramCredits, setTotalProgramCredits] = useState<number>(135);
 
-  // Load saved grades from localStorage
+  // Load saved grades and scores from localStorage
   useEffect(() => {
     try {
       const raw = localStorage.getItem(GRADES_STORAGE_KEY);
       if (raw) setGrades(JSON.parse(raw));
+      const rawScores = localStorage.getItem(SCORES_STORAGE_KEY);
+      if (rawScores) setScores(JSON.parse(rawScores));
     } catch (e) {
       console.error("Failed to load grades", e);
     }
   }, []);
 
-  const handleGradeChange = (code: string, grade: string) => {
-    setGrades((prev) => {
-      const next = { ...prev, [code]: grade };
-      if (!grade) delete next[code];
-      try {
-        localStorage.setItem(GRADES_STORAGE_KEY, JSON.stringify(next));
-      } catch (e) {
-        console.error("Failed to save grade", e);
-      }
-      return next;
-    });
+  const persist = (gradesNext: Record<string, string>, scoresNext: Record<string, number>) => {
+    try {
+      localStorage.setItem(GRADES_STORAGE_KEY, JSON.stringify(gradesNext));
+      localStorage.setItem(SCORES_STORAGE_KEY, JSON.stringify(scoresNext));
+    } catch (e) {
+      console.error("Failed to save grade", e);
+    }
   };
 
-  // Group modules by term from the planner
-  const modulesByTerm = useMemo(() => {
-    const map = new Map<string, GradeItem[]>();
+  /** Chọn điểm chữ trực tiếp: xóa điểm số đã nhập của môn đó. */
+  const handleGradeChange = (code: string, grade: string) => {
+    const nextGrades = { ...grades };
+    const nextScores = { ...scores };
+    if (grade) nextGrades[code] = grade;
+    else delete nextGrades[code];
+    delete nextScores[code];
+    setGrades(nextGrades);
+    setScores(nextScores);
+    persist(nextGrades, nextScores);
+  };
 
-    // Completed bucket
+  /** Nhập điểm thang 10: đổi tự động sang điểm chữ. Ô trống thì xóa điểm. */
+  const handleScoreChange = (code: string, raw: string) => {
+    const nextGrades = { ...grades };
+    const nextScores = { ...scores };
+    const value = raw.trim() === "" ? NaN : Number(raw);
+    const letter = scoreToLetter(value);
+    if (letter) {
+      nextScores[code] = value;
+      nextGrades[code] = letter;
+    } else {
+      delete nextScores[code];
+      delete nextGrades[code];
+    }
+    setGrades(nextGrades);
+    setScores(nextScores);
+    persist(nextGrades, nextScores);
+  };
+
+  // Group modules by term from the planner; key = internal id, label = display name
+  const groups = useMemo(() => {
+    const map = new Map<string, { label: string; items: GradeItem[] }>();
     if (planner.completed.length > 0) {
-      map.set(
-        "Môn đã hoàn thành",
-        planner.completed.map((code) => ({
+      map.set(DONE_GROUP, {
+        label: t("gpa.doneGroup"),
+        items: planner.completed.map((code) => ({
           code,
-          name: planner.catalog[code]?.name || code,
+          name: planner.catalog[code] ? moduleName(planner.catalog[code], lang) : code,
           credits: planner.catalog[code]?.credits || 3,
           grade: grades[code] || "A",
-          term: "Đã hoàn thành",
+          term: DONE_GROUP,
         })),
-      );
+      });
     }
-
-    // Terms HK1..HK8
     for (const term of planner.terms) {
       if (term.modules.length > 0) {
-        map.set(
-          term.name,
-          term.modules.map((code) => ({
+        map.set(term.id, {
+          label: term.name,
+          items: term.modules.map((code) => ({
             code,
-            name: planner.catalog[code]?.name || code,
+            name: planner.catalog[code] ? moduleName(planner.catalog[code], lang) : code,
             credits: planner.catalog[code]?.credits || 3,
             grade: grades[code] || "",
-            term: term.name,
+            term: term.id,
           })),
-        );
+        });
       }
     }
-
     return map;
-  }, [planner, grades]);
+  }, [planner, grades, t, lang]);
 
-  // Flatten all modules for overall calculation
   const allGradedItems = useMemo(() => {
     const list: GradeItem[] = [];
-    modulesByTerm.forEach((items) => list.push(...items));
+    groups.forEach((g) => list.push(...g.items));
     return list;
-  }, [modulesByTerm]);
+  }, [groups]);
 
   const overallGpa = useMemo(() => calculateGpa(allGradedItems), [allGradedItems]);
+  const classLabel = (label: string) => (CLASS_KEY[label] ? t(CLASS_KEY[label]) : label);
 
   const targetSim = useMemo(() => {
     const remainingCredits = Math.max(0, totalProgramCredits - overallGpa.gradedCredits);
-    return simulateTargetGpa(
-      overallGpa.gpa4,
-      overallGpa.gradedCredits,
-      remainingCredits,
-      targetDegree,
-    );
+    return simulateTargetGpa(overallGpa.gpa4, overallGpa.gradedCredits, remainingCredits, targetDegree);
   }, [overallGpa, totalProgramCredits, targetDegree]);
 
+  const card = "card";
+  const kpi = "text-xs font-semibold uppercase tracking-wider text-slate-500";
+
   return (
-    <div className="space-y-6">
-      {/* Top Overview Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="card bg-brand-50/50 border-brand-200 dark:bg-brand-950/20 dark:border-brand-800">
-          <span className="text-xs font-semibold text-brand-700 dark:text-brand-300 uppercase tracking-wider">
-            GPA Tích lũy (Hệ 4)
-          </span>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-3xl font-extrabold text-brand-800 dark:text-brand-200">
-              {overallGpa.gpa4 > 0 ? overallGpa.gpa4.toFixed(2) : "0.00"}
-            </span>
+    <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className={`${card} border-brand-200 bg-brand-50/50 dark:border-brand-800 dark:bg-brand-950/20`}>
+          <span className={`${kpi} !text-brand-700 dark:!text-brand-300`}>{t("gpa.cumulative")}</span>
+          <div className="mt-1 flex items-baseline gap-2">
+            <span className="text-3xl font-extrabold text-brand-800 dark:text-brand-200">{overallGpa.gpa4 > 0 ? overallGpa.gpa4.toFixed(2) : "0.00"}</span>
             <span className="text-xs text-slate-500">/ 4.00</span>
           </div>
-          <div className="mt-2">
-            <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${overallGpa.classification.color}`}>
-              {overallGpa.classification.label}
-            </span>
+          <div className="mt-1">
+            <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${overallGpa.classification.color}`}>{classLabel(overallGpa.classification.label)}</span>
           </div>
         </div>
 
-        <div className="card">
-          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-            Ước tính Hệ 10
-          </span>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-3xl font-extrabold text-slate-800 dark:text-slate-100">
-              {overallGpa.gpa10 > 0 ? overallGpa.gpa10.toFixed(1) : "0.0"}
-            </span>
+        <div className={card}>
+          <span className={kpi}>{t("gpa.ten")}</span>
+          <div className="mt-1 flex items-baseline gap-2">
+            <span className="text-3xl font-extrabold text-slate-800 dark:text-slate-100">{overallGpa.gpa10 > 0 ? overallGpa.gpa10.toFixed(1) : "0.0"}</span>
             <span className="text-xs text-slate-500">/ 10.0</span>
           </div>
-          <p className="mt-2 text-xs text-slate-500">Quy đổi thang điểm UEL</p>
+          <p className="mt-1 text-xs text-slate-500">{t("gpa.tenNote")}</p>
         </div>
 
-        <div className="card">
-          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-            Tín chỉ đã tính điểm
-          </span>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-3xl font-extrabold text-slate-800 dark:text-slate-100">
-              {overallGpa.gradedCredits}
-            </span>
-            <span className="text-xs text-slate-500">/ {totalProgramCredits} TC</span>
+        <div className={card}>
+          <span className={kpi}>{t("gpa.graded")}</span>
+          <div className="mt-1 flex items-baseline gap-2">
+            <span className="text-3xl font-extrabold text-slate-800 dark:text-slate-100">{overallGpa.gradedCredits}</span>
+            <span className="text-xs text-slate-500">/ {t("common.credits", { n: totalProgramCredits })}</span>
           </div>
-          <div className="mt-2 h-1.5 w-full rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
-            <div
-              className="h-full bg-brand-600 rounded-full transition-all"
-              style={{ width: `${Math.min(100, (overallGpa.gradedCredits / totalProgramCredits) * 100)}%` }}
-            />
+          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
+            <div className="h-full rounded-full bg-brand-600 transition-all" style={{ width: `${Math.min(100, (overallGpa.gradedCredits / totalProgramCredits) * 100)}%` }} />
           </div>
         </div>
 
-        <div className="card">
-          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-            Tín chỉ còn lại
-          </span>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-3xl font-extrabold text-slate-800 dark:text-slate-100">
-              {Math.max(0, totalProgramCredits - overallGpa.gradedCredits)}
-            </span>
-            <span className="text-xs text-slate-500">TC</span>
+        <div className={card}>
+          <span className={kpi}>{t("gpa.remaining")}</span>
+          <div className="mt-1 flex items-baseline gap-2">
+            <span className="text-3xl font-extrabold text-slate-800 dark:text-slate-100">{Math.max(0, totalProgramCredits - overallGpa.gradedCredits)}</span>
+            <span className="text-xs text-slate-500">{t("common.unitCr")}</span>
           </div>
-          <p className="mt-2 text-xs text-slate-500">
-            {allGradedItems.length - Object.keys(grades).length} môn chưa nhập điểm
-          </p>
+          <p className="mt-1 text-xs text-slate-500">{t("gpa.ungraded", { n: allGradedItems.length - Object.keys(grades).length })}</p>
         </div>
       </div>
 
-      {/* Target Simulator Card */}
-      <div className="card border-brand-200 bg-gradient-to-r from-brand-50/40 to-slate-50 dark:from-brand-950/20 dark:to-slate-900/40">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-3 dark:border-slate-800">
+      {/* Target simulator */}
+      <div className={`${card} border-brand-200 dark:border-brand-800`}>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3 dark:border-slate-800">
           <div>
-            <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              🎯 Mục tiêu tốt nghiệp (Target Simulator)
-            </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Mô phỏng điểm số cần đạt cho các học kỳ tiếp theo để ra trường đúng loại mong muốn.
-            </p>
+            <h3 className="font-bold text-slate-900 dark:text-white">{t("gpa.targetTitle")}</h3>
+            <p className="mt-0.5 text-xs text-slate-500">{t("gpa.targetDesc")}</p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-1.5 text-xs">
-              <label htmlFor="target-grade" className="font-semibold text-slate-600 dark:text-slate-300">
-                Mục tiêu:
-              </label>
-              <select
-                id="target-grade"
-                className="input text-xs py-1"
-                value={targetDegree}
-                onChange={(e) => setTargetDegree(Number(e.target.value))}
-              >
-                <option value={3.6}>Xuất sắc (≥ 3.60)</option>
-                <option value={3.2}>Giỏi (≥ 3.20)</option>
-                <option value={2.5}>Khá (≥ 2.50)</option>
-                <option value={2.0}>Trung bình (≥ 2.00)</option>
+              <label htmlFor="target-grade" className="font-semibold text-slate-600 dark:text-slate-300">{t("gpa.target")}</label>
+              <select id="target-grade" className="input py-1 text-xs" value={targetDegree} onChange={(e) => setTargetDegree(Number(e.target.value))}>
+                <option value={3.6}>{t("gpa.tOut")}</option>
+                <option value={3.2}>{t("gpa.tGood")}</option>
+                <option value={2.5}>{t("gpa.tFair")}</option>
+                <option value={2.0}>{t("gpa.tAvg")}</option>
               </select>
             </div>
             <div className="flex items-center gap-1.5 text-xs">
-              <label htmlFor="total-cr" className="font-semibold text-slate-600 dark:text-slate-300">
-                Tổng TC CTĐT:
-              </label>
-              <input
-                id="total-cr"
-                type="number"
-                className="input text-xs py-1 w-20"
-                value={totalProgramCredits}
-                onChange={(e) => setTotalProgramCredits(Number(e.target.value) || 135)}
-              />
+              <label htmlFor="total-cr" className="font-semibold text-slate-600 dark:text-slate-300">{t("gpa.totalCr")}</label>
+              <input id="total-cr" type="number" className="input w-20 py-1 text-xs" value={totalProgramCredits} onChange={(e) => setTotalProgramCredits(Number(e.target.value) || 135)} />
             </div>
           </div>
         </div>
-
         <div className="mt-3">
           <div
-            className={`rounded-lg border p-3 text-sm ${
+            role="status"
+            className={`rounded border p-3 text-sm ${
               targetSim.feasible
                 ? "border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200"
                 : "border-red-300 bg-red-50 text-red-900 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200"
             }`}
           >
-            <div className="flex items-center gap-2 font-semibold">
-              <span>{targetSim.feasible ? "✓ Khả thi:" : "⚠️ Cảnh báo:"}</span>
-              <span>{targetSim.message}</span>
+            <div className="flex flex-wrap items-center gap-2 font-semibold">
+              <span>{targetSim.feasible ? t("gpa.feasible") : t("gpa.warn")}</span>
+              <span className="font-normal">{targetSim.message}</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Grade entry by semester */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="font-bold text-slate-900 dark:text-white">
-            Bảng điểm chi tiết theo học kỳ
-          </h3>
-          <span className="text-xs text-slate-500">
-            Dữ liệu lấy từ danh sách môn trong trang Kế hoạch học tập
-          </span>
+      {/* Grades by term */}
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="font-bold text-slate-900 dark:text-white">{t("gpa.tableTitle")}</h3>
+          <span className="text-xs text-slate-500">{t("gpa.tableNote")}</span>
         </div>
 
-        {Array.from(modulesByTerm.entries()).map(([termName, items]) => {
-          const termGpa = calculateGpa(items);
+        <AddCodesBox />
+
+        {Array.from(groups.entries()).map(([key, group]) => {
+          const termGpa = calculateGpa(group.items);
           return (
-            <div key={termName} className="card p-0 overflow-hidden">
-              <div className="flex flex-wrap items-center justify-between bg-slate-50 px-4 py-2.5 border-b border-slate-200 dark:bg-slate-800/60 dark:border-slate-800">
-                <div className="font-semibold text-slate-900 dark:text-white text-sm">
-                  {termName} ({items.length} môn)
-                </div>
+            <div key={key} className="card overflow-hidden p-0">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-800 dark:bg-slate-800/60">
+                <div className="text-sm font-semibold text-slate-900 dark:text-white">{t("gpa.termCount", { name: group.label, n: group.items.length })}</div>
                 <div className="flex items-center gap-3 text-xs">
+                  <span>{t("gpa.totalCr2")} <strong>{termGpa.totalCredits}</strong></span>
                   <span>
-                    Tổng TC: <strong>{termGpa.totalCredits}</strong>
-                  </span>
-                  <span>
-                    GPA kỳ:{" "}
-                    <strong className="text-brand-700 dark:text-brand-300">
-                      {termGpa.gpa4 > 0 ? termGpa.gpa4.toFixed(2) : "—"}
-                    </strong>
+                    {t("gpa.termGpa")}{" "}
+                    <strong className="text-brand-700 dark:text-brand-300">{termGpa.gpa4 > 0 ? termGpa.gpa4.toFixed(2) : "—"}</strong>
                   </span>
                   {termGpa.gpa4 > 0 && (
-                    <span className={`rounded px-1.5 py-0.2 text-[10px] font-semibold ${termGpa.classification.color}`}>
-                      {termGpa.classification.label}
-                    </span>
+                    <span className={`rounded px-1.5 text-[10px] font-semibold ${termGpa.classification.color}`}>{classLabel(termGpa.classification.label)}</span>
                   )}
                 </div>
               </div>
-
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="text-[11px] uppercase text-slate-400 border-b border-slate-100 dark:border-slate-800">
+                  <thead className="border-b border-slate-100 text-[11px] uppercase text-slate-400 dark:border-slate-800">
                     <tr>
-                      <th className="py-2 px-4 w-28">Mã môn</th>
-                      <th className="py-2 px-2">Tên học phần</th>
-                      <th className="py-2 px-2 text-center w-16">Tín chỉ</th>
-                      <th className="py-2 px-4 text-center w-36">Điểm chữ</th>
-                      <th className="py-2 px-4 text-center w-28">Điểm hệ 4</th>
+                      <th className="w-28 px-3 py-2">{t("gpa.thCode")}</th>
+                      <th className="px-2 py-2">{t("gpa.thName")}</th>
+                      <th className="w-16 px-2 py-2 text-center">{t("gpa.thCredits")}</th>
+                      <th className="w-64 px-3 py-2 text-center">{t("gpa.thGrade")}</th>
+                      <th className="w-28 px-3 py-2 text-center">{t("gpa.thPoints")}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {items.map((m) => {
+                    {group.items.map((m) => {
                       const curGrade = grades[m.code] || "";
                       const pt = curGrade in GRADE_POINTS ? GRADE_POINTS[curGrade] : null;
                       return (
                         <tr key={m.code} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
-                          <td className="py-2 px-4 font-mono font-bold text-brand-700 dark:text-brand-300">
-                            {m.code}
+                          <td className="px-3 py-2 font-mono font-bold text-brand-700 dark:text-brand-300">{m.code}</td>
+                          <td className="px-2 py-2 text-slate-700 dark:text-slate-300">{m.name}</td>
+                          <td className="px-2 py-2 text-center text-slate-600 dark:text-slate-400">{m.credits}</td>
+                          <td className="px-3 py-2">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <input
+                                type="number"
+                                min={0}
+                                max={10}
+                                step={0.1}
+                                inputMode="decimal"
+                                aria-label={`Điểm thang 10 của ${m.code}`}
+                                placeholder="/10"
+                                className="input w-16 py-1 text-center text-xs"
+                                value={scores[m.code] ?? ""}
+                                onChange={(e) => handleScoreChange(m.code, e.target.value)}
+                              />
+                              <select
+                                aria-label={t("gpa.gradeAria", { code: m.code })}
+                                className="input w-28 py-1 text-center text-xs font-semibold"
+                                value={curGrade}
+                                onChange={(e) => handleGradeChange(m.code, e.target.value)}
+                              >
+                                <option value="">{t("gpa.notTaken")}</option>
+                                {Object.keys(GRADE_POINTS).map((g) => (
+                                  <option key={g} value={g}>{g} ({GRADE_10_SCALE[g]})</option>
+                                ))}
+                              </select>
+                            </div>
                           </td>
-                          <td className="py-2 px-2 text-slate-700 dark:text-slate-300">
-                            {m.name}
-                          </td>
-                          <td className="py-2 px-2 text-center text-slate-600 dark:text-slate-400">
-                            {m.credits}
-                          </td>
-                          <td className="py-2 px-4 text-center">
-                            <select
-                              aria-label={`Điểm học phần ${m.code}`}
-                              className="input text-xs py-1 font-semibold text-center w-28"
-                              value={curGrade}
-                              onChange={(e) => handleGradeChange(m.code, e.target.value)}
-                            >
-                              <option value="">— Chưa học —</option>
-                              {Object.keys(GRADE_POINTS).map((g) => (
-                                <option key={g} value={g}>
-                                  {g} ({GRADE_10_SCALE[g]})
-                                </option>
-                              ))}
-                            </select>
-                          </td>
-                          <td className="py-2 px-4 text-center font-mono font-bold text-slate-800 dark:text-slate-200">
-                            {pt !== null ? pt.toFixed(1) : "—"}
-                          </td>
+                          <td className="px-3 py-2 text-center font-mono font-bold text-slate-800 dark:text-slate-200">{pt !== null ? pt.toFixed(1) : "—"}</td>
                         </tr>
                       );
                     })}
@@ -315,11 +396,7 @@ export function GpaCalculator() {
           );
         })}
 
-        {modulesByTerm.size === 0 && (
-          <div className="card text-center p-8 text-sm text-slate-500">
-            Chưa có môn học nào trong bảng Kế hoạch. Hãy thêm môn vào kế hoạch trước để bắt đầu tính GPA!
-          </div>
-        )}
+        {groups.size === 0 && <div className="card p-8 text-center text-sm text-slate-500">{t("gpa.empty")}</div>}
       </div>
     </div>
   );

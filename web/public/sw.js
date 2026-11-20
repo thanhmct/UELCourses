@@ -1,5 +1,5 @@
-// UELPlan Service Worker for PWA Offline Support
-const CACHE_NAME = "uelplan-cache-v1";
+// UELCourses Service Worker for PWA Offline Support
+const CACHE_NAME = "uelcourses-cache-v1";
 const OFFLINE_URLS = [
   "/",
   "/today",

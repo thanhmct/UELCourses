@@ -12,6 +12,7 @@ import { formatDateVi } from "@/lib/dates";
 import { HIGHLIGHT_COLORS, useRegNotes, useWorkspace, type HighlightColor } from "@/lib/workspace";
 import type { RegulationMarkdown } from "@/lib/types";
 import { EffectiveBadgeChip, Empty, Loading } from "@/components/ui";
+import { useT } from "@/i18n";
 import { WikiLink } from "./WikiLink";
 
 const HL_CLS: Record<HighlightColor, string> = {
@@ -23,6 +24,7 @@ const HL_CLS: Record<HighlightColor, string> = {
 const HL_DOT: Record<HighlightColor, string> = { yellow: "bg-yellow-300", green: "bg-emerald-300", blue: "bg-sky-300", pink: "bg-pink-300" };
 
 function ClauseBlock({ docId, anchor, children }: { docId: string; anchor: string; children: React.ReactNode }) {
+  const { t } = useT();
   const key = `${docId}#${anchor}`;
   const entry = useRegNotes((s) => s.notes[key]);
   const setHighlight = useRegNotes((s) => s.setHighlight);
@@ -38,27 +40,27 @@ function ClauseBlock({ docId, anchor, children }: { docId: string; anchor: strin
           setDraft(entry?.note ?? "");
           setEditing((v) => !v);
         }}
-        aria-label={`Ghi chú / đánh dấu ${anchorToLabel(anchor)}`}
-        title="Đánh dấu & ghi chú"
+        aria-label={t("md.noteAria", { a: anchorToLabel(anchor) })}
+        title={t("md.markTitle")}
       >
         ✎
       </button>
       {entry?.note && !editing && (
-        <p className="mt-1 rounded border-l-4 border-brand-400 bg-white/70 px-2 py-1 text-xs italic text-slate-700 dark:bg-slate-900/60 dark:text-slate-300">Ghi chú: {entry.note}</p>
+        <p className="mt-1 rounded border-l-4 border-brand-400 bg-white/70 px-2 py-1 text-xs italic text-slate-700 dark:bg-slate-900/60 dark:text-slate-300">{t("md.noteLabel", { n: entry.note })}</p>
       )}
       {editing && (
         <div className="mt-2 space-y-2 rounded-lg border border-slate-200 bg-white p-2 text-xs dark:border-slate-700 dark:bg-slate-900">
           <div className="flex items-center gap-2">
-            <span>Đánh dấu:</span>
+            <span>{t("md.highlight")}</span>
             {HIGHLIGHT_COLORS.map((c) => (
-              <button key={c} className={`h-5 w-5 rounded-full ${HL_DOT[c]} ${entry?.color === c ? "ring-2 ring-slate-700 ring-offset-1" : ""}`} onClick={() => setHighlight(key, entry?.color === c ? null : c)} aria-label={`Màu ${c}`} />
+              <button key={c} className={`h-5 w-5 rounded-full ${HL_DOT[c]} ${entry?.color === c ? "ring-2 ring-slate-700 ring-offset-1" : ""}`} onClick={() => setHighlight(key, entry?.color === c ? null : c)} aria-label={t(`md.color.${c}`)} />
             ))}
-            {entry?.color && <button className="text-slate-500 underline" onClick={() => setHighlight(key, null)}>Bỏ</button>}
+            {entry?.color && <button className="text-slate-500 underline" onClick={() => setHighlight(key, null)}>{t("md.clear")}</button>}
           </div>
-          <textarea className="input min-h-16 text-xs" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Ghi chú cá nhân (chỉ lưu trên trình duyệt này)" />
+          <textarea className="input min-h-16 text-xs" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={t("md.notePh")} />
           <div className="flex gap-2">
-            <button className="btn-primary px-2 py-1 text-xs" onClick={() => { setNote(key, draft); setEditing(false); }}>Lưu</button>
-            <button className="btn-ghost px-2 py-1 text-xs" onClick={() => setEditing(false)}>Đóng</button>
+            <button className="btn-primary px-2 py-1 text-xs" onClick={() => { setNote(key, draft); setEditing(false); }}>{t("md.save")}</button>
+            <button className="btn-ghost px-2 py-1 text-xs" onClick={() => setEditing(false)}>{t("md.close")}</button>
           </div>
         </div>
       )}
@@ -80,6 +82,7 @@ function useMarkdown(docId: string) {
 }
 
 export function MarkdownReader({ docId }: { docId: string }) {
+  const { t } = useT();
   const { md, loading } = useMarkdown(docId);
   const backlinks = useApi(() => api.backlinks(docId), [docId]);
   const target = useWorkspace((s) => s.target);
@@ -90,7 +93,7 @@ export function MarkdownReader({ docId }: { docId: string }) {
   // Scroll + flash when a target anchor is requested for this doc
   useEffect(() => {
     if (!md || !target || target.doc !== docId || !target.anchor) return;
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       const el = scrollRef.current?.querySelector<HTMLElement>(`[id="${CSS.escape(target.anchor!)}"]`);
       if (!el) return;
       el.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -98,7 +101,7 @@ export function MarkdownReader({ docId }: { docId: string }) {
       void el.offsetWidth;
       el.classList.add("flash-target");
     }, 60);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, [md, target, docId]);
 
   const components = useMemo<Components>(
@@ -125,7 +128,7 @@ export function MarkdownReader({ docId }: { docId: string }) {
   );
 
   if (loading) return <Loading />;
-  if (!md) return <Empty>Không tải được văn bản {docId}.</Empty>;
+  if (!md) return <Empty>{t("md.loadFail", { id: docId })}</Empty>;
   const fm = md.frontmatter;
   const badge = fm ? effectiveBadge(fm) : "active";
 
@@ -136,23 +139,23 @@ export function MarkdownReader({ docId }: { docId: string }) {
           <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
             <strong className="text-slate-800 dark:text-slate-100">{fm.decision_no}</strong>
             <EffectiveBadgeChip badge={badge} />
-            <span>Hiệu lực {formatDateVi(fm.effective_from)}{fm.effective_to ? ` – ${formatDateVi(fm.effective_to)}` : ""}</span>
-            <span>· Áp dụng: {fm.applies_to_cohorts?.includes("all") ? "mọi khóa" : fm.applies_to_cohorts?.join(", ")}</span>
-            {fm.metadata_verified === false && <span className="chip bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-200">Metadata chưa xác minh</span>}
-            {fm.source_url && <a className="text-brand-600 underline" href={fm.source_url} target="_blank" rel="noreferrer">Văn bản gốc</a>}
+            <span>{t("md.effective", { a: formatDateVi(fm.effective_from) })}{fm.effective_to ? t("md.effectiveTo", { d: formatDateVi(fm.effective_to) }) : ""}</span>
+            <span>{t("md.applies", { c: fm.applies_to_cohorts?.includes("all") ? t("md.allCohorts") : fm.applies_to_cohorts?.join(", ") })}</span>
+            {fm.metadata_verified === false && <span className="chip bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-200">{t("md.unverified")}</span>}
+            {fm.source_url && <a className="text-brand-600 underline" href={fm.source_url} target="_blank" rel="noreferrer">{t("md.source")}</a>}
           </div>
         )}
         {(badge === "expired" || badge === "superseded") && (
           <div className="mb-3 rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200" role="alert">
-            Văn bản này đã {badge === "superseded" ? "bị thay thế" : "hết hiệu lực"}; chỉ dùng để tham khảo.
+            {badge === "superseded" ? t("md.staleSuperseded") : t("md.staleExpired")}
             {fm?.superseded_by && (
-              <> Xem văn bản thay thế: <button className="font-semibold underline" onClick={() => open(fm.superseded_by!)}>{fm.superseded_by}</button>.</>
+              <> {t("md.seeReplacement")} <button className="font-semibold underline" onClick={() => open(fm.superseded_by!)}>{fm.superseded_by}</button>.</>
             )}
           </div>
         )}
         {badge === "expiring" && (
           <div className="mb-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-200" role="alert">
-            Văn bản sắp hết hiệu lực vào {formatDateVi(fm?.effective_to)}.
+            {t("md.expiring", { d: formatDateVi(fm?.effective_to) })}
           </div>
         )}
         <article className="text-sm leading-relaxed">
@@ -160,10 +163,10 @@ export function MarkdownReader({ docId }: { docId: string }) {
             {md.markdown}
           </ReactMarkdown>
         </article>
-        <section className="mt-8 rounded-xl border border-slate-200 p-3 dark:border-slate-800">
-          <h3 className="mb-2 text-sm font-semibold">Được dẫn chiếu bởi ({backlinks.data?.length ?? 0})</h3>
+        <section className="mt-8 rounded-md border border-slate-200 p-3 dark:border-slate-800">
+          <h3 className="mb-2 text-sm font-semibold">{t("md.backlinks", { n: backlinks.data?.length ?? 0 })}</h3>
           {backlinks.loading ? <Loading /> : !backlinks.data?.length ? (
-            <p className="text-xs text-slate-500">Chưa có văn bản nào dẫn chiếu tới văn bản này.</p>
+            <p className="text-xs text-slate-500">{t("md.noBacklinks")}</p>
           ) : (
             <ul className="space-y-2 text-xs">
               {backlinks.data.map((b, i) => (
@@ -178,13 +181,13 @@ export function MarkdownReader({ docId }: { docId: string }) {
           )}
         </section>
       </div>
-      <nav className="order-first h-fit text-xs xl:sticky xl:top-20 xl:order-none" aria-label="Mục lục văn bản">
-        <h3 className="mb-1 font-semibold uppercase tracking-wide text-slate-500">Mục lục</h3>
+      <nav className="order-first h-fit text-xs xl:sticky xl:top-20 xl:order-none" aria-label={t("md.outlineAria")}>
+        <h3 className="mb-1 font-semibold uppercase tracking-wide text-slate-500">{t("md.outline")}</h3>
         <ul className="flex flex-wrap gap-1 xl:block xl:space-y-1">
           {outline.map((o) => (
             <li key={o.anchor}>
               <button className="rounded px-1 py-0.5 text-left text-brand-700 hover:bg-brand-50 dark:text-brand-300 dark:hover:bg-slate-800" onClick={() => open(docId, o.anchor)}>
-                Điều {o.number}{o.title ? `. ${o.title}` : ""}
+                {o.title ? t("md.articleTitle", { n: o.number, title: o.title }) : t("md.article", { n: o.number })}
               </button>
             </li>
           ))}

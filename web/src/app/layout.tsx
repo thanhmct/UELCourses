@@ -1,19 +1,20 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import { Header } from "@/components/Header";
+import { BottomNav, Header, SideNav } from "@/components/Header";
+import { AppFooter } from "@/components/AppFooter";
 import { FeedbackWidget } from "@/components/FeedbackWidget";
 import { CommandPalette } from "@/components/CommandPalette";
 import { ThemeApplier, themeInitScript } from "@/components/ThemeApplier";
 import { PwaRegister } from "@/components/PwaRegister";
 
 export const metadata: Metadata = {
-  title: { default: "UELPlan — Lập kế hoạch học tập UEL", template: "%s · UELPlan" },
+  title: { default: "UELCourses — Lập kế hoạch học tập UEL", template: "%s · UELCourses" },
   description: "Tra cứu học phần, xếp thời khóa biểu, lập kế hoạch nhiều học kỳ và hỏi đáp quy chế học vụ cho sinh viên UEL.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "UELPlan",
+    title: "UELCourses",
   },
 };
 
@@ -32,10 +33,12 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body className="min-h-screen">
         <ThemeApplier />
         <Header />
-        <main className="mx-auto max-w-7xl px-4 py-6 pb-24">{children}</main>
-        <footer className="border-t border-slate-200 py-6 text-center text-xs text-slate-500 dark:border-slate-800">
-          UELPlan — dự án khóa luận, không phải sản phẩm chính thức của Trường ĐH Kinh tế – Luật.
-        </footer>
+        <SideNav />
+        <div className="md:pl-[170px]">
+          <main className="mx-auto max-w-[1400px] px-3 py-4 pb-24 md:px-5">{children}</main>
+          <AppFooter />
+        </div>
+        <BottomNav />
         <FeedbackWidget />
         <CommandPalette />
         <PwaRegister />

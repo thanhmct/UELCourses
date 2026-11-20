@@ -32,7 +32,7 @@ export const useSettings = create<SettingsState>()(
       setMajor: (major) => set({ major }),
       setTheme: (theme) => set({ theme }),
     }),
-    { name: "uelplan-settings" },
+    { name: "uelcourses-settings" },
   ),
 );
 
@@ -92,7 +92,7 @@ export const useTimetable = create<TimetableState>()(
           const used = new Set(list.map((e) => e.color));
           const color = PALETTE.findIndex((_, i) => !used.has(i));
           return {
-            info: { ...s.info, [m.code]: { code: m.code, name: m.name, credits: m.credits } },
+            info: { ...s.info, [m.code]: { code: m.code, name: m.name, name_en: m.name_en ?? null, credits: m.credits } },
             ...updateEntries(s, (e) => [...e, { code: m.code, class_code: classCode, color: color === -1 ? list.length % PALETTE.length : color, hidden: false }]),
           };
         }),
@@ -111,7 +111,7 @@ export const useTimetable = create<TimetableState>()(
             activeDrafts: { ...(s.activeDrafts || {}), [semester]: draftName },
           };
         }),
-      rememberInfo: (m) => set((s) => ({ info: { ...s.info, [m.code]: { code: m.code, name: m.name, credits: m.credits } } })),
+      rememberInfo: (m) => set((s) => ({ info: { ...s.info, [m.code]: { code: m.code, name: m.name, name_en: m.name_en ?? null, credits: m.credits } } })),
       switchDraft: (semester, draftName) =>
         set((s) => {
           const semDrafts = s.drafts?.[semester] || { "Phương án 1": s.bySemester[semester] ?? [] };
@@ -165,7 +165,7 @@ export const useTimetable = create<TimetableState>()(
           };
         }),
     }),
-    { name: "uelplan-timetable" },
+    { name: "uelcourses-timetable" },
   ),
 );
 
@@ -223,15 +223,15 @@ export const usePlanner = create<PlannerStore>()(
           terms: s.terms.map((t) => ({ ...t, modules: t.modules.map((c) => (c === oldCode ? m.code : c)) })),
         })),
     }),
-    { name: "uelplan-planner" },
+    { name: "uelcourses-planner" },
   ),
 );
 
 export const LOCAL_KEYS = [
-  "uelplan-settings",
-  "uelplan-timetable",
-  "uelplan-planner",
-  "uelplan-feedback-queue",
-  "uelplan-reg-workspace",
-  "uelplan-reg-notes",
+  "uelcourses-settings",
+  "uelcourses-timetable",
+  "uelcourses-planner",
+  "uelcourses-feedback-queue",
+  "uelcourses-reg-workspace",
+  "uelcourses-reg-notes",
 ];

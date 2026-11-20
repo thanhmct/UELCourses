@@ -59,10 +59,10 @@ export function buildIcs(sections: ClassSection[], opts: IcsOptions = {}): strin
   const lines: string[] = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//UELPlan//Timetable//VI",
+    "PRODID:-//UELCourses//Timetable//VI",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
-    `X-WR-CALNAME:${escapeText(opts.calendarName ?? "Thời khóa biểu UELPlan")}`,
+    `X-WR-CALNAME:${escapeText(opts.calendarName ?? "Thời khóa biểu UELCourses")}`,
     "X-WR-TIMEZONE:Asia/Ho_Chi_Minh",
   ];
   for (const sec of sections) {
@@ -78,7 +78,7 @@ export function buildIcs(sections: ClassSection[], opts: IcsOptions = {}): strin
         : [first];
       dates.forEach((d, k) => {
         if (end && d.getTime() > end.getTime()) return;
-        const uid = `${sec.module_code}-${sec.class_code}-${idx}-${k}@uelplan`;
+        const uid = `${sec.module_code}-${sec.class_code}-${idx}-${k}@uelcourses`;
         lines.push("BEGIN:VEVENT");
         lines.push(`UID:${escapeText(uid)}`);
         lines.push(`DTSTAMP:${utcStamp(now)}`);

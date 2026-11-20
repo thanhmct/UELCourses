@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -8,11 +8,11 @@ import { useApi } from "@/lib/useApi";
 import { useMounted } from "@/lib/useMounted";
 import { COHORTS, useSettings } from "@/lib/store";
 import { useWorkspace } from "@/lib/workspace";
-import { STATUS_LABEL } from "@/lib/regulations";
+import { useT } from "@/i18n";
 import type { GraphEdgeType, RegulationStatus } from "@/lib/types";
 import { Empty, Loading, PageHeader } from "@/components/ui";
 
-const ForceGraph2D = dynamic(() => import("react-force-graph-2d"), { ssr: false, loading: () => <Loading text="Đang vẽ đồ thị…" /> });
+const ForceGraph2D = dynamic(() => import("react-force-graph-2d"), { ssr: false, loading: () => <Loading /> });
 
 const STATUS_COLOR: Record<RegulationStatus, string> = {
   active: "#16a34a",
@@ -20,11 +20,11 @@ const STATUS_COLOR: Record<RegulationStatus, string> = {
   superseded: "#64748b",
   upcoming: "#0284c7",
 };
-const EDGE_STYLE: Record<GraphEdgeType, { color: string; label: string; dash?: number[] }> = {
-  supersedes: { color: "#dc2626", label: "Thay thế" },
-  amends: { color: "#d97706", label: "Sửa đổi", dash: [4, 2] },
-  references: { color: "#7c3aed", label: "Dẫn chiếu", dash: [2, 2] },
-  guides: { color: "#0891b2", label: "Hướng dẫn", dash: [6, 3] },
+const EDGE_STYLE: Record<GraphEdgeType, { color: string; labelKey: string; dash?: number[] }> = {
+  supersedes: { color: "#dc2626", labelKey: "graph.supersedes" },
+  amends: { color: "#d97706", labelKey: "graph.amends", dash: [4, 2] },
+  references: { color: "#7c3aed", labelKey: "graph.references", dash: [2, 2] },
+  guides: { color: "#0891b2", labelKey: "graph.guides", dash: [6, 3] },
 };
 
 interface GNode {
@@ -37,6 +37,7 @@ interface GNode {
 }
 
 export default function RegulationGraphPage() {
+  const { t } = useT();
   const mounted = useMounted();
   const router = useRouter();
   const savedCohort = useSettings((s) => s.cohort);
@@ -69,31 +70,31 @@ export default function RegulationGraphPage() {
   return (
     <div>
       <PageHeader
-        title="Đồ thị văn bản"
-        subtitle="Quan hệ thay thế, sửa đổi, dẫn chiếu giữa các văn bản. Bấm vào một nút để mở văn bản."
+        title={t("graph.title")}
+        subtitle={t("graph.sub")}
         actions={
           <>
-            <select className="input w-auto" value={cohort} onChange={(e) => setCohort(e.target.value)} aria-label="Lọc theo khóa">
-              <option value="">Mọi khóa</option>
+            <select className="input w-auto" value={cohort} onChange={(e) => setCohort(e.target.value)} aria-label={t("reg.cohortFilter")}>
+              <option value="">{t("reg.allCohorts")}</option>
               {COHORTS.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
-            <Link href="/regulations" className="btn-outline">← Không gian văn bản</Link>
+            <Link href="/regulations" className="btn-outline">{t("graph.back")}</Link>
           </>
         }
       />
       <div className="mb-3 flex flex-wrap gap-4 text-xs">
         {(Object.keys(STATUS_COLOR) as RegulationStatus[]).map((s) => (
-          <span key={s} className="flex items-center gap-1"><span className="h-3 w-3 rounded-full" style={{ background: STATUS_COLOR[s] }} />{STATUS_LABEL[s]}</span>
+          <span key={s} className="flex items-center gap-1"><span className="h-3 w-3 rounded-full" style={{ background: STATUS_COLOR[s] }} />{t(`rbadge.${s}`)}</span>
         ))}
-        {(Object.keys(EDGE_STYLE) as GraphEdgeType[]).map((t) => (
-          <span key={t} className="flex items-center gap-1">
-            <svg width="24" height="6"><line x1="0" y1="3" x2="24" y2="3" stroke={EDGE_STYLE[t].color} strokeWidth="2" strokeDasharray={EDGE_STYLE[t].dash?.join(" ")} /></svg>
-            {EDGE_STYLE[t].label}
+        {(Object.keys(EDGE_STYLE) as GraphEdgeType[]).map((k) => (
+          <span key={k} className="flex items-center gap-1">
+            <svg width="24" height="6"><line x1="0" y1="3" x2="24" y2="3" stroke={EDGE_STYLE[k].color} strokeWidth="2" strokeDasharray={EDGE_STYLE[k].dash?.join(" ")} /></svg>
+            {t(EDGE_STYLE[k].labelKey)}
           </span>
         ))}
       </div>
       <div ref={wrapRef} className="card overflow-hidden p-0">
-        {!mounted || graph.loading ? <Loading /> : !data.nodes.length ? <Empty>Không có văn bản cho khóa này.</Empty> : (
+        {!mounted || graph.loading ? <Loading /> : !data.nodes.length ? <Empty>{t("graph.empty")}</Empty> : (
           <ForceGraph2D
             width={size.w}
             height={size.h}
@@ -102,7 +103,7 @@ export default function RegulationGraphPage() {
             nodeId="id"
             nodeLabel={(n) => {
               const node = n as GNode;
-              return `${node.label}${node.status ? ` — ${STATUS_LABEL[node.status]}` : ""}`;
+              return `${node.label}${node.status ? ` — ${t(`rbadge.${node.status}`)}` : ""}`;
             }}
             linkColor={(l) => EDGE_STYLE[(l as { type: GraphEdgeType }).type]?.color ?? "#94a3b8"}
             linkLineDash={(l) => EDGE_STYLE[(l as { type: GraphEdgeType }).type]?.dash ?? null}

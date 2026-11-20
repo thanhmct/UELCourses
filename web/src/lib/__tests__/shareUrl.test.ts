@@ -13,8 +13,8 @@ describe("share URL", () => {
     expect(decodeTimetable(encodeTimetable(t))).toEqual(t);
   });
   it("builds a full URL", () => {
-    const url = buildShareUrl("https://uelplan.local/", "/timetable", t);
-    expect(url.startsWith("https://uelplan.local/timetable?sem=261&m=")).toBe(true);
+    const url = buildShareUrl("https://uelcourses.local/", "/timetable", t);
+    expect(url.startsWith("https://uelcourses.local/timetable?sem=261&m=")).toBe(true);
     expect(decodeTimetable(new URL(url).search)).toEqual(t);
   });
   it("returns null without a semester and tolerates junk", () => {

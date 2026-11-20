@@ -7,6 +7,8 @@ Chỉ đọc các trường trên — trường cá nhân (IsPass, điểm, ...)
 
 from __future__ import annotations
 
+from app.services.legacy import skip_legacy_code, skip_old_program
+
 import re
 from collections import Counter
 from typing import Any
@@ -71,6 +73,9 @@ def import_ctdt(db: Session, payload: Any, *, is_sample: bool = False) -> Import
     n_rel = 0
     for pid, rows in programs.items():
         pid = pid[:64]
+        if skip_old_program(cohort_of(pid)):  # khóa cũ (K19–K22): không nạp
+            ctx.skipped += len(rows)
+            continue
         prog = db.get(Program, pid) or Program(id=pid)
         if prog not in db:
             db.add(prog)
@@ -92,7 +97,7 @@ def import_ctdt(db: Session, payload: Any, *, is_sample: bool = False) -> Import
         relations: set[tuple[str, str, str]] = set()
         for r in rows:
             code = clip(get_ci(r, "MaHP"), 64)
-            if not code:
+            if not code or skip_legacy_code(code):
                 ctx.skipped += 1
                 continue
             ctx.module(code, name=clip(get_ci(r, "TenHP"), 512), credits=to_int(get_ci(r, "STC")),

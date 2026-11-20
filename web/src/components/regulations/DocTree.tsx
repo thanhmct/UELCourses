@@ -4,6 +4,7 @@ import type { RegulationDoc } from "@/lib/types";
 import { effectiveBadge, type EffectiveBadge } from "@/lib/regulations";
 import { matches } from "@/lib/text";
 import { EffectiveBadgeChip } from "@/components/ui";
+import { useT } from "@/i18n";
 
 export interface TreeGroup {
   topic: string;
@@ -34,6 +35,7 @@ export function groupDocs(docs: RegulationDoc[]): TreeGroup[] {
 type Filter = "all" | "valid" | EffectiveBadge;
 
 export function DocTree({ docs, active, onOpen }: { docs: RegulationDoc[]; active: string | null; onOpen: (id: string) => void }) {
+  const { t } = useT();
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
@@ -49,17 +51,17 @@ export function DocTree({ docs, active, onOpen }: { docs: RegulationDoc[]; activ
 
   return (
     <div className="space-y-2 text-sm">
-      <input className="input" placeholder="Tìm văn bản…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Tìm văn bản" />
-      <select className="input" value={filter} onChange={(e) => setFilter(e.target.value as Filter)} aria-label="Lọc hiệu lực">
-        <option value="all">Mọi trạng thái</option>
-        <option value="valid">Đang có hiệu lực</option>
-        <option value="expiring">Sắp hết hiệu lực</option>
-        <option value="expired">Hết hiệu lực</option>
-        <option value="superseded">Bị thay thế</option>
-        <option value="upcoming">Chưa có hiệu lực</option>
+      <input className="input" placeholder={t("dt.search")} value={q} onChange={(e) => setQ(e.target.value)} aria-label={t("dt.searchAria")} />
+      <select className="input" value={filter} onChange={(e) => setFilter(e.target.value as Filter)} aria-label={t("dt.status")}>
+        <option value="all">{t("dt.all")}</option>
+        <option value="valid">{t("dt.valid")}</option>
+        <option value="expiring">{t("dt.expiring")}</option>
+        <option value="expired">{t("dt.expired")}</option>
+        <option value="superseded">{t("dt.superseded")}</option>
+        <option value="upcoming">{t("dt.upcoming")}</option>
       </select>
-      {groups.length === 0 && <p className="py-4 text-center text-xs text-slate-500">Không có văn bản.</p>}
-      <ul className="space-y-2" role="tree" aria-label="Cây văn bản">
+      {groups.length === 0 && <p className="py-4 text-center text-xs text-slate-500">{t("dt.none")}</p>}
+      <ul className="space-y-2" role="tree" aria-label={t("dt.aria")}>
         {groups.map((g) => (
           <li key={g.topic} role="treeitem" aria-expanded={!collapsed[g.topic]} aria-selected={false}>
             <button className="flex w-full items-center gap-1 text-left text-xs font-semibold uppercase tracking-wide text-slate-500" onClick={() => setCollapsed((c) => ({ ...c, [g.topic]: !c[g.topic] }))}>

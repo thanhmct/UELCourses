@@ -29,12 +29,14 @@ SUNDAY = 8
 class ParsedLesson:
     weekday: int
     start_period: int
-    end_period: int
+    end_period: float  # số nguyên, hoặc x.5 cho tiết nửa
     start_time: str
     end_time: str
     room: str | None = None
     weeks: str | None = None
     raw: str | None = None
+    date_start: str | None = None  # ISO yyyy-mm-dd: ngày đầu của buổi (lặp hằng tuần) hoặc ngày duy nhất
+    date_end: str | None = None    # ISO yyyy-mm-dd: ngày cuối; bằng date_start nếu buổi chỉ diễn ra một lần
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -77,7 +79,7 @@ _WEEKDAY_RE = re.compile(
     r"\b(?:thu|t)\s*[:.]?\s*(2|3|4|5|6|7|hai|ba|tu|bon|nam|sau|bay)\b|\b(cn|chu\s*nhat)\b"
 )
 _RANGE_SEP = r"\s*(?:-|–|—|→|->|~|den|toi)\s*"
-_PERIOD_RANGE_RE = re.compile(r"tiet\s*(?:hoc)?\s*[:.]?\s*(\d{1,2})" + _RANGE_SEP + r"(\d{1,2})\b")
+_PERIOD_RANGE_RE = re.compile(r"tiet\s*(?:hoc)?\s*[:.]?\s*(\d{1,2})" + _RANGE_SEP + r"(\d{1,2}(?:[.,]5)?)\b")
 _PERIOD_LIST_RE = re.compile(r"tiet\s*(?:hoc)?\s*[:.]?\s*(\d{1,2}(?:\s*,\s*\d{1,2})+)")
 _PERIOD_START_RE = re.compile(r"tiet\s*bat\s*dau\s*[:=]?\s*(\d{1,2})")
 _PERIOD_COUNT_RE = re.compile(r"so\s*tiet\s*[:=]?\s*(\d{1,2})")
@@ -85,12 +87,29 @@ _PERIOD_SINGLE_RE = re.compile(r"tiet\s*[:.]?\s*(\d{1,2})\b")
 _BARE_RANGE_RE = re.compile(r"(?<![\d./:])(\d{1,2})\s*(?:-|–|—|→|->|~)\s*(\d{1,2})(?![\d./:])")
 _TIME_RANGE_RE = re.compile(r"(\d{1,2})\s*[:h]\s*(\d{2})\s*(?:-|–|—|→|->|~|den)\s*(\d{1,2})\s*[:h]\s*(\d{2})")
 _WEEKS_RE = re.compile(r"\btuan\s*(?:hoc)?\s*[:.]?\s*(\d[\d\s,\-–]*)")
-_ROOM_PHONG_RE = re.compile(r"\bphong\s*(?:hoc)?\s*[:.]?\s*([^\s,;()]+)")
+# Tên phòng có thể gồm nhiều từ ("DMA B3.1", "Online 001"): lấy đến dấu phân cách kế tiếp.
+_ROOM_PHONG_RE = re.compile(r"\bphong\s*(?:hoc)?\s*[:.]?\s*([^\s,;()][^,;()]*)")
 _ROOM_P_RE = re.compile(r"\bp(?:\.\s*([a-z0-9][\w.\-/]*)|(?::\s*|\s+)([a-z0-9][\w.\-/]*\d[\w.\-/]*))")
 _ROOM_HALL_RE = re.compile(r"\bhoi\s*truong(?:\s+[a-z0-9][\w.\-]*)?")
 _ROOM_ONLINE_RE = re.compile(r"\b(online|truc\s*tuyen|e-?learning|ms\s*teams|zoom)\b")
 _ROOM_CODE_RE = re.compile(r"(?<![\w.])([A-Za-z]{1,2}\d{0,2}[.\-]\d{2,4}[A-Za-z]?)(?![\w])")
-_DATE_RE = re.compile(r"\d{1,4}[/.\-]\d{1,2}[/.\-]\d{1,4}")
+# Ngày bắt buộc có năm 4 chữ số (dd/mm/yyyy hoặc yyyy-mm-dd); tránh nhầm "8-11.5" (tiết 8 đến 11,5).
+_DATE_RE = re.compile(r"\d{1,2}[/.\-]\d{1,2}[/.\-]\d{4}|\d{4}[/.\-]\d{1,2}[/.\-]\d{1,2}")
+
+
+def _iso_date(text: str) -> str | None:
+    """'15/11/2026' hoặc '2026-11-15' -> '2026-11-15'."""
+    m = re.fullmatch(r"(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{4})", text.strip())
+    if m:
+        return f"{m.group(3)}-{int(m.group(2)):02d}-{int(m.group(1)):02d}"
+    m = re.fullmatch(r"(\d{4})[/.\-](\d{1,2})[/.\-](\d{1,2})", text.strip())
+    return f"{m.group(1)}-{int(m.group(2)):02d}-{int(m.group(3)):02d}" if m else None
+
+
+def _num_period(text: str):
+    """'5' -> 5; '5.5' hoặc '5,5' -> 5.5."""
+    v = float(text.replace(',', '.'))
+    return int(v) if v.is_integer() else v
 
 
 def _clean_room(text: str) -> str:
@@ -161,6 +180,7 @@ def parse_segment(segment: str) -> ParsedLesson | None:
     if m:
         weeks = re.sub(r"\s+", "", m.group(1)).strip(",-–") or None
         work = _blank(work, m.span())
+    found_dates = [_iso_date(dm.group(0)) for dm in _DATE_RE.finditer(work)]
     for dm in list(_DATE_RE.finditer(work)):
         work = _blank(work, dm.span())
 
@@ -192,7 +212,7 @@ def parse_segment(segment: str) -> ParsedLesson | None:
         work = _blank(work, m.span())
 
     if (m := _PERIOD_RANGE_RE.search(work)) is not None:
-        start, end = int(m.group(1)), int(m.group(2))
+        start, end = int(m.group(1)), _num_period(m.group(2))
         work = _blank(work, m.span())
     elif (m := _PERIOD_LIST_RE.search(work)) is not None:
         nums = [int(x) for x in re.findall(r"\d+", m.group(1))]
@@ -227,7 +247,11 @@ def parse_segment(segment: str) -> ParsedLesson | None:
         start = period_from_time(start_time)
         end = period_from_time(end_time, end=True)
 
-    return _make_lesson(weekday, start, end, room, weeks, original, start_time, end_time)
+    lesson = _make_lesson(weekday, start, end, room, weeks, original, start_time, end_time)
+    if lesson is not None and found_dates:
+        lesson.date_start = found_dates[0]
+        lesson.date_end = found_dates[1] if len(found_dates) > 1 else found_dates[0]
+    return lesson
 
 
 def _split_string(text: str) -> list[str]:

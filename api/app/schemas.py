@@ -34,16 +34,30 @@ class OfferingPlanOut(BaseModel):
     open_pct: float | None = None
 
 
+class OpenSemester(BaseModel):
+    semester: str
+    classes: int = Field(description="Số lớp học phần mở trong học kỳ")
+
+
 class ModuleSummary(BaseModel):
     code: str
     name: str
+    name_en: str | None = Field(None, description="Tên tiếng Anh (đề cương > catalog > bảng đối chiếu); None nếu chưa có")
     credits: int | None = None
     type: str | None = None
     faculty: str | None = None
     department: str | None = None
+    description: str | None = Field(None, description="Mô tả học phần (từ DB; nếu trống thì lấy từ đề cương đã phân tích)")
+    outline_url: str | None = Field(None, description="Link trực tiếp tới file PDF đề cương (Google Drive) của học phần")
     is_english: bool = False
     has_equivalents: bool = False
     offering_plan: list[OfferingPlanOut] = []
+    language_track: str = Field('vi', description="'en' = dạy bằng tiếng Anh (mã EXX### hoặc tên có (E), gồm môn CNTN tiếng Anh); 'vi' = tiếng Việt")
+    language_basis: str | None = Field(None, description="Căn cứ phân loại: code_and_name | code_pattern | name_marker | cntn_confirmed | default")
+    is_talent_program: bool = Field(False, description="Môn thuộc chương trình Cử nhân tài năng (CNTN)")
+    counterpart_code: str | None = Field(None, description="Mã bản Anh<->Việt tương ứng (EEE1038 <-> BEE1038)")
+    open_semesters: list[OpenSemester] = Field([], description="Học kỳ có lớp mở + số lớp")
+    has_outline: bool = Field(False, description="Có đề cương chi tiết đã phân tích (xem /modules/{code}/outline)")
     is_sample: bool = False
 
 
@@ -64,11 +78,13 @@ class ModuleDetail(ModuleSummary):
 class LessonOut(BaseModel):
     weekday: int = Field(description="2=Thứ 2 ... 7=Thứ 7, 8=Chủ nhật")
     start_period: int
-    end_period: int
+    end_period: float = Field(description="Tiết kết thúc; x.5 = tiết nửa")
     start_time: str
     end_time: str
     room: str | None = None
     weeks: str | None = None
+    date_start: date | None = Field(default=None, description="Ngày đầu của buổi (vd 2026-09-09)")
+    date_end: date | None = Field(default=None, description="Ngày cuối; bằng date_start nếu buổi chỉ diễn ra một lần")
 
 
 class ClassRoom(BaseModel):
@@ -160,6 +176,7 @@ class ProgramSummary(BaseModel):
 class ProgramModuleOut(BaseModel):
     code: str
     name: str | None = None
+    name_en: str | None = None
     credits: int | None = None
     required: bool = True
     suggested_term: str | None = None
@@ -190,6 +207,7 @@ class ProgramDetail(BaseModel):
 class GraphNode(BaseModel):
     code: str
     name: str | None = None
+    name_en: str | None = None
     credits: int | None = None
     required: bool | None = None
     suggested_term: str | None = None
@@ -213,6 +231,7 @@ class ProgramGraph(BaseModel):
 class TreeNode(BaseModel):
     code: str
     name: str | None = None
+    name_en: str | None = None
     type: str = Field(description="root | prereq | previous | coreq (quan hệ với nút cha)")
     children: list[TreeNode] = []
     cycle: bool = Field(False, description="True nếu nút này khép một chu trình (không mở rộng tiếp)")
@@ -316,3 +335,105 @@ class FeedbackStats(BaseModel):
     by_day: list[DayStat]
     rating_distribution: dict[str, int]
     items: list[FeedbackItem]
+
+
+# ---------------------------------------------------------------- facets & đề cương
+class FacetCount(BaseModel):
+    value: str
+    count: int
+
+
+class ModuleFacets(BaseModel):
+    total: int
+    language: list[FacetCount] = []
+    talent: list[FacetCount] = []
+    credits: list[FacetCount] = []
+    faculty: list[FacetCount] = []
+    department: list[FacetCount] = []
+    type: list[FacetCount] = []
+    semester: list[FacetCount] = Field([], description="Số HỌC PHẦN có lớp mở theo học kỳ")
+    has_outline: list[FacetCount] = []
+
+
+class OutlineDocumentInfo(BaseModel):
+    document_id: int
+    doc_type: str
+    parse_status: str
+    parse_method: str | None = None
+    pages: int | None = None
+    text_chars: int | None = None
+
+
+class OutlineCourseOut(BaseModel):
+    faculty: str | None = None
+    department: str | None = None
+    name_vi: str | None = None
+    name_en: str | None = None
+    course_code: str | None = None
+    knowledge_block: str | None = None
+    level: str | None = None
+    major: str | None = None
+    cohort_range: str | None = None
+    academic_year: str | None = None
+    term: str | None = None
+    credits: float | None = None
+    hours_lecture: float | None = None
+    hours_practice: float | None = None
+    hours_self_study: float | None = None
+    prerequisite_raw: str | None = None
+    previous_raw: str | None = None
+    next_raw: str | None = None
+    corequisite_raw: str | None = None
+    teaching_language: str | None = None
+    lecturers: list[str] = []
+    assistants: list[str] = []
+    description: str | None = None
+
+
+class OutlineObjectiveOut(BaseModel):
+    code: str
+    description: str | None = None
+    clo_codes: list[str] = []
+    competency_level: str | None = None
+
+
+class OutlineCloOut(BaseModel):
+    code: str
+    description: str | None = None
+    teaching_levels: str | None = None
+
+
+class OutlineAssessmentOut(BaseModel):
+    component: str | None = None
+    item_code: str | None = None
+    item_name: str | None = None
+    clo_codes: list[str] = []
+    criteria: str | None = None
+    duration: str | None = None
+    weight_pct: float | None = None
+    sub_weight_pct: float | None = None
+
+
+class OutlineScheduleOut(BaseModel):
+    week_label: str | None = None
+    content: str | None = None
+    clo_codes: list[str] = []
+    activities: str | None = None
+    assessment: str | None = None
+
+
+class OutlineMaterialOut(BaseModel):
+    kind: str
+    citation: str
+
+
+class OutlineOut(BaseModel):
+    module_code: str
+    document: OutlineDocumentInfo
+    course: OutlineCourseOut
+    objectives: list[OutlineObjectiveOut] = []
+    clos: list[OutlineCloOut] = []
+    assessments: list[OutlineAssessmentOut] = []
+    schedule: list[OutlineScheduleOut] = []
+    materials: list[OutlineMaterialOut] = []
+    alternatives: list[OutlineDocumentInfo] = Field([], description="Các đề cương khác của cùng học phần (bản Anh/Việt, khóa khác)")

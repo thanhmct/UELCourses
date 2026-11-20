@@ -1,1 +1,1 @@
-"""UELPlan backend (FastAPI)."""
+"""UELCourses backend (FastAPI)."""

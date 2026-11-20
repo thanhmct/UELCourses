@@ -1,10 +1,15 @@
-"use client";
+﻿"use client";
 import { useEffect } from "react";
 import { useSettings } from "@/lib/store";
+import { useLang } from "@/i18n";
 
-/** Applies the `dark` class on <html> from settings (system / light / dark). */
+/** Applies the `dark` class and the `lang` attribute on <html> from settings. */
 export function ThemeApplier() {
   const theme = useSettings((s) => s.theme);
+  const lang = useLang((s) => s.lang);
+  useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
   useEffect(() => {
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
     const apply = () => {
@@ -19,4 +24,4 @@ export function ThemeApplier() {
 }
 
 /** Inline script run before paint to avoid a flash of the wrong theme. */
-export const themeInitScript = `(function(){try{var s=JSON.parse(localStorage.getItem('uelplan-settings')||'{}');var t=(s.state&&s.state.theme)||'system';var d=t==='dark'||(t==='system'&&matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.classList.add('dark');}catch(e){}})();`;
+export const themeInitScript = `(function(){try{var s=JSON.parse(localStorage.getItem('uelcourses-settings')||'{}');var t=(s.state&&s.state.theme)||'system';var d=t==='dark'||(t==='system'&&matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.classList.add('dark');}catch(e){}})();`;

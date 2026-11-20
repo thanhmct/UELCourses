@@ -52,3 +52,20 @@ export function timeToPeriod(time: string): number | null {
   }
   return null;
 }
+
+/**
+ * Horizontal position of a clock time in period units (0 = start of period 1, 1 = start of period 2 ...).
+ * Start times snap to the period they fall in; end times use the same scale, so an end inside a
+ * period (e.g. "09:10") gives a fractional column ("tiết nửa") and an end in a break snaps to the previous period's end.
+ */
+export function timeToColumn(time: string): number | null {
+  const m = /^(\d{1,2})[:hH](\d{2})?/.exec(time.trim());
+  if (!m) return null;
+  const minutes = Number(m[1]) * 60 + Number(m[2] ?? 0);
+  for (let p = 1; p <= PERIOD_COUNT; p++) {
+    const s = startMin(p);
+    if (minutes < s) return p - 1;
+    if (minutes <= s + PERIOD_MINUTES) return p - 1 + (minutes - s) / PERIOD_MINUTES;
+  }
+  return PERIOD_COUNT;
+}

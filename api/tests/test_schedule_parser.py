@@ -51,7 +51,7 @@ def test_period_table_matches_real_timetable():
 
     starts = {1: "07:00", 2: "07:50", 4: "09:45", 7: "12:30", 8: "13:20", 10: "15:15"}
     assert {p: period_start_time(p) for p in starts} == starts
-    ends = {3: "09:30", 5: "11:25", 6: "12:15", 9: "15:00", 12: "17:45"}
+    ends = {3: "09:30", 5: "11:25", 6: "12:15", 9: "15:00", 12: "17:45", 4.5: "11:00", 10.5: "16:30"}
     assert {p: period_end_time(p) for p in ends} == ends
 
 

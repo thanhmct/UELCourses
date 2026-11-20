@@ -1,4 +1,4 @@
-# UELPlan — Kiến trúc & hợp đồng giữa các module
+# UELCourses — Kiến trúc & hợp đồng giữa các module
 
 Khóa luận: nền tảng lập kế hoạch học tập cho sinh viên UEL (lấy cảm hứng chức năng từ NUSMods, thương hiệu/giao diện riêng), kèm AI tra cứu quy chế học vụ dạng RAG. Phát triển theo **Design Thinking** (xem `research/`).
 

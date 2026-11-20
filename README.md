@@ -1,12 +1,12 @@
-# UELPlan — Nền tảng Kế hoạch Học tập & Trợ lý Quy chế UEL
+# UELCourses — Nền tảng Kế hoạch Học tập & Trợ lý Quy chế UEL
 
-> **UELPlan** là nền tảng số hỗ trợ sinh viên Trường Đại học Kinh tế – Luật (ĐHQG-HCM) trong việc tra cứu học phần, thiết kế lộ trình học tập, xếp thời khóa biểu không trùng lịch và tra cứu quy chế học vụ qua trợ lý AI trích dẫn chính xác.
+> **UELCourses** là nền tảng số hỗ trợ sinh viên Trường Đại học Kinh tế – Luật (ĐHQG-HCM) trong việc tra cứu học phần, thiết kế lộ trình học tập, xếp thời khóa biểu không trùng lịch và tra cứu quy chế học vụ qua trợ lý AI trích dẫn chính xác.
 
 ---
 
 ## 📌 Danh mục Nguồn Dữ Liệu & Liên Kết Thu Thập (Crawl Data)
 
-Dưới đây là tổng hợp toàn bộ các đường link, nguồn dữ liệu và API đã được sử dụng để khảo sát, trích xuất và nạp dữ liệu cho dự án UELPlan:
+Dưới đây là tổng hợp toàn bộ các đường link, nguồn dữ liệu và API đã được sử dụng để khảo sát, trích xuất và nạp dữ liệu cho dự án UELCourses:
 
 ### 1. Chương trình đào tạo (CTĐT) & Đề cương môn học (Google Drive)
 *Theo đúng yêu cầu, dữ liệu CTĐT và đề cương chi tiết được tiếp nhận và dẫn chiếu qua nguồn Google Drive:*
@@ -62,7 +62,7 @@ Dưới đây là tổng hợp toàn bộ các đường link, nguồn dữ li�
 
 ---
 
-## 🚀 Các Tính Năng Cốt Lõi Của UELPlan
+## 🚀 Các Tính Năng Cốt Lõi Của UELCourses
 
 1. **Tra cứu học phần ([`/modules`](web/src/app/modules/page.tsx))**:
    - Tìm kiếm theo mã/tên môn không dấu, lọc theo số tín chỉ, loại môn, khoa quản lý, môn dạy bằng tiếng Anh.

@@ -13,6 +13,8 @@ import type {
   FeedbackPayload,
   ModuleDetail,
   ModuleSummary,
+  ModuleFacets,
+  FacetCount,
   ModuleTreeNode,
   Paged,
   ProgramDetail,
@@ -141,17 +143,71 @@ function normalizeSection(x: unknown): ClassSection {
 
 // ---------- Endpoints ----------
 
+/** Filters accepted by GET /api/modules (all optional). */
+export type ModuleFilter = {
+  q?: string;
+  faculty?: string;
+  department?: string;
+  credits?: number | string;
+  type?: string;
+  /** "en" | "vi" */
+  language?: string;
+  is_english?: boolean;
+  /** "true" | "false" */
+  talent?: string;
+  has_outline?: string;
+  /** CTĐT, vd "K23406" (khóa 23, ngành 406) */
+  program_id?: string;
+  /** semester id, e.g. "2026-2027-1" */
+  semester?: string;
+  page?: number;
+  size?: number;
+};
+
+/** Syllabus payload from GET /api/modules/{code}/outline (loosely typed: fields may be missing). */
+export type OutlineData = {
+  module_code?: string;
+  document?: Record<string, unknown>;
+  course?: Record<string, unknown>;
+  objectives?: { code?: string; description?: string; clo_codes?: string[] }[];
+  clos?: { code?: string; description?: string; teaching_levels?: string }[];
+  assessments?: { component?: string; item_code?: string | null; item_name?: string | null; clo_codes?: string[]; criteria?: string; weight_pct?: number | null }[];
+  schedule?: { week_label?: string; content?: string; clo_codes?: string[]; activities?: string; assessment?: string }[];
+  materials?: { kind?: string; citation?: string }[];
+  alternatives?: unknown[];
+};
 export const api = {
-  health: () => withFallback<{ status: string }>("/api/health", () => ({ status: "mock" })),
+  moduleFacets: () => withFallback<ModuleFacets>("/api/module-facets", () => {
+    const counts = (vals: (m: ModuleSummary) => string[]): FacetCount[] => {
+      const map = new Map<string, number>();
+      for (const m of mockModules) for (const v of vals(m)) if (v) map.set(v, (map.get(v) ?? 0) + 1);
+      return [...map].map(([value, count]) => ({ value, count }));
+    };
+    return {
+      total: mockModules.length,
+      language: counts((m) => [m.is_english ? "en" : "vi"]),
+      talent: counts(() => []),
+      credits: counts((m) => [String(m.credits)]),
+      faculty: counts((m) => [m.faculty ?? ""]),
+      department: counts((m) => [m.department ?? ""]),
+      type: counts((m) => [m.type]),
+      semester: counts((m) => (m.offering_plan ?? []).flatMap((p) => p.terms.map((t) => `${p.academic_year}-${t}`))),
+      has_outline: counts(() => ["false"]),
+    };
+  }),  health: () => withFallback<{ status: string }>("/api/health", () => ({ status: "mock" })),
 
   semesters: () => withFallback<Semester[]>("/api/semesters", () => mockSemesters),
 
-  modules: (f: { q?: string; faculty?: string; credits?: number | string; type?: string; is_english?: boolean; page?: number; size?: number } = {}) =>
+  modules: (f: ModuleFilter = {}) =>
     withFallback<Paged<ModuleSummary>>(`/api/modules${qs(f)}`, () => {
       const items = mockModules.filter(
         (m) =>
           (matches(m.code, f.q ?? "") || matches(m.name, f.q ?? "")) &&
           (!f.is_english || !!m.is_english) &&
+          (!f.language || (f.language === "en") === !!m.is_english) &&
+          (!f.has_outline || f.has_outline === "true" ? true : !m.has_outline) &&
+          (!f.semester || (m.offering_plan ?? []).some((p) => p.terms.some((term) => `${p.academic_year}-${term}` === f.semester))) &&
+          (!f.department || m.department === f.department) &&
           (!f.faculty || m.faculty === f.faculty) &&
           (!f.credits || m.credits === Number(f.credits)) &&
           (!f.type || m.type === f.type),
@@ -160,6 +216,15 @@ export const api = {
       const page = f.page ?? 1;
       return { items: items.slice((page - 1) * size, page * size), total: items.length };
     }),
+
+  /** 404 (no syllabus yet) or any error -> null, never marks the app as sample data. */
+  outline: async (code: string): Promise<OutlineData | null> => {
+    try {
+      return await raw<OutlineData>(`/api/modules/${encodeURIComponent(code)}/outline`);
+    } catch {
+      return null;
+    }
+  },
 
   module: (code: string) =>
     withFallback<ModuleDetail | null>(`/api/modules/${encodeURIComponent(code)}`, () => mockModules.find((m) => m.code === code) ?? null),
@@ -193,7 +258,7 @@ export const api = {
       if (e instanceof ApiError && e.status === 422) throw e;
       // Keep locally so nothing is lost; can be re-sent later.
       try {
-        const key = "uelplan-feedback-queue";
+        const key = "uelcourses-feedback-queue";
         const q = JSON.parse(localStorage.getItem(key) ?? "[]");
         q.push({ ...payload, queued_at: new Date().toISOString() });
         localStorage.setItem(key, JSON.stringify(q));

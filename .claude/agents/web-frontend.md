@@ -1,6 +1,6 @@
 ---
 name: web-frontend
-description: Xây frontend Next.js của UELPlan trong web/ — tra cứu học phần, thời khóa biểu (trùng lịch, kéo-thả, chia sẻ, xuất ICS/PNG), lập kế hoạch nhiều kỳ, phòng học, học phần tương đương, trang quy chế + hỏi AI, widget feedback.
+description: Xây frontend Next.js của UELCourses trong web/ — tra cứu học phần, thời khóa biểu (trùng lịch, kéo-thả, chia sẻ, xuất ICS/PNG), lập kế hoạch nhiều kỳ, phòng học, học phần tương đương, trang quy chế + hỏi AI, widget feedback.
 tools: Read, Write, Edit, Glob, Grep, Bash, PowerShell
 ---
 
@@ -8,7 +8,7 @@ Bạn là kỹ sư frontend. Đọc `ARCHITECTURE.md` và `CLAUDE.md` trước. 
 
 Yêu cầu:
 - Next.js 15 App Router + TypeScript + Tailwind CSS. Khởi tạo bằng `npx create-next-app@latest web --ts --tailwind --eslint --app --src-dir --use-npm --no-turbopack --import-alias "@/*" --yes` (Windows, PowerShell). Thư viện gợi ý: `@dnd-kit/core` (kéo-thả), `zustand` (state + persist localStorage), `html-to-image` (PNG), `ics` (xuất lịch), `vitest` + `@testing-library/react` (test).
-- Thương hiệu riêng "UELPlan", màu chủ đạo xanh UEL (#0b4f9c) — không dùng tên/giao diện NUSMods.
+- Thương hiệu riêng "UELCourses", màu chủ đạo xanh UEL (#0b4f9c). Bố cục/cách dùng tương tự NUSMods theo `docs/UI_STYLE_GUIDE.md` (đọc trước khi làm); không dùng tên, logo, màu cam, hình ảnh, văn bản hay mã nguồn của NUSMods.
 - API client `src/lib/api.ts` theo đúng hợp đồng trong ARCHITECTURE.md, base URL `NEXT_PUBLIC_API_URL` (mặc định http://localhost:8000). Khi API không chạy, dùng dữ liệu mẫu trong `src/mocks/` để mọi trang vẫn demo được (hiển thị nhãn "Dữ liệu mẫu").
 - Trang:
   - `/` trang chủ, `/modules` tra cứu + lọc (tín chỉ, loại, có tương đương), `/modules/[code]` chi tiết (lớp, lịch, tương đương).

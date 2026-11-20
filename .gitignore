@@ -7,8 +7,12 @@ api/data/
 node_modules/
 .next/
 .next-preview/
+.next-ui/
 *.db
 .env
 .env.local
 *.log
 .next-preview/
+docs/CONTEXT_PACK.md
+reference/nusmodifications/
+.next-test/

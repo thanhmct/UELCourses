@@ -81,7 +81,7 @@ Ghi chú: câu in nghiêng là câu thăm dò (probe), chỉ dùng khi cần. Kh
 ## 5. Nguyên tắc khi phỏng vấn
 
 - Hỏi về **quá khứ cụ thể** ("lần gần nhất…") thay vì giả định ("bạn có muốn…?").
-- Không gợi ý câu trả lời, không giới thiệu UELPlan trước mục 4.5.
+- Không gợi ý câu trả lời, không giới thiệu UELCourses trước mục 4.5.
 - Dùng im lặng và "Bạn có thể nói thêm về…?"; hỏi "Tại sao?" đến khi chạm tới động cơ.
 - Ghi lại **nguyên văn** những câu nói đắt giá (quote) và các mâu thuẫn giữa lời nói và hành động.
 - Chú ý cảm xúc (lo lắng, bực bội, nhẹ nhõm) – đầu vào cho đường cảm xúc của journey map.

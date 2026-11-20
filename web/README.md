@@ -1,6 +1,6 @@
-# UELPlan Frontend (web/)
+# UELCourses Frontend (web/)
 
-Frontend Next.js 15 của dự án UELPlan — Nền tảng lập kế hoạch học tập, xếp thời khóa biểu và tra cứu quy chế dành cho sinh viên Trường Đại học Kinh tế – Luật (UEL).
+Frontend Next.js 15 của dự án UELCourses — Nền tảng lập kế hoạch học tập, xếp thời khóa biểu và tra cứu quy chế dành cho sinh viên Trường Đại học Kinh tế – Luật (UEL).
 
 ## 🚀 Tính năng đã hoàn thiện
 

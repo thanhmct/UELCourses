@@ -1,6 +1,6 @@
 {
-  "name": "UELPlan — Nền tảng học tập UEL",
-  "short_name": "UELPlan",
+  "name": "UELCourses — Nền tảng học tập UEL",
+  "short_name": "UELCourses",
   "description": "Thời khóa biểu, kế hoạch học tập nhiều kỳ và AI tra cứu quy chế học vụ cho sinh viên UEL",
   "start_url": "/",
   "display": "standalone",

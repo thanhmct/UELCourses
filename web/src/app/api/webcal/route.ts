@@ -7,7 +7,7 @@ import type { ClassSection } from "@/lib/types";
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const data = searchParams.get("data");
-  const name = searchParams.get("name") || "UELPlan Thời khóa biểu";
+  const name = searchParams.get("name") || "UELCourses Thời khóa biểu";
 
   // If no data param is given, try parsing from searchParams directly (e.g. ?sem=261&m=...)
   const decoded = data ? decodeTimetable(data) : decodeTimetable(searchParams);
@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
     status: 200,
     headers: {
       "Content-Type": "text/calendar; charset=utf-8",
-      "Content-Disposition": `inline; filename="uelplan-timetable.ics"`,
+      "Content-Disposition": `inline; filename="uelcourses-timetable.ics"`,
       "Cache-Control": "no-cache, no-store, must-revalidate",
     },
   });

@@ -1,4 +1,4 @@
-# UELPlan — cấu hình chạy production/staging.
+# UELCourses — cấu hình chạy production/staging.
 #   docker compose up -d --build
 # Phát triển (hot reload): docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 # Bật AI local (Ollama):   docker compose --profile ollama up -d

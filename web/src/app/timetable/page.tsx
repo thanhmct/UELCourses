@@ -1,5 +1,7 @@
-﻿"use client";
+"use client";
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ChevronDown, ChevronLeft, ChevronRight, Download, Eye, EyeOff, RefreshCw, RotateCcw, Share2, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useApi } from "@/lib/useApi";
 import { useMounted } from "@/lib/useMounted";
@@ -8,14 +10,16 @@ import { buildShareUrl, decodeTimetable, type SharedTimetable } from "@/lib/shar
 import { conflictKeys, findConflicts } from "@/lib/conflicts";
 import { totalCredits } from "@/lib/credits";
 import { buildIcs } from "@/lib/ics";
-import { PERIOD_COUNT, SESSION_BOUNDARIES, weekdayLabel } from "@/lib/periods";
+import { PERIOD_COUNT, SESSION_BOUNDARIES } from "@/lib/periods";
 import type { ClassSection } from "@/lib/types";
 import { seatsAvailable } from "@/lib/modules";
-import { Empty, Loading, PageHeader } from "@/components/ui";
+import { Empty, EnBadge, Loading } from "@/components/ui";
 import { ModuleSearch } from "@/components/ModuleSearch";
 import { TimetableGrid, type GridBlock } from "@/components/TimetableGrid";
 import { calculateWorkload } from "@/lib/workload";
 import { WebcalSyncModal } from "@/components/WebcalSyncModal";
+import { useT, weekdayName } from "@/i18n";
+import { moduleName } from "@/i18n/names";
 
 function download(name: string, href: string) {
   const a = document.createElement("a");
@@ -27,6 +31,7 @@ function download(name: string, href: string) {
 }
 
 export default function TimetablePage() {
+  const { t } = useT();
   const mounted = useMounted();
   const tt = useTimetable();
   const sems = useApi(() => api.semesters(), []);
@@ -35,18 +40,26 @@ export default function TimetablePage() {
   const [shareUrl, setShareUrl] = useState("");
   const [toast, setToast] = useState("");
   const [showWebcal, setShowWebcal] = useState(false);
+  const [showNames, setShowNames] = useState(true);
+  const [downOpen, setDownOpen] = useState(false);
+  const [pickerFor, setPickerFor] = useState<string | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
 
   const semester = tt.semester;
-  const activeDraft = tt.activeDrafts[semester] || "Phương án 1";
+  const activeDraft = tt.activeDrafts[semester] || "Phương án 1"; // store key, kept in Vietnamese for stored data
   const draftNames = Object.keys(tt.drafts[semester] || { [activeDraft]: tt.bySemester[semester] ?? [] });
   const entries = useMemo(() => tt.bySemester[semester] ?? [], [tt.bySemester, semester]);
   const sections = useMemo(() => (loaded.sem === semester ? loaded.data : {}), [loaded, semester]);
 
-  const flash = (t: string) => {
-    setToast(t);
+  const flash = useCallback((msg: string) => {
+    setToast(msg);
     setTimeout(() => setToast(""), 2500);
-  };
+  }, []);
+
+  const semLabel = useCallback(
+    (s: { term: number | string; year: number | string }) => t("semester.label", { term: s.term, year: String(s.year) }),
+    [t],
+  );
 
   // Default semester
   useEffect(() => {
@@ -110,7 +123,7 @@ export default function TimetablePage() {
     s.lessons.map((l, i) => ({
       key: `${s.module_code}#${i}`,
       code: s.module_code,
-      name: tt.info[s.module_code]?.name ?? s.module_code,
+      name: tt.info[s.module_code] ? moduleName(tt.info[s.module_code], lang) : s.module_code,
       class_code: s.class_code,
       lesson: l,
       color: colorOf(s.module_code),
@@ -130,8 +143,8 @@ export default function TimetablePage() {
     const url = buildShareUrl(window.location.origin, "/timetable", { semester, entries });
     setShareUrl(url);
     navigator.clipboard?.writeText(url).then(
-      () => flash("Đã sao chép liên kết chia sẻ"),
-      () => flash("Hãy sao chép liên kết bên dưới"),
+      () => flash(t("tt.copied")),
+      () => flash(t("tt.copyManual")),
     );
   }
 
@@ -140,15 +153,15 @@ export default function TimetablePage() {
     const { toPng } = await import("html-to-image");
     const dark = document.documentElement.classList.contains("dark");
     const url = await toPng(gridRef.current, { pixelRatio: 2, backgroundColor: dark ? "#0f172a" : "#ffffff" });
-    download(`uelplan-tkb-${semester}.png`, url);
+    download(`uelcourses-tkb-${semester}.png`, url);
   }
 
   function exportIcs() {
-    if (!selected.length) return flash("Chưa có lớp nào để xuất");
-    const names = Object.fromEntries(Object.values(tt.info).map((m) => [m.code, m.name]));
-    const ics = buildIcs(selected, { moduleNames: names, calendarName: `UELPlan ${semName}` });
+    if (!selected.length) return flash(t("tt.noClassesExport"));
+    const names = Object.fromEntries(Object.values(tt.info).map((m) => [m.code, moduleName(m, lang)]));
+    const ics = buildIcs(selected, { moduleNames: names, calendarName: `UELCourses ${semName}` });
     const url = URL.createObjectURL(new Blob([ics], { type: "text/calendar;charset=utf-8" }));
-    download(`uelplan-tkb-${semester}.ics`, url);
+    download(`uelcourses-tkb-${semester}.ics`, url);
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
@@ -157,217 +170,280 @@ export default function TimetablePage() {
     tt.replaceSemester(pendingImport.semester, pendingImport.entries);
     setPendingImport(null);
     window.history.replaceState(null, "", "/timetable");
-    flash("Đã nhập thời khóa biểu từ liên kết");
+    flash(t("tt.imported"));
   }
 
-  const semName = sems.data?.find((s) => s.id === semester)?.name ?? semester;
+  const semIdx = sems.data?.findIndex((s) => s.id === semester) ?? -1;
+  const stepSem = (d: number) => {
+    const n = sems.data?.[semIdx + d];
+    if (n) tt.setSemester(n.id);
+  };
+  const semName = sems.data?.find((s) => s.id === semester);
+  const semText = semName ? semLabel(semName) : semester;
 
   if (!mounted) return <Loading />;
 
   return (
-    <div>
-      <PageHeader
-        title="Thời khóa biểu"
-        subtitle="Thêm môn, chọn lớp, kéo một khối lịch để xem các lớp khác của cùng môn rồi thả vào lớp muốn đổi."
-        actions={
-          <>
-            <button className="btn-outline" onClick={() => setShowWebcal(true)}>Đồng bộ Webcal</button>
-            <button className="btn-outline" onClick={share}>Chia sẻ</button>
-            <button className="btn-outline" onClick={exportPng}>Xuất PNG</button>
-            <button className="btn-outline" onClick={exportIcs}>Xuất .ics</button>
-          </>
-        }
-      />
+    <div className="space-y-3">
+      {/* semester switcher */}
+      <div className="flex flex-wrap items-center justify-center gap-2">
+        <button className="btn-outline px-2" onClick={() => stepSem(-1)} disabled={semIdx <= 0} aria-label={t("tt.prevSem")}>
+          <ChevronLeft className="h-4 w-4" aria-hidden />
+        </button>
+        <select
+          id="sem"
+          className="input w-auto min-w-[16rem] text-center font-semibold"
+          value={semester}
+          onChange={(e) => tt.setSemester(e.target.value)}
+          aria-label={t("tt.selectSem")}
+        >
+          {sems.data?.map((s) => (
+            <option key={s.id} value={s.id}>{semLabel(s)}</option>
+          ))}
+        </select>
+        <button className="btn-outline px-2" onClick={() => stepSem(1)} disabled={semIdx < 0 || semIdx >= (sems.data?.length ?? 0) - 1} aria-label={t("tt.nextSem")}>
+          <ChevronRight className="h-4 w-4" aria-hidden />
+        </button>
+      </div>
+
       {pendingImport && (
-        <div className="card mb-4 flex flex-wrap items-center justify-between gap-2 border-brand-300 bg-brand-50 dark:bg-brand-900/30">
-          <p className="text-sm">
-            Liên kết chứa thời khóa biểu gồm <strong>{pendingImport.entries.length}</strong> môn cho học kỳ <strong>{pendingImport.semester}</strong>. Nhập sẽ thay thế TKB hiện tại của học kỳ đó.
-          </p>
+        <div className="card flex flex-wrap items-center justify-between gap-2 border-brand-300 bg-brand-50 dark:bg-brand-900/30">
+          <p className="text-sm">{t("tt.importText", { n: pendingImport.entries.length, sem: pendingImport.semester })}</p>
           <div className="flex gap-2">
-            <button className="btn-primary" onClick={acceptImport}>Nhập</button>
-            <button className="btn-ghost" onClick={() => { setPendingImport(null); window.history.replaceState(null, "", "/timetable"); }}>Bỏ qua</button>
+            <button className="btn-primary" onClick={acceptImport}>{t("tt.import")}</button>
+            <button className="btn-ghost" onClick={() => { setPendingImport(null); window.history.replaceState(null, "", "/timetable"); }}>{t("tt.skip")}</button>
           </div>
         </div>
       )}
       {shareUrl && (
-        <div className="mb-4 flex gap-2">
-          <input className="input font-mono text-xs" readOnly value={shareUrl} onFocus={(e) => e.target.select()} aria-label="Liên kết chia sẻ" />
-          <button className="btn-ghost" onClick={() => setShareUrl("")} aria-label="Ẩn liên kết">✕</button>
+        <div className="flex gap-2">
+          <input className="input font-mono text-xs" readOnly value={shareUrl} onFocus={(e) => e.target.select()} aria-label={t("tt.shareAria")} />
+          <button className="btn-ghost" onClick={() => setShareUrl("")} aria-label={t("tt.hideLink")}>✕</button>
         </div>
       )}
-      {toast && <div className="fixed bottom-20 left-1/2 z-50 -translate-x-1/2 rounded-lg bg-slate-900 px-4 py-2 text-sm text-white shadow-lg" role="status">{toast}</div>}
+      {toast && <div className="fixed bottom-20 left-1/2 z-50 -translate-x-1/2 rounded-md bg-slate-900 px-4 py-2 text-sm text-white shadow-lg md:bottom-6" role="status">{toast}</div>}
 
-      {/* Multiple Timetable Drafts Toolbar */}
-      <div className="card mb-4 flex flex-wrap items-center justify-between gap-3 bg-slate-50 p-2.5 dark:bg-slate-900">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-xs font-semibold text-slate-500 mr-1">Phương án:</span>
-          {draftNames.map((name) => (
-            <button
-              key={name}
-              onClick={() => tt.switchDraft(semester, name)}
-              className={`rounded-md px-3 py-1 text-xs font-semibold transition ${
-                name === activeDraft
-                  ? "bg-brand-600 text-white shadow-xs"
-                  : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-100 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300"
-              }`}
-            >
-              {name}
-            </button>
-          ))}
-          <button
-            onClick={() => {
-              const nextNum = draftNames.length + 1;
-              const name = prompt("Tên phương án mới:", `Phương án ${nextNum}`);
-              if (name && name.trim()) tt.createDraft(semester, name.trim(), false);
-            }}
-            className="rounded-md border border-dashed border-slate-300 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:border-brand-500 hover:text-brand-600 dark:border-slate-700 dark:text-slate-400"
-            title="Tạo phương án trống"
-          >
-            + Phương án mới
-          </button>
+      {conflicts.length > 0 && (
+        <div className="rounded-md border border-red-300 bg-red-50 p-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/50 dark:text-red-300" role="alert">
+          <strong>{t("tt.conflicts", { n: conflicts.length })}</strong>{" "}
+          {conflicts.slice(0, 5).map((c, i) => {
+            const l = selected.find((s) => s.module_code === c.a.module_code)?.lessons[c.a.lessonIndex];
+            return <span key={i} className="mr-2">{c.a.module_code} ↔ {c.b.module_code}{l ? ` (${weekdayName(t, l.weekday)})` : ""}</span>;
+          })}
         </div>
+      )}
 
-        <div className="flex items-center gap-2 text-xs">
-          <button
-            onClick={() => {
-              const name = prompt("Tên kịch bản nhân bản:", `${activeDraft} (Bản sao)`);
-              if (name && name.trim()) {
-                tt.createDraft(semester, name.trim(), true);
-                flash(`Đã nhân bản sang ${name.trim()}`);
-              }
-            }}
-            className="btn-outline text-xs py-1"
-            title="Tạo bản sao từ phương án hiện tại để thử đổi lớp dự phòng"
-          >
-            📋 Nhân bản
+      {/* grid + toolbar */}
+      <section className="min-w-0 space-y-2" aria-label={t("tt.title")}>
+        <TimetableGrid
+          ref={gridRef}
+          blocks={blocks}
+          alternatives={sections}
+          colors={colors}
+          showNames={showNames}
+          onChangeClass={(code, cls) => { tt.setClass(code, cls); flash(t("tt.changed", { code, cls })); }}
+        />
+        <p className="text-xs text-slate-500">
+          {t("tt.semInfo", {
+            sem: semText,
+            m: SESSION_BOUNDARIES.morningEnd,
+            m1: SESSION_BOUNDARIES.morningEnd + 1,
+            a: SESSION_BOUNDARIES.afternoonEnd,
+            a1: SESSION_BOUNDARIES.afternoonEnd + 1,
+            p: PERIOD_COUNT,
+          })}
+        </p>
+        {unscheduled.length > 0 && (
+          <p className="text-xs text-amber-600">{t("tt.unscheduled", { codes: unscheduled.map((e) => e.code).join(", ") })}</p>
+        )}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <button className="btn-outline" onClick={() => setShowNames((v) => !v)} aria-pressed={showNames}>
+            {showNames ? t("tt.hideNames") : t("tt.showNames")}
           </button>
-          {draftNames.length > 1 && (
+          <div className="flex flex-wrap gap-2">
+            <div className="relative">
+              <button className="btn-outline" onClick={() => setDownOpen((v) => !v)} aria-haspopup="menu" aria-expanded={downOpen}>
+                <Download className="h-4 w-4" aria-hidden /> {t("tt.download")} <ChevronDown className="h-3.5 w-3.5" aria-hidden />
+              </button>
+              {downOpen && (
+                <div className="absolute right-0 z-20 mt-1 w-40 rounded-md border border-slate-200 bg-white py-1 text-sm shadow-md dark:border-slate-700 dark:bg-slate-900" role="menu">
+                  <button role="menuitem" className="block w-full px-3 py-1.5 text-left hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => { setDownOpen(false); exportPng(); }}>{t("tt.png")}</button>
+                  <button role="menuitem" className="block w-full px-3 py-1.5 text-left hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => { setDownOpen(false); exportIcs(); }}>{t("tt.ics")}</button>
+                </div>
+              )}
+            </div>
+            <button className="btn-outline" onClick={share}><Share2 className="h-4 w-4" aria-hidden /> {t("tt.share")}</button>
+            <button className="btn-outline" onClick={() => setShowWebcal(true)}><RefreshCw className="h-4 w-4" aria-hidden /> {t("tt.sync")}</button>
             <button
+              className="btn-outline text-red-600"
               onClick={() => {
-                if (confirm(`Xóa kịch bản "${activeDraft}"?`)) {
-                  tt.deleteDraft(semester, activeDraft);
-                  flash("Đã xóa kịch bản");
-                }
+                if (entries.length && confirm(t("tt.confirmReset"))) tt.replaceSemester(semester, []);
               }}
-              className="btn-ghost text-xs text-red-500 hover:bg-red-50 py-1"
-              title="Xóa phương án này"
+              disabled={!entries.length}
             >
-              Xóa
+              <RotateCcw className="h-4 w-4" aria-hidden /> {t("tt.reset")}
             </button>
-          )}
-        </div>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
-        <aside className="space-y-4">
-          <div className="card space-y-3">
-            <div>
-              <label className="label" htmlFor="sem">Học kỳ</label>
-              <select id="sem" className="input" value={semester} onChange={(e) => tt.setSemester(e.target.value)}>
-                {sems.data?.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </select>
-            </div>
-            <ModuleSearch onPick={(m) => tt.addModule(m)} exclude={entries.map((e) => e.code)} />
-            <div className="flex items-center justify-between rounded-lg bg-slate-100 px-3 py-2 text-sm dark:bg-slate-800">
-              <span>Tổng tín chỉ</span>
-              <span className="font-bold">
-                {totalCredits(creditItems, false)}
-                {entries.some((e) => e.hidden) && <span className="font-normal text-slate-500"> / {totalCredits(creditItems)} (gồm môn ẩn)</span>}
-              </span>
-            </div>
-            <div className="flex items-center justify-between rounded-lg bg-slate-100 px-3 py-2 text-xs dark:bg-slate-800">
-              <span className="text-slate-500">Khối lượng (Workload)</span>
-              <span className="font-semibold text-brand-700 dark:text-brand-300">
-                ~{totalWorkloadHours} giờ/tuần
-              </span>
-            </div>
-            {conflicts.length > 0 && (
-              <div className="rounded-lg bg-red-50 p-2 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-300" role="alert">
-                <strong>{conflicts.length} chỗ trùng lịch:</strong>
-                <ul className="mt-1 list-disc pl-5">
-                  {conflicts.slice(0, 5).map((c, i) => {
-                    const l = selected.find((s) => s.module_code === c.a.module_code)?.lessons[c.a.lessonIndex];
-                    return <li key={i}>{c.a.module_code} ↔ {c.b.module_code}{l ? ` (${weekdayLabel(l.weekday)})` : ""}</li>;
-                  })}
-                </ul>
-              </div>
-            )}
           </div>
+        </div>
+      </section>
 
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_340px]">
+        {/* module list */}
+        <div className="card space-y-3">
+          <div>
+            <p className="label">{t("tt.addLabel")}</p>
+            <ModuleSearch onPick={(m) => tt.addModule(m)} exclude={entries.map((e) => e.code)} placeholder={t("tt.addPlaceholder")} />
+          </div>
           {entries.length === 0 ? (
-            <Empty>Chưa có môn nào. Tìm và thêm học phần ở ô phía trên.</Empty>
+            <Empty>{t("tt.emptyList")}</Empty>
           ) : (
-            <ul className="space-y-2">
+            <ul className="divide-y divide-slate-100 dark:divide-slate-800">
               {entries.map((e) => {
                 const info = tt.info[e.code];
                 const list = sections[e.code];
                 return (
-                  <li key={e.code} className={`card space-y-2 p-3 ${e.hidden ? "opacity-60" : ""}`}>
+                  <li key={e.code} className={`space-y-1.5 py-2 ${e.hidden ? "opacity-60" : ""}`}>
                     <div className="flex items-start gap-2">
-                      <span className="mt-1 h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: colorOf(e.code) }} />
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-semibold">{e.code} · {info?.name ?? "…"}</div>
-                        <div className="text-xs text-slate-500">{info?.credits ?? "?"} tín chỉ</div>
+                      <div className="relative">
+                        <button
+                          className="mt-0.5 h-5 w-5 shrink-0 rounded"
+                          style={{ backgroundColor: colorOf(e.code) }}
+                          onClick={() => setPickerFor(pickerFor === e.code ? null : e.code)}
+                          aria-label={t("tt.colorOf", { code: e.code })}
+                          aria-expanded={pickerFor === e.code}
+                        />
+                        {pickerFor === e.code && (
+                          <div className="absolute left-0 top-7 z-20 flex w-40 flex-wrap gap-1.5 rounded-md border border-slate-200 bg-white p-2 shadow-md dark:border-slate-700 dark:bg-slate-900" role="radiogroup" aria-label={t("tt.colorLabel")}>
+                            {PALETTE.map((c, i) => (
+                              <button
+                                key={c}
+                                role="radio"
+                                aria-checked={e.color === i}
+                                aria-label={t("tt.colorN", { n: i + 1 })}
+                                onClick={() => { tt.setColor(e.code, i); setPickerFor(null); }}
+                                className={`h-5 w-5 rounded ${e.color === i ? "ring-2 ring-slate-900 ring-offset-1 dark:ring-white" : ""}`}
+                                style={{ backgroundColor: c }}
+                              />
+                            ))}
+                          </div>
+                        )}
                       </div>
-                      <button className="btn-ghost px-2 py-1 text-xs" onClick={() => tt.toggleHidden(e.code)} aria-pressed={e.hidden}>
-                        {e.hidden ? "Hiện" : "Ẩn"}
+                      <div className="min-w-0 flex-1">
+                        <Link href={`/modules/${encodeURIComponent(e.code)}`} className="block truncate text-sm font-semibold text-brand-700 hover:underline dark:text-brand-300">
+                          <span className="font-mono">{e.code}</span> {info ? moduleName(info, lang) : "…"}
+                        </Link>
+                        <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
+                          {t("common.credits", { n: info?.credits ?? "?" })}
+                          {(info as { is_english?: boolean } | undefined)?.is_english ? <EnBadge /> : null}
+                        </div>
+                      </div>
+                      <button
+                        className="btn-ghost px-2 py-1"
+                        onClick={() => tt.toggleHidden(e.code)}
+                        aria-pressed={e.hidden}
+                        aria-label={e.hidden ? t("tt.show", { code: e.code }) : t("tt.hide", { code: e.code })}
+                        title={e.hidden ? t("tt.showTitle") : t("tt.hideTitle")}
+                      >
+                        {e.hidden ? <EyeOff className="h-4 w-4" aria-hidden /> : <Eye className="h-4 w-4" aria-hidden />}
                       </button>
-                      <button className="btn-ghost px-2 py-1 text-xs text-red-600" onClick={() => tt.removeModule(e.code)} aria-label={`Xóa ${e.code}`}>Xóa</button>
+                      <button className="btn-ghost px-2 py-1 text-red-600" onClick={() => tt.removeModule(e.code)} aria-label={t("tt.remove", { code: e.code })} title={t("tt.removeTitle")}>
+                        <Trash2 className="h-4 w-4" aria-hidden />
+                      </button>
                     </div>
                     {list === undefined ? (
-                      <p className="text-xs text-slate-500">Đang tải lớp…</p>
+                      <p className="text-xs text-slate-500">{t("tt.loadingClasses")}</p>
                     ) : list.length === 0 ? (
-                      <p className="text-xs text-amber-600">Không có lớp mở trong học kỳ này.</p>
+                      <p className="text-xs text-amber-600">{t("tt.noOpenClasses")}</p>
                     ) : (
-                      <select className="input py-1 text-xs" value={e.class_code ?? ""} onChange={(ev) => tt.setClass(e.code, ev.target.value)} aria-label={`Chọn lớp ${e.code}`}>
+                      <select className="input py-1 text-xs" value={e.class_code ?? ""} onChange={(ev) => tt.setClass(e.code, ev.target.value)} aria-label={t("tt.chooseClass", { code: e.code })}>
                         {list.map((s) => (
                           <option key={s.class_code} value={s.class_code}>
-                            {s.class_code} — {s.lessons.map((l) => `${weekdayLabel(l.weekday, true)} t${l.start_period}-${l.end_period}`).join(", ") || "chưa xếp lịch"}
-                            {seatsAvailable(s) !== null ? ` (${seatsAvailable(s) === 0 ? "hết chỗ" : `còn ${seatsAvailable(s)}`})` : ""}
+                            {s.class_code} — {s.lessons.map((l) => `${weekdayName(t, l.weekday, true)} t${l.start_period}-${l.end_period}`).join(", ") || t("tt.noSchedule")}
+                            {seatsAvailable(s) !== null ? ` (${seatsAvailable(s) === 0 ? t("tt.full") : t("tt.seatsLeft", { n: seatsAvailable(s) ?? 0 })})` : ""}
                           </option>
                         ))}
                       </select>
                     )}
-                    <div className="flex flex-wrap gap-1" role="radiogroup" aria-label="Màu">
-                      {PALETTE.map((c, i) => (
-                        <button
-                          key={c}
-                          role="radio"
-                          aria-checked={e.color === i}
-                          aria-label={`Màu ${i + 1}`}
-                          onClick={() => tt.setColor(e.code, i)}
-                          className={`h-5 w-5 rounded-full ${e.color === i ? "ring-2 ring-slate-900 ring-offset-1 dark:ring-white" : ""}`}
-                          style={{ backgroundColor: c }}
-                        />
-                      ))}
-                    </div>
                   </li>
                 );
               })}
             </ul>
           )}
-        </aside>
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-2 text-sm dark:border-slate-800">
+            <span>
+              {t("tt.total")} <strong>{t("tt.totalCredits", { n: totalCredits(creditItems, false) })}</strong>
+              {entries.some((e) => e.hidden) && <span className="text-slate-500"> / {totalCredits(creditItems)} {t("tt.hiddenIncluded")}</span>}
+            </span>
+            <span className="text-xs text-slate-500">{t("tt.workload", { n: totalWorkloadHours })}</span>
+          </div>
+        </div>
 
-        <section className="min-w-0 space-y-2">
-          <p className="text-sm text-slate-600 dark:text-slate-400">
-            {semName} · tiết 1–{SESSION_BOUNDARIES.morningEnd} sáng, {SESSION_BOUNDARIES.morningEnd + 1}–{SESSION_BOUNDARIES.afternoonEnd} chiều, {SESSION_BOUNDARIES.afternoonEnd + 1}–{PERIOD_COUNT} tối. Khối viền đỏ là lớp bị trùng lịch.
-          </p>
-          <TimetableGrid ref={gridRef} blocks={blocks} alternatives={sections} colors={colors} onChangeClass={(code, cls) => { tt.setClass(code, cls); flash(`Đã đổi ${code} sang lớp ${cls}`); }} />
-          {unscheduled.length > 0 && (
-            <p className="text-xs text-amber-600">Không có lịch: {unscheduled.map((e) => e.code).join(", ")}</p>
-          )}
-        </section>
+        {/* drafts */}
+        <div className="card space-y-2 self-start">
+          <div className="label mb-0">{t("tt.drafts")}</div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {draftNames.map((name) => (
+              <button
+                key={name}
+                onClick={() => tt.switchDraft(semester, name)}
+                aria-pressed={name === activeDraft}
+                className={`rounded px-2.5 py-1 text-xs font-semibold ${
+                  name === activeDraft
+                    ? "bg-brand-600 text-white"
+                    : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                }`}
+              >
+                {name}
+              </button>
+            ))}
+            <button
+              onClick={() => {
+                const name = prompt(t("tt.newDraftPrompt"), `${t("tt.drafts")} ${draftNames.length + 1}`);
+                if (name && name.trim()) tt.createDraft(semester, name.trim(), false);
+              }}
+              className="rounded border border-dashed border-slate-300 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:border-brand-500 hover:text-brand-600 dark:border-slate-700 dark:text-slate-400"
+              title={t("tt.newDraftTitle")}
+            >
+              {t("tt.newDraft")}
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                const name = prompt(t("tt.duplicatePrompt"), `${activeDraft} (${t("tt.duplicate")})`);
+                if (name && name.trim()) {
+                  tt.createDraft(semester, name.trim(), true);
+                  flash(t("tt.duplicated", { name: name.trim() }));
+                }
+              }}
+              className="btn-outline py-1 text-xs"
+              title={t("tt.duplicateTitle")}
+            >
+              {t("tt.duplicate")}
+            </button>
+            {draftNames.length > 1 && (
+              <button
+                onClick={() => {
+                  if (confirm(t("tt.confirmDeleteDraft", { name: activeDraft }))) {
+                    tt.deleteDraft(semester, activeDraft);
+                    flash(t("tt.draftDeleted"));
+                  }
+                }}
+                className="btn-ghost py-1 text-xs text-red-600"
+              >
+                {t("tt.deleteDraft")}
+              </button>
+            )}
+          </div>
+        </div>
       </div>
 
       <WebcalSyncModal
         open={showWebcal}
         onClose={() => setShowWebcal(false)}
         sharedData={{ semester, entries }}
-        semName={semName}
+        semName={semText}
       />
     </div>
   );
 }
-

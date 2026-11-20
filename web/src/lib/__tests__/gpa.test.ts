@@ -1,5 +1,31 @@
 import { describe, expect, it } from "vitest";
-import { calculateGpa, getGpaClassification, gradeToPoints, simulateTargetGpa } from "../gpa";
+import { calculateGpa, getGpaClassification, gradeToPoints, scoreToLetter, simulateTargetGpa } from "../gpa";
+
+describe("scoreToLetter (thang 10 → điểm chữ)", () => {
+  it("maps score bands to letters", () => {
+    expect(scoreToLetter(9.5)).toBe("A+");
+    expect(scoreToLetter(9)).toBe("A+");
+    expect(scoreToLetter(8.7)).toBe("A");
+    expect(scoreToLetter(8.2)).toBe("B+");
+    expect(scoreToLetter(7.5)).toBe("B");
+    expect(scoreToLetter(6.6)).toBe("C+");
+    expect(scoreToLetter(5.5)).toBe("C");
+    expect(scoreToLetter(5)).toBe("D+");
+    expect(scoreToLetter(4)).toBe("D");
+    expect(scoreToLetter(3.9)).toBe("F");
+  });
+
+  it("rejects invalid scores", () => {
+    expect(scoreToLetter(NaN)).toBeNull();
+    expect(scoreToLetter(-1)).toBeNull();
+    expect(scoreToLetter(10.5)).toBeNull();
+  });
+
+  it("converts to 4-point scale through the letter", () => {
+    expect(gradeToPoints(scoreToLetter(8.7) ?? "")).toBe(4.0);
+    expect(gradeToPoints(scoreToLetter(8.2) ?? "")).toBe(3.5);
+  });
+});
 
 describe("GPA / CAP Calculator", () => {
   it("converts letter grades to points according to UEL scale", () => {

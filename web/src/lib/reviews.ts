@@ -21,8 +21,8 @@ export interface ReviewStats {
   rating_distribution: Record<number, number>; // 1: count, 2: count...
 }
 
-const STORAGE_KEY = "uelplan-module-reviews";
-const UPVOTES_KEY = "uelplan-review-upvotes";
+const STORAGE_KEY = "uelcourses-module-reviews";
+const UPVOTES_KEY = "uelcourses-review-upvotes";
 
 const INITIAL_MOCK_REVIEWS: ModuleReview[] = [
   {
