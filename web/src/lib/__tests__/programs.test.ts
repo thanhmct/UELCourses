@@ -25,7 +25,7 @@ describe("programs logic & mocks", () => {
     expect(k22.every((p) => p.cohort === "K22")).toBe(true);
 
     const search = mockPrograms({ q: "Hệ thống thông tin" });
-    expect(search.some((p) => p.program_id === "K22406")).toBe(true);
+    expect(search.some((p) => p.program_id === "K24406")).toBe(true);
   });
 
   it("fetches program details and builds graph", () => {

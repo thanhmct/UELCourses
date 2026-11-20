@@ -1,7 +1,7 @@
-// Cohort convention: "K" + last two digits of the admission year (K22 = admitted 2022).
+// Cohort convention: "K" + last two digits of the admission year (K23 = admitted 2023).
 // Derivation runs only in the browser; student IDs are never sent to the server.
 
-export const COHORT_MIN = 19;
+export const COHORT_MIN = 23;
 export const COHORT_MAX = 26;
 
 export const COHORTS: string[] = Array.from({ length: COHORT_MAX - COHORT_MIN + 1 }, (_, i) => `K${COHORT_MIN + i}`);

@@ -86,7 +86,7 @@ describe("cohort", () => {
     expect(cohortFromId("  K25 ")).toBe("K25");
     expect(cohortFromId("224040496")).toBeNull();
     expect(admissionYear("K22")).toBe(2022);
-    expect(COHORTS[0]).toBe("K19");
+    expect(COHORTS[0]).toBe("K23");
     expect(COHORTS[COHORTS.length - 1]).toBe("K26");
   });
 });

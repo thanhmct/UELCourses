@@ -8,7 +8,7 @@ import { useMounted } from "@/lib/useMounted";
 import { COHORTS, useSettings } from "@/lib/store";
 import { Empty, Loading, PageHeader } from "@/components/ui";
 
-const POPULAR_PROGRAMS = ["K22406", "K22404", "K22402", "K24419", "K22407", "K22405"];
+const POPULAR_PROGRAMS = ["K24406", "K24404", "K24402", "K24419", "K24407", "K24405"];
 
 export default function ProgramsPage() {
   const mounted = useMounted();
@@ -39,9 +39,11 @@ export default function ProgramsPage() {
     return Array.from(set).sort();
   }, [programs]);
 
-  // Filter programs by query and faculty
+  // Filter programs by query, faculty, and only active cohorts (K23+)
   const filtered = useMemo(() => {
     return programs.filter((p) => {
+      const cNum = parseInt(p.cohort.replace(/\D/g, ""), 10);
+      if (!isNaN(cNum) && cNum < 23) return false;
       if (faculty !== "all" && p.faculty !== faculty) return false;
       if (query.trim()) {
         const q = query.toLowerCase().trim();

@@ -61,11 +61,13 @@ def equivalence_map(db: Session, program_id: str | None = None) -> dict[str, set
 
 
 @router.get("/programs", response_model=list[ProgramSummary], summary="Danh sách chương trình đào tạo")
-def list_programs(cohort: str | None = Query(None, description="vd K22"), q: str | None = None,
+def list_programs(cohort: str | None = Query(None, description="vd K24"), q: str | None = None,
                   db: Session = Depends(get_db)):
     stmt = select(Program).options(selectinload(Program.modules).selectinload(ProgramModule.module)).order_by(Program.id)
     if cohort:
         stmt = stmt.where(Program.cohort == cohort.strip().upper())
+    else:
+        stmt = stmt.where(Program.cohort >= "K23")
     for tok in search_tokens(q):
         stmt = stmt.where(Program.search_text.like(f"%{like_escape(tok)}%", escape="\\"))
     return [_summary(p) for p in db.scalars(stmt)]

@@ -14,9 +14,14 @@ const details = catalog.details as Record<string, ProgramDetail>;
 
 export function mockPrograms(filter?: { cohort?: string; q?: string }): ProgramSummary[] {
   let list = summaries;
-  if (filter?.cohort) {
+  if (filter?.cohort && filter.cohort !== "all") {
     const c = filter.cohort.toUpperCase().trim();
     list = list.filter((p) => p.cohort.toUpperCase() === c);
+  } else {
+    list = list.filter((p) => {
+      const num = parseInt(p.cohort.replace(/\D/g, ""), 10);
+      return isNaN(num) || num >= 23;
+    });
   }
   if (filter?.q) {
     const q = filter.q.trim();

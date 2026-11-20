@@ -65,7 +65,7 @@ export function ModuleReviews({ moduleCode, moduleName }: Props) {
   const [difficulty, setDifficulty] = useState(3);
   const [workload, setWorkload] = useState(3);
   const [lecturer, setLecturer] = useState("");
-  const [cohort, setCohort] = useState(currentCohort || "K22");
+  const [cohort, setCohort] = useState(currentCohort || "K24");
   const [comment, setComment] = useState("");
   const [author, setAuthor] = useState("");
   const [upvotesState, setUpvotesState] = useState<Record<string, { count: number; active: boolean }>>({});
