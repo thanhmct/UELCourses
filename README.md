@@ -32,6 +32,10 @@ Dưới đây là tổng hợp toàn bộ các đường link, nguồn dữ li�
 ---
 
 ### 3. Dữ liệu Lớp học phần & Thời khóa biểu
+- **Google Sheets Kế hoạch mở lớp học phần dự kiến Năm học 2026–2027**:
+  - [Google Sheet] [Danh sách học phần dự kiến mở Năm học 2026-2027 (có thể thay đổi, cập nhật thường xuyên)](https://docs.google.com/spreadsheets/d/1ES4AQqMeP3_WvHCxwxjhyDcHqKythipSKjbrJs-aDKA/edit?usp=drivesdk)
+  - Dữ liệu thu thập: 3.127 lớp học phần dự kiến mở trong 3 học kỳ (HK1, HK2, HK3) năm học 2026–2027 cho 798 học phần, phân bổ theo khóa/lớp sinh viên.
+  - File trích xuất lưu tại: `data/raw/DanhSachHocPhan_DuKienMo_2026_2027.xlsx`, `data/courses_2026_2027_planned.json`, `data/courses_2026_2027_planned.csv`.
 - **API Cổng Đăng ký học phần UEL**:
   - Endpoint: `POST https://dkhpapi.uel.edu.vn/api/Schedule/GetAllScheduleStudyUnit`
   - Cổng ĐKHP trực tuyến: [https://dkhp.uel.edu.vn](https://dkhp.uel.edu.vn)
