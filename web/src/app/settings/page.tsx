@@ -1,6 +1,8 @@
 "use client";
 import { useState } from "react";
 import { COHORTS, LOCAL_KEYS, useSettings, type Theme } from "@/lib/store";
+import { describeProgramCode, parseProgramCode } from "@/lib/programCode";
+import { appConfirm } from "@/lib/dialog";
 import { useMounted } from "@/lib/useMounted";
 import { cohortFromId } from "@/lib/cohort";
 import { API_URL, APP_VERSION } from "@/lib/api";
@@ -12,6 +14,58 @@ const MAJORS = [
   "Quản trị kinh doanh", "Marketing", "Hệ thống thông tin quản lý", "Thương mại điện tử", "Luật", "Luật kinh tế", "Toán kinh tế",
 ];
 
+/** Mã lớp (vd K23406E1) — đổi được bất cứ lúc nào, hộp thoại lần đầu cũng dùng cùng cách đọc mã. */
+function ProgramCodeField() {
+  const code = useSettings((s) => s.programCode);
+  const setCode = useSettings((s) => s.setProgramCode);
+  const [draft, setDraft] = useState(code);
+  const [err, setErr] = useState("");
+  const parsed = parseProgramCode(draft);
+  return (
+    <div>
+      <label className="label" htmlFor="program-code-settings">Mã lớp của bạn</label>
+      <p className="mb-2 text-xs text-slate-500">
+        Nhập mã lớp của bạn để hệ thống lọc lại theo chương trình đào tạo từ phía nhà trường.
+      </p>
+      <div className="flex gap-2">
+        <input
+          id="program-code-settings"
+          className="input font-mono uppercase"
+          placeholder="VD: K23406E1"
+          value={draft}
+          onChange={(e) => {
+            setDraft(e.target.value);
+            setErr("");
+          }}
+          autoComplete="off"
+        />
+        <button
+          type="button"
+          className="btn-outline shrink-0"
+          onClick={() => {
+            if (!parsed) return setErr("Mã lớp chưa đúng. Ví dụ: K23406E1, K24416A hoặc K23406H.");
+            setCode(parsed.normalized);
+            setDraft(parsed.normalized);
+          }}
+        >
+          Lưu
+        </button>
+        {code && (
+          <button type="button" className="btn-ghost shrink-0 text-red-600" onClick={() => { setCode(""); setDraft(""); }}>
+            Xóa
+          </button>
+        )}
+      </div>
+      {err && <p className="mt-1 text-xs text-red-600">{err}</p>}
+      <p className="mt-1 text-xs text-slate-500">
+        {parsed
+          ? `→ ${describeProgramCode(parsed)}.`
+          : "K23 = khóa 23 · 406 = mã CTĐT · H = Coop · T = cử nhân tài năng · E = hệ tiếng Anh (E1, E2… là thứ tự lớp) · A, B, C = hệ chuẩn."}
+      </p>
+    </div>
+  );
+}
+
 export default function SettingsPage() {
   const mounted = useMounted();
   const { t, lang } = useT();
@@ -22,8 +76,8 @@ export default function SettingsPage() {
   const [sidMsg, setSidMsg] = useState("");
   if (!mounted) return <Loading />;
 
-  function clearLocal() {
-    if (!window.confirm(t("settings.confirmClear"))) return;
+  async function clearLocal() {
+    if (!(await appConfirm(t("settings.confirmClear"), { danger: true, okLabel: "Xóa dữ liệu" }))) return;
     LOCAL_KEYS.forEach((k) => localStorage.removeItem(k));
     setCleared(true);
     setTimeout(() => window.location.reload(), 600);
@@ -36,6 +90,18 @@ export default function SettingsPage() {
     <div className="max-w-2xl space-y-4">
       <PageHeader title={t("settings.title")} subtitle={t("settings.subtitle")} />
       <section className="card space-y-4">
+        <ProgramCodeField />
+        <label className="flex items-start gap-2 text-sm">
+          <input
+            type="checkbox"
+            className="mt-1"
+            checked={s.englishCertExempt}
+            onChange={(e) => s.setEnglishCertExempt(e.target.checked)}
+          />
+          <span>
+            Đã có chứng chỉ đầu ra tiếng Anh: miễn Tiếng Anh 1–4 (tính là đã hoàn thành, không tính vào GPA).
+          </span>
+        </label>
         <div>
           <label className="label" htmlFor="cohort">{t("settings.cohort")}</label>
           <select id="cohort" className="input" value={s.cohort} onChange={(e) => s.setCohort(e.target.value)}>

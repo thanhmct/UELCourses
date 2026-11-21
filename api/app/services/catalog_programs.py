@@ -34,6 +34,18 @@ SLUG_ID = {"Luật": "LUAT", "Luật kinh tế": "LKT", "KDTMHQ": "KDTMHQ",
            "Kinh doanh nông nghiệp số": "KDNNS", "Kinh tế đất đai": "KTDD"}
 
 _TERM = re.compile(r"HK\s*0*(\d+)", re.I)
+_BRACKET_CODE = re.compile(r"\[([A-Za-z0-9]{3,12})\]")
+_PLAIN_CODE = re.compile(r"\b[A-Z]{2,4}\d{3,5}[A-Z]?\b")
+
+
+def prev_codes(raw: str | None) -> str | None:
+    """Cột "học phần học trước" của catalog dạng "[BAA2028]Nguyên lý kế toán, [BEE1037]Kinh tế vi mô" (có kèm tên môn).
+    Chỉ giữ mã, nối bằng dấu phẩy như dữ liệu cổng — nếu đưa nguyên chuỗi vào bộ phân tích thì tên môn bị tách thành "mã" rác.
+    Văn bản tự do không có mã (vd "Luật Hiến pháp; Luật Hành chính") -> None."""
+    if not raw:
+        return None
+    codes = _BRACKET_CODE.findall(raw) or _PLAIN_CODE.findall(raw)
+    return ", ".join(dict.fromkeys(codes)) or None
 
 
 def _base_id(label: str, cohort: str) -> str:
@@ -82,7 +94,7 @@ def build_catalog_programs(db: Session, cohort: str = "K25") -> dict:
                     "HocKy": e.term, "HocKyHienThi": e.term,  # chỉ là thứ tự "HK03"; parse_suggested_semester sẽ bỏ qua (không có năm học)
                     "BatBuoc": "Bắt Buộc" if (e.required_raw or "").strip().upper() == "X" else "",
                     "MaHP": e.module_code, "TenHP": e.module_name, "STC": int(e.credits) if e.credits is not None else None,
-                    "HPHocTruoc": e.previous_raw or None, "TenKhoiKienThuc": None,
+                    "HPHocTruoc": prev_codes(e.previous_raw), "TenKhoiKienThuc": None,
                 })
             payload[pid] = out
             orders[pid] = order

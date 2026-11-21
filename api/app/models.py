@@ -39,7 +39,7 @@ class Semester(Base):
     id: Mapped[str] = mapped_column(String(32), primary_key=True)  # vd "2026-2027-1"
     name: Mapped[str] = mapped_column(String(128))
     year: Mapped[str] = mapped_column(String(16))  # "2026-2027"
-    term: Mapped[int] = mapped_column(Integer)  # 1, 2, 3 (hè)
+    term: Mapped[int] = mapped_column(Integer)  # 1, 2, 3 — cả ba đều là học kỳ chính thức (HK3 không phải học kỳ hè)
     start_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     is_current_override: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
@@ -68,7 +68,12 @@ class Module(Base):
     name_en_source: Mapped[str | None] = mapped_column(String(16), nullable=True)  # outline | catalog | seed_table
     # Chương trình Cử nhân tài năng (CNTN): mã dạng [B|E]XXT### hoặc tên có "CNTN" (xem app/services/language.py)
     is_talent_program: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", index=True)
+    # Mô tả học phần song ngữ: `description` = tiếng Việt, `description_en` = tiếng Anh. Giao diện VI hiện bản Việt, giao diện EN hiện bản Anh;
+    # thiếu bản nào thì NULL (không tự dịch). `*_source`: outline | counterpart (chép từ bản Anh<->Việt tương ứng); NULL + có nội dung = nhập tay.
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    description_source: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    description_en: Mapped[str | None] = mapped_column(Text, nullable=True)
+    description_en_source: Mapped[str | None] = mapped_column(String(16), nullable=True)
     prerequisites: Mapped[list[str] | None] = mapped_column(JsonType, nullable=True)
     search_text: Mapped[str] = mapped_column(Text, default="")  # bản không dấu; tìm bằng trigram GIN (xem __table_args__)
     is_sample: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -320,7 +325,7 @@ class ProgramCatalogEntry(Base):
     source_sheet: Mapped[str] = mapped_column(String(256))
     source_row: Mapped[int] = mapped_column(Integer)
     original: Mapped[Any | None] = mapped_column(JsonType, nullable=True)  # toàn bộ ô gốc [{column, header, value}]
-    import_run_id: Mapped[int | None] = mapped_column(ForeignKey("import_runs.id", ondelete="SET NULL"), nullable=True)
+    import_run_id: Mapped[int | None] = mapped_column(ForeignKey("import_runs.id", ondelete="SET NULL"), nullable=True, index=True)
 
     resources: Mapped[list[OutlineResource]] = relationship(back_populates="entry", cascade="all, delete-orphan")
 
@@ -332,7 +337,7 @@ class OutlineDocument(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     sha256: Mapped[str] = mapped_column(String(64), unique=True)
-    file_name: Mapped[str] = mapped_column(String(255))
+    file_name: Mapped[str] = mapped_column(String(255), index=True)
     rel_path: Mapped[str] = mapped_column(String(512))
     size_bytes: Mapped[int] = mapped_column(BigInteger)
     page_count: Mapped[int | None] = mapped_column(Integer, nullable=True)

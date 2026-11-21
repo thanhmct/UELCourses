@@ -24,6 +24,7 @@ class SemesterOut(ORM):
 class EquivalentRef(BaseModel):
     code: str
     name: str | None = None
+    name_en: str | None = None
     credits: int | None = None
 
 
@@ -47,7 +48,8 @@ class ModuleSummary(BaseModel):
     type: str | None = None
     faculty: str | None = None
     department: str | None = None
-    description: str | None = Field(None, description="Mô tả học phần (từ DB; nếu trống thì lấy từ đề cương đã phân tích)")
+    description: str | None = Field(None, description="Mô tả học phần bằng TIẾNG VIỆT (NULL nếu chưa có)")
+    description_en: str | None = Field(None, description="Mô tả học phần bằng TIẾNG ANH (NULL nếu chưa có); giao diện EN dùng trường này")
     outline_url: str | None = Field(None, description="Link trực tiếp tới file PDF đề cương (Google Drive) của học phần")
     is_english: bool = False
     has_equivalents: bool = False
@@ -119,6 +121,7 @@ class ClassSectionOut(BaseModel):
 class EquivalentItem(BaseModel):
     code: str
     name: str | None = None
+    name_en: str | None = None
     credits: int | None = None
     equivalents: list[EquivalentRef] = []
 
@@ -130,10 +133,12 @@ class VenueSession(BaseModel):
     semester: str | None = None
     weekday: int
     start_period: int
-    end_period: int
+    end_period: float = Field(description="Tiết kết thúc; x.5 = tiết nửa")
     start_time: str
     end_time: str
     weeks: str | None = None
+    date_start: date | None = Field(default=None, description="Ngày đầu của buổi; dùng để xem theo tuần")
+    date_end: date | None = Field(default=None, description="Ngày cuối của buổi (lặp hằng tuần đến ngày này)")
 
 
 class VenueOut(BaseModel):

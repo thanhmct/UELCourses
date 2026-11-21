@@ -6,6 +6,8 @@ import { api } from "@/lib/api";
 import { useApi } from "@/lib/useApi";
 import { useMounted } from "@/lib/useMounted";
 import { COHORTS, useSettings } from "@/lib/store";
+import { useMyProgramId } from "@/lib/myProgram";
+import { parseProgramCode } from "@/lib/programCode";
 import { Empty, Loading, PageHeader } from "@/components/ui";
 import { useT } from "@/i18n";
 
@@ -13,15 +15,21 @@ export default function ProgramsPage() {
   const { t, lang } = useT();
   const mounted = useMounted();
   const savedCohort = useSettings((s) => s.cohort);
+  // CTĐT của người dùng (mã K23406E) → mặc định chỉ hiện CTĐT đó và khóa của họ.
+  const myCode = useSettings((s) => s.programCode);
+  const myProgramId = useMyProgramId();
+  const myCohort = parseProgramCode(myCode)?.cohort ?? "";
+  const [showAll, setShowAll] = useState(false);
   const [cohort, setCohort] = useState<string>("all");
   const [faculty, setFaculty] = useState<string>("all");
   const [query, setQuery] = useState<string>("");
 
   useEffect(() => {
-    if (mounted && savedCohort) {
-      setCohort(savedCohort);
+    if (mounted && (myCohort || savedCohort)) {
+      setCohort(myCohort || savedCohort);
     }
-  }, [mounted, savedCohort]);
+  }, [mounted, myCohort, savedCohort]);
+  const onlyMine = !!myProgramId && !showAll;
 
   const programsReq = useApi(
     () => api.programs(cohort !== "all" ? { cohort } : {}),
@@ -42,6 +50,7 @@ export default function ProgramsPage() {
   // Filter programs by query, faculty, and only active cohorts (K23+)
   const filtered = useMemo(() => {
     return programs.filter((p) => {
+      if (onlyMine && p.program_id !== myProgramId) return false;
       const cNum = parseInt(p.cohort.replace(/\D/g, ""), 10);
       if (!isNaN(cNum) && cNum < 23) return false;
       if (faculty !== "all" && p.faculty !== faculty) return false;
@@ -55,7 +64,7 @@ export default function ProgramsPage() {
       }
       return true;
     });
-  }, [programs, faculty, query]);
+  }, [programs, faculty, query, onlyMine, myProgramId]);
 
   // quick links come from the API (programs of the chosen cohort), never a hard-coded list
   const quick = filtered.slice(0, 6);
@@ -76,6 +85,21 @@ export default function ProgramsPage() {
           </div>
         }
       />
+
+      {myProgramId && (
+        <div className="card flex flex-wrap items-center justify-between gap-2 border-l-4 border-l-brand-600 text-sm">
+          <p className="text-slate-700 dark:text-slate-300">
+            {onlyMine ? (
+              <>Đang lọc theo CTĐT của bạn: <strong className="font-mono">{myProgramId}</strong>.</>
+            ) : (
+              <>Đang hiện tất cả CTĐT. CTĐT của bạn: <strong className="font-mono">{myProgramId}</strong>.</>
+            )}
+          </p>
+          <button type="button" className="text-brand-700 hover:underline dark:text-brand-300" onClick={() => setShowAll((v) => !v)}>
+            {onlyMine ? "Xem tất cả CTĐT" : "Chỉ xem CTĐT của tôi"}
+          </button>
+        </div>
+      )}
 
       <div className="card border-l-4 border-l-brand-600">
         <p className="text-sm text-slate-700 dark:text-slate-300">

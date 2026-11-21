@@ -6,9 +6,10 @@ import { useApi } from "@/lib/useApi";
 import { useDebounced } from "@/lib/useDebounced";
 import { Empty, ErrorBox, Loading, PageHeader } from "@/components/ui";
 import { useT } from "@/i18n";
+import { moduleName } from "@/i18n/names";
 
 export default function EquivalentsPage() {
-  const { t } = useT();
+  const { t, lang } = useT();
   const [q, setQ] = useState("");
   const dq = useDebounced(q, 300);
   const { data, loading, error } = useApi(() => api.equivalents(dq || undefined), [dq]);
@@ -43,12 +44,12 @@ export default function EquivalentsPage() {
                         <td className="px-3 py-2 align-top font-semibold" rowSpan={Math.max(1, g.equivalents.length)}>
                           <Link className="font-mono text-brand-700 hover:underline dark:text-brand-300" href={`/modules/${encodeURIComponent(g.code)}`}>{g.code}</Link>
                         </td>
-                        <td className="px-3 py-2 align-top" rowSpan={Math.max(1, g.equivalents.length)}>{g.name}</td>
+                        <td className="px-3 py-2 align-top" rowSpan={Math.max(1, g.equivalents.length)}>{moduleName(g, lang)}</td>
                         <td className="px-3 py-2 text-center align-top" rowSpan={Math.max(1, g.equivalents.length)}>{g.credits}</td>
                       </>
                     )}
                     <td className="px-3 py-2 font-mono text-xs">{e?.code ?? "—"}</td>
-                    <td className="px-3 py-2">{e?.name ?? "—"}</td>
+                    <td className="px-3 py-2">{e ? moduleName(e, lang) || "—" : "—"}</td>
                     <td className="px-3 py-2 text-center">{e?.credits ?? "—"}</td>
                   </tr>
                 )),

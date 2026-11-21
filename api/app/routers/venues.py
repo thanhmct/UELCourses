@@ -40,6 +40,6 @@ def list_venues(
             module_code=cs.module_code, module_name=module_name, class_code=cs.class_code,
             semester=cs.semester_id, weekday=lesson.weekday, start_period=lesson.start_period,
             end_period=lesson.end_period, start_time=lesson.start_time, end_time=lesson.end_time,
-            weeks=lesson.weeks,
+            weeks=lesson.weeks, date_start=lesson.date_start, date_end=lesson.date_end,
         ))
     return list(out.values())

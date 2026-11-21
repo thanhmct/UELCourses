@@ -69,12 +69,28 @@ export function getGpaClassification(gpa4: number): { label: string; color: stri
   return { label: "Yếu / Kém", color: "text-red-700 bg-red-100 border-red-300 dark:bg-red-950 dark:text-red-200" };
 }
 
-export function calculateGpa(items: { credits: number; grade: string }[]): GpaResult {
+/**
+ * Các môn KHÔNG tính vào GPA: Giáo dục thể chất, Học phần quốc phòng, Tiếng Anh 1 → 4.
+ * Nhận diện theo tên môn (tên có thể là tiếng Việt hoặc tiếng Anh).
+ */
+const NOT_IN_GPA = /giáo\s*dục\s*thể\s*chất|quốc\s*phòng|tiếng\s*anh\s*[1-4]\b|english\s*[1-4]\b/i;
+
+export function isExcludedFromGpa(name?: string | null): boolean {
+  return !!name && NOT_IN_GPA.test(name);
+}
+
+/** Môn Tiếng Anh 1 → 4 trong CTĐT (được miễn khi có chứng chỉ đầu ra tiếng Anh). */
+export function isEnglishCourse(name?: string | null): boolean {
+  return !!name && /tiếng\s*anh\s*[1-4]\b|english\s*[1-4]\b/i.test(name);
+}
+
+export function calculateGpa(items: { credits: number; grade: string; name?: string | null }[]): GpaResult {
   let totalCredits = 0;
   let gradedCredits = 0;
   let totalGradePoints = 0;
 
   for (const item of items) {
+    if (isExcludedFromGpa(item.name)) continue;
     const cr = Math.max(0, item.credits || 0);
     totalCredits += cr;
     const pt = gradeToPoints(item.grade);

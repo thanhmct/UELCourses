@@ -35,6 +35,11 @@ export function openTerms(m: Pick<ModuleSummary, "offering_plan">, year?: string
 }
 
 /** "2026-2027-1" -> { year: "2026-2027", term: 1 } (null if the id has another shape). */
+/** Môn học ghép (vd "… - Học ghép 261BAU304502 +1TC"): trong sơ đồ quan hệ chỉ hiện mã, không hiện tên và chi tiết. */
+export function isJointCourse(name?: string | null): boolean {
+  return !!name && /học ghép/i.test(name);
+}
+
 export function parseSemesterId(id: string): { year: string; term: number } | null {
   const m = /^(\d{4}-\d{4})-(\d+)$/.exec(id);
   return m ? { year: m[1], term: Number(m[2]) } : null;

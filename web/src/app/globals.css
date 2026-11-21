@@ -139,3 +139,64 @@ body {
 .relation-vertical .relation-branch:last-child::after { bottom:calc(100% - 35px); }
 .relation-vertical .relation-node { width:min(230px,100%); }
 .relation-vertical .relation-caption { position:static; transform:none; padding-bottom:12px; }
+
+/* ---- Sơ đồ quan hệ học phần: giao diện nổi bật ---- */
+.relation-viewport {
+  background-image: radial-gradient(circle, #cbd5e1 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+.dark .relation-viewport { background-image: radial-gradient(circle, #334155 1px, transparent 1px); }
+.relation-caption {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: #eef5fd;
+  color: #0b4f9c;
+  font-weight: 700;
+  letter-spacing: .08em;
+  font-size: 11px;
+}
+.dark .relation-caption { background: #0b2a4f; color: #a9c9f0; }
+.relation-node {
+  border: 1px solid #e2e8f0;
+  border-left: 4px solid #94a3b8;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, .08);
+  padding: 10px 14px;
+  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+.relation-node:hover { transform: translateY(-2px); box-shadow: 0 8px 18px rgba(11, 79, 156, .16); border-color: #3a7dd0; }
+.relation-prereq > .relation-node { border-left-color: #059669; }
+.relation-previous > .relation-node { border-left-color: #d97706; }
+.relation-coreq > .relation-node { border-left-color: #0284c7; }
+.relation-and > .relation-node, .relation-or > .relation-node {
+  background: #f8fafc;
+  border-style: dashed;
+  box-shadow: none;
+}
+.relation-current {
+  width: 210px;
+  padding: 20px 16px;
+  border: none;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #0b4f9c 0%, #3a7dd0 100%);
+  color: #fff;
+  box-shadow: 0 14px 30px rgba(11, 79, 156, .35);
+}
+.relation-current::before, .relation-current::after { border-top-color: #3a7dd0; }
+.dark .relation-current { background: linear-gradient(135deg, #093f7d 0%, #1763b7 100%); color: #fff; }
+.dark .relation-node { background: #0f172a; border-color: #334155; }
+.rel-tag {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .04em;
+}
+.rel-tag-current { background: rgba(255, 255, 255, .22); color: #fff; margin-top: 8px; text-transform: uppercase; letter-spacing: .1em; }
+.dark .rel-tag { background: #1e293b; color: #cbd5e1; }

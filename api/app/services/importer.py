@@ -151,7 +151,9 @@ def semester_id(y1: int, term: int) -> str:
 
 
 def semester_for_date(d: date) -> str:
-    """Giả định (chưa kiểm chứng): HK1 bắt đầu tháng 8–12, HK2 tháng 1–5, HK3 tháng 6–7."""
+    """Đoán học kỳ từ ngày bắt đầu lớp — CHỈ là phương án dự phòng thô (ưu tiên mã lớp, xem `semester_from_class_code`).
+    Lịch thật của ba học kỳ chính thức chồng lấn nhau (vd 2026-2027: HK1 từ 7/7, HK3 từ 12/4/2027) nên cách chia theo tháng
+    dưới đây (tháng ≥ 8 → HK1, ≤ 5 → HK2, còn lại → HK3) có thể sai; không dùng nó để suy ra HK3 là "kỳ hè"."""
     if d.month >= 8:
         return semester_id(d.year, 1)
     if d.month <= 5:

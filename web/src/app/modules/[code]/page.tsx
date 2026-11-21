@@ -4,6 +4,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useApi } from "@/lib/useApi";
+import { useSemesters } from "@/lib/semesters";
 import { formatDateVi } from "@/lib/dates";
 import { CntnBadge, EnBadge, Empty, ErrorBox, Loading, TypeChip } from "@/components/ui";
 import { capacityText, seatsAvailable } from "@/lib/modules";
@@ -13,14 +14,14 @@ import { WorkloadBreakdownView } from "@/components/WorkloadBreakdown";
 import { ModuleReviews } from "@/components/ModuleReviews";
 import { OutlineBlock } from "@/components/OutlineBlock";
 import { useT, weekdayName } from "@/i18n";
-import { departmentName, facultyName, moduleName } from "@/i18n/names";
+import { departmentName, facultyName, moduleDescription, moduleName } from "@/i18n/names";
 
 export default function ModuleDetailPage() {
   const { t, lang } = useT();
   const params = useParams<{ code: string }>();
   const code = decodeURIComponent(params.code);
   const mod = useApi(() => api.module(code), [code]);
-  const sems = useApi(() => api.semesters(), []);
+  const sems = useSemesters();
   const [semester, setSemester] = useState("");
 
   useEffect(() => {
@@ -66,7 +67,15 @@ export default function ModuleDetailPage() {
         <section className="card space-y-4 lg:col-span-2">
           <div>
             <h2 className="mb-1 font-semibold">{t("det.description")}</h2>
-            <p className="text-sm text-slate-700 dark:text-slate-300">{m.description || t("det.noDescription")}</p>
+            {(() => {
+              const d = moduleDescription(m, lang); // VI → description, EN → description_en; thiếu thì dùng bản còn lại và báo rõ
+              return (
+                <>
+                  <p lang={d.fallback ? (lang === "en" ? "vi" : "en") : lang} className="whitespace-pre-line text-sm text-slate-700 dark:text-slate-300">{d.text || t("det.noDescription")}</p>
+                  {d.fallback && <p className="mt-1 text-xs italic text-slate-400">{t("det.descFallback")}</p>}
+                </>
+              );
+            })()}
           </div>
           <div className="border-t border-slate-100 pt-3 dark:border-slate-800">
             <WorkloadBreakdownView credits={m.credits} type={m.type} showDetails />
@@ -81,7 +90,7 @@ export default function ModuleDetailPage() {
             <ul className="space-y-1 text-sm">
               {m.equivalents.map((e) => (
                 <li key={e.code} className="flex justify-between gap-2">
-                  <Link href={`/modules/${encodeURIComponent(e.code)}`} className="text-brand-600 hover:underline">{e.code} · {e.name}</Link>
+                  <Link href={`/modules/${encodeURIComponent(e.code)}`} className="text-brand-600 hover:underline">{e.code} · {moduleName(e, lang)}</Link>
                   <span className="shrink-0 text-slate-500">{t("common.credits", { n: e.credits })}</span>
                 </li>
               ))}

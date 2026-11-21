@@ -60,27 +60,14 @@ def _plans_for(db: Session, codes: list[str]) -> dict[str, list[OfferingPlanOut]
     return out
 
 
-def _descriptions_for(db: Session, codes: list[str]) -> dict[str, str]:
-    """Mô tả học phần: ưu tiên cột modules.description; trống thì lấy mô tả của đề cương đã phân tích (ok/partial)."""
+def _descriptions_for(db: Session, codes: list[str]) -> dict[str, tuple[str | None, str | None]]:
+    """Mô tả học phần song ngữ: code -> (tiếng Việt, tiếng Anh) từ cột modules.description / description_en.
+    Các cột này do `fill-descriptions` điền từ đề cương (không còn lấy trực tiếp từ đề cương lúc truy vấn, để đúng ngôn ngữ)."""
     if not codes:
         return {}
-    out: dict[str, str] = {}
-    for code, desc in db.execute(select(Module.code, Module.description).where(Module.code.in_(codes))).all():
-        if desc and desc.strip():
-            out[code] = desc.strip()
-    missing = [c for c in codes if c not in out]
-    if missing:
-        rows = db.execute(
-            select(OutlineModuleLink.module_code, OutlineCourse.description)
-            .join(OutlineCourse, OutlineCourse.document_id == OutlineModuleLink.document_id)
-            .where(OutlineModuleLink.module_code.in_(missing), OutlineCourse.description.is_not(None),
-                   OutlineCourse.parse_status.in_(("ok", "partial")))
-            .order_by(OutlineModuleLink.module_code, OutlineCourse.document_id)
-        ).all()
-        for code, desc in rows:
-            if code not in out and desc and desc.strip():
-                out[code] = desc.strip()
-    return out
+    clean = lambda s: s.strip() if s and s.strip() else None  # noqa: E731
+    return {code: (clean(vi), clean(en)) for code, vi, en in db.execute(
+        select(Module.code, Module.description, Module.description_en).where(Module.code.in_(codes))).all()}
 
 
 def _outline_urls_for(db: Session, codes: list[str]) -> dict[str, str]:
@@ -104,9 +91,10 @@ def _outline_urls_for(db: Session, codes: list[str]) -> dict[str, str]:
 
 
 def _summary(m: Module, has_eq: bool, plans: list[OfferingPlanOut], open_sems: list[OpenSemester] | None = None,
-             has_outline: bool = False, description: str | None = None, outline_url: str | None = None) -> ModuleSummary:
+             has_outline: bool = False, description: str | None = None, outline_url: str | None = None,
+             description_en: str | None = None) -> ModuleSummary:
     return ModuleSummary(code=m.code, name=m.name, name_en=m.name_en, credits=m.credits, type=m.type, faculty=m.faculty,
-                         department=m.department, description=description, outline_url=outline_url, is_english=bool(m.is_english) or m.language_track == "en", has_equivalents=has_eq,
+                         department=m.department, description=description, description_en=description_en, outline_url=outline_url, is_english=bool(m.is_english) or m.language_track == "en", has_equivalents=has_eq,
                          offering_plan=plans, language_track=m.language_track or "vi", language_basis=m.language_basis,
                          is_talent_program=bool(m.is_talent_program), counterpart_code=m.counterpart_code,
                          open_semesters=open_sems or [], has_outline=has_outline, is_sample=m.is_sample)
@@ -185,8 +173,9 @@ def list_modules(
     outline_codes = set(db.scalars(_modules_with_outline_subquery().where(OutlineModuleLink.module_code.in_(codes)))) if codes else set()
     descs = _descriptions_for(db, codes)
     urls = _outline_urls_for(db, codes)
+    d = lambda c: descs.get(c, (None, None))  # noqa: E731
     return ModuleList(items=[_summary(m, m.code in has_eq, plans.get(m.code, []), open_map.get(m.code), m.code in outline_codes,
-                                      descs.get(m.code), urls.get(m.code)) for m in rows],
+                                      d(m.code)[0], urls.get(m.code), d(m.code)[1]) for m in rows],
                       total=total, page=page, size=size)
 
 
@@ -233,19 +222,11 @@ def get_module(code: str, db: Session = Depends(get_db)):
     ) if s)
     open_sems = _open_semesters(db, [m.code]).get(m.code)
     has_outline = bool(db.scalar(_modules_with_outline_subquery().where(OutlineModuleLink.module_code == m.code).limit(1)))
-    base = _summary(m, bool(eqs), _plans_for(db, [m.code]).get(m.code, []), open_sems, has_outline).model_dump()
-    base.pop("description", None)  # đặt lại bên dưới (có fallback từ đề cương)
-    # Mô tả: ưu tiên mô tả của học phần; nếu trống thì lấy phần "Mô tả học phần" của đề cương đã phân tích.
-    description = m.description
-    if not description:
-        description = db.scalar(
-            select(OutlineCourse.description)
-            .join(OutlineModuleLink, OutlineModuleLink.document_id == OutlineCourse.document_id)
-            .where(OutlineModuleLink.module_code == m.code, OutlineCourse.description.is_not(None),
-                   OutlineCourse.parse_status.in_(("ok", "partial")))
-            .order_by(OutlineCourse.document_id).limit(1)
-        )
-    return ModuleDetail(**base, description=description, prerequisites=m.prerequisites or [],
+    vi, en = _descriptions_for(db, [m.code]).get(m.code, (None, None))  # mô tả song ngữ: description (VI) / description_en (EN)
+    base = _summary(m, bool(eqs), _plans_for(db, [m.code]).get(m.code, []), open_sems, has_outline,
+                    description=vi, description_en=en).model_dump()
+    base.pop("description", None)
+    return ModuleDetail(**base, description=vi, prerequisites=m.prerequisites or [],
                         equivalents=eqs, semesters=sems)
 
 

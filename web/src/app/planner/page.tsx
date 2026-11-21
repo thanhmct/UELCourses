@@ -11,8 +11,10 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import Link from "next/link";
-import { useMemo, useState, type ReactNode } from "react";
-import { usePlanner } from "@/lib/store";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { usePlanner, useSettings } from "@/lib/store";
+import { useMyProgramId } from "@/lib/myProgram";
+import { isEnglishCourse } from "@/lib/gpa";
 import { useMounted } from "@/lib/useMounted";
 import { prerequisiteWarnings, suggestReplacements, termCredits } from "@/lib/planner";
 import { creditLoad, totalCredits } from "@/lib/credits";
@@ -163,6 +165,26 @@ export default function PlannerPage() {
   );
   const warnings = useMemo(() => prerequisiteWarnings(p), [p]);
   const warnMap = useMemo(() => Object.fromEntries(warnings.map((w) => [w.code, w.missing])), [warnings]);
+
+  // Danh sách chờ theo CTĐT của người dùng: mọi học phần của CTĐT chưa hoàn thành (HK1 năm 1 → HK3 năm 4).
+  const myProgramId = useMyProgramId();
+  const englishExempt = useSettings((s) => s.englishCertExempt);
+  useEffect(() => {
+    if (!myProgramId) return;
+    let alive = true;
+    api.program(myProgramId).then((r) => {
+      if (!alive || !r.data) return;
+      const byCode = new Map<string, { code: string; name: string; name_en?: string | null; credits: number }>();
+      for (const b of r.data.blocks) for (const m of b.modules) byCode.set(m.code, { code: m.code, name: m.name, name_en: m.name_en, credits: m.credits });
+      const exempt = useSettings.getState().englishCertExempt
+        ? [...byCode.values()].filter((m) => isEnglishCourse(m.name)).map((m) => m.code)
+        : [];
+      usePlanner.getState().syncProgram([...byCode.values()], exempt);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [myProgramId, englishExempt]);
 
   if (!mounted) return <Loading />;
 

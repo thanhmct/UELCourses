@@ -3,7 +3,9 @@ import Link from "next/link";
 import { Search } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, type ModuleFilter } from "@/lib/api";
+import { useMyProgramId } from "@/lib/myProgram";
 import { useApi } from "@/lib/useApi";
+import { useSemesters } from "@/lib/semesters";
 import { useDebounced } from "@/lib/useDebounced";
 import { EnBadge, ErrorBox } from "@/components/ui";
 import { ModuleActions } from "@/components/ModuleActions";
@@ -11,7 +13,7 @@ import { CheckFacet, FacetFilter } from "@/components/FacetFilter";
 import { openClassesByTerm, parseSemesterId } from "@/lib/modules";
 import type { ModuleSummary } from "@/lib/types";
 import { useT } from "@/i18n";
-import { departmentName, facultyName, moduleName } from "@/i18n/names";
+import { departmentName, facultyName, moduleDescription, moduleName } from "@/i18n/names";
 
 const PAGE = 30;
 const TERMS = [1, 2, 3];
@@ -49,10 +51,13 @@ export default function ModulesPage() {
   const [faculty, setFaculty] = useState(""); // Khoa / Bộ môn (gộp một bộ lọc)
   const [type, setType] = useState("");
   // CTĐT được chọn ở trang /start (?program=K23406 = khóa 23, ngành 406)
+  // Mặc định lọc theo CTĐT của người dùng (đặt trong Cài đặt); bấm "Bỏ lọc CTĐT" để xem toàn bộ.
+  const myProgramId = useMyProgramId();
   const [programId, setProgramId] = useState("");
   useEffect(() => {
     const p = new URLSearchParams(window.location.search).get("program");
-    if (p) setProgramId(p.trim().toUpperCase());
+    setProgramId(p ? p.trim().toUpperCase() : myProgramId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const programs = useApi(() => api.programs(), []);
   const program = programs.data?.find((p) => p.program_id === programId);
@@ -60,7 +65,7 @@ export default function ModulesPage() {
   const [outline, setOutline] = useState(false);
   const dq = useDebounced(q, 300);
 
-  const sems = useApi(() => api.semesters(), []);
+  const sems = useSemesters();
   const year = sems.data?.find((s) => s.is_current)?.year;
   const yearStr = year !== undefined ? String(year).replace("–", "-") : undefined;
   const facets = useApi(() => api.moduleFacets(), []);
@@ -192,7 +197,8 @@ export default function ModulesPage() {
           ) : (
             <ul>
               {items.map((m) => {
-                const desc = excerpt(m.description);
+                const descInfo = moduleDescription(m, lang); // VI → description, EN → description_en (thiếu thì dùng bản còn lại)
+                const desc = excerpt(descInfo.text);
                 return (
                   <li key={m.code} className="flex flex-col gap-4 border-b border-slate-200 py-5 sm:flex-row sm:justify-between sm:gap-8 dark:border-slate-800">
                     <div className="min-w-0 flex-1 space-y-2">
@@ -212,7 +218,10 @@ export default function ModulesPage() {
                         {m.has_equivalents && <span className="chip bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-200">{t("mod.card.hasEquiv")}</span>}
                       </div>
                       {desc ? (
-                        <p className="line-clamp-3 text-sm leading-relaxed text-slate-600 dark:text-slate-300">{desc}</p>
+                        <p lang={descInfo.fallback ? (lang === "en" ? "vi" : "en") : lang} className="line-clamp-3 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+                          {desc}
+                          {descInfo.fallback && <span className="ml-1 text-xs italic text-slate-400" title={t("det.descFallback")}>({lang === "en" ? "VI" : "EN"})</span>}
+                        </p>
                       ) : (
                         <p className="text-xs italic text-slate-400">{t("det.noDescription")}</p>
                       )}

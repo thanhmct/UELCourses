@@ -107,6 +107,8 @@ def fill_english_names(db: Session, seed_path: Path = SEED_TSV) -> dict:
             en, src = catalog[m.code], "catalog"
         elif normalize_vi(m.name) in seed:
             en, src = seed[normalize_vi(m.name)], "seed_table"
+        elif m.name_en and m.name_en_source == "portal":  # tên tiếng Anh lấy từ cổng: giữ nếu không có nguồn tốt hơn
+            en, src = m.name_en, "portal"
         else:
             en = src = None
         if en is None:

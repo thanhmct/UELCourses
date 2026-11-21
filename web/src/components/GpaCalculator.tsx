@@ -13,6 +13,9 @@ import {
 } from "@/lib/gpa";
 import { useT } from "@/i18n";
 import { moduleName } from "@/i18n/names";
+import { useApi } from "@/lib/useApi";
+import { useDebounced } from "@/lib/useDebounced";
+import { activeToken, finishedCodes, rankSuggestions, replaceActiveToken } from "@/lib/codeTokens";
 
 const GRADES_STORAGE_KEY = "uelcourses-user-grades";
 const SCORES_STORAGE_KEY = "uelcourses-user-scores";
@@ -44,6 +47,19 @@ function AddCodesBox() {
   const [target, setTarget] = useState<string>(DONE_GROUP);
   const [busy, setBusy] = useState(false);
   const [report, setReport] = useState<{ code: string; ok: boolean; msg: string }[]>([]);
+  const { lang } = useT();
+
+  // Gợi ý mã khớp với phần đang gõ (đoạn sau dấu phẩy cuối cùng); mỗi dấu phẩy bắt đầu một mã mới.
+  const { token } = activeToken(text);
+  const dq = useDebounced(token.trim(), 250);
+  const suggestReq = useApi(
+    () => (dq.length >= 2 ? api.modules({ q: dq, size: 12 }) : Promise.resolve({ data: { items: [], total: 0 }, mock: false })),
+    [dq],
+  );
+  const suggestions = useMemo(
+    () => (dq.length >= 2 && token.trim().length >= 2 ? rankSuggestions(suggestReq.data?.items ?? [], token, finishedCodes(text)).slice(0, 8) : []),
+    [suggestReq.data, dq, token, text],
+  );
 
   const add = async () => {
     const codes = parseCodes(text);
@@ -95,6 +111,31 @@ function AddCodesBox() {
         value={text}
         onChange={(e) => setText(e.target.value)}
       />
+      {token.trim().length >= 2 && (
+        <div className="rounded-md border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900" role="listbox" aria-label="Gợi ý mã học phần">
+          <p className="border-b border-slate-100 px-3 py-1.5 text-xs text-slate-500 dark:border-slate-800">
+            {suggestReq.loading
+              ? `Đang tìm mã khớp với “${token.trim()}”…`
+              : suggestions.length > 0
+                ? `Mã khớp với “${token.trim()}” — bấm để chọn, sau dấu phẩy là mã mới`
+                : `Không có mã nào khớp với “${token.trim()}”`}
+          </p>
+          <ul className="max-h-56 overflow-auto">
+            {suggestions.map((m) => (
+              <li key={m.code} role="option" aria-selected={false}>
+                <button
+                  type="button"
+                  className="flex w-full justify-between gap-2 px-3 py-1.5 text-left text-sm hover:bg-brand-50 dark:hover:bg-slate-800"
+                  onClick={() => setText((prev) => replaceActiveToken(prev, m.code))}
+                >
+                  <span><span className="font-mono font-semibold">{m.code}</span> {moduleName(m, lang)}</span>
+                  <span className="shrink-0 text-xs text-slate-500">{m.credits ?? "?"} TC</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <div className="flex flex-wrap items-center gap-2">
         <label htmlFor="add-target" className="text-xs font-semibold text-slate-600 dark:text-slate-300">Thêm vào</label>
         <select id="add-target" className="input w-auto py-1 text-xs" value={target} onChange={(e) => setTarget(e.target.value)}>

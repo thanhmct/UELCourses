@@ -97,6 +97,7 @@ export const en: Record<string, string> = {
   "det.back": "← Modules",
   "det.description": "Description & workload",
   "det.noDescription": "No description yet.",
+  "det.descFallback": "No English version yet — showing the Vietnamese description.",
   "det.relations": "Module relations",
   "det.equivalents": "Equivalent modules",
   "det.none": "None.",

@@ -6,6 +6,8 @@ import { FeedbackWidget } from "@/components/FeedbackWidget";
 import { CommandPalette } from "@/components/CommandPalette";
 import { ThemeApplier, themeInitScript } from "@/components/ThemeApplier";
 import { PwaRegister } from "@/components/PwaRegister";
+import { FirstVisitModal } from "@/components/FirstVisitModal";
+import { AppDialog } from "@/components/AppDialog";
 
 export const metadata: Metadata = {
   title: { default: "UELCourses — Lập kế hoạch học tập UEL", template: "%s · UELCourses" },
@@ -34,7 +36,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <ThemeApplier />
         <Header />
         <SideNav />
-        <div className="md:pl-[170px]">
+        <div className="md:pl-[212px]">
           <main className="mx-auto max-w-[1400px] px-3 py-4 pb-24 md:px-5">{children}</main>
           <AppFooter />
         </div>
@@ -42,6 +44,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <FeedbackWidget />
         <CommandPalette />
         <PwaRegister />
+        <FirstVisitModal />
+        <AppDialog />
       </body>
     </html>
   );

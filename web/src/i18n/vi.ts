@@ -106,6 +106,7 @@ export const vi: Record<string, string> = {
   "det.back": "← Học phần",
   "det.description": "Mô tả & khối lượng học",
   "det.noDescription": "Chưa có mô tả.",
+  "det.descFallback": "Chưa có bản tiếng Việt — đang hiển thị mô tả tiếng Anh.",
   "det.relations": "Quan hệ học phần",
   "det.equivalents": "Học phần tương đương",
   "det.none": "Không có.",

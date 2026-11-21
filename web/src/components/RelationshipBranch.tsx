@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { ModuleTreeNode } from "@/lib/types";
 import { useT } from "@/i18n";
 import { moduleName } from "@/i18n/names";
+import { isJointCourse } from "@/lib/modules";
 
 /** One node of the relation tree; "and"/"or" nodes are groups, other nodes are modules. */
 export function RelationshipBranch({ node, seen = [] }: { node: ModuleTreeNode; seen?: string[] }) {
@@ -28,8 +29,10 @@ export function RelationshipBranch({ node, seen = [] }: { node: ModuleTreeNode; 
         ) : (
           <>
             <Link className="font-mono font-bold text-brand-700 hover:underline dark:text-brand-300" href={`/modules/${encodeURIComponent(node.code)}`}>{node.code}</Link>
-            <span className="text-xs leading-relaxed">{(node.name && moduleName(node, lang)) || node.code}</span>
-            {typeLabel[node.type] && <span className="text-[10px] text-slate-500">{typeLabel[node.type]}</span>}
+            {!isJointCourse(node.name) && (
+              <span className="text-xs leading-relaxed">{(node.name && moduleName(node, lang)) || node.code}</span>
+            )}
+            {typeLabel[node.type] && <span className="rel-tag">{typeLabel[node.type]}</span>}
           </>
         )}
         {cycle && <span className="text-xs text-amber-700">{t("tree.cycle")}</span>}

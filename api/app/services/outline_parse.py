@@ -262,31 +262,18 @@ def _merge_rows(rows: list[list[str]], key_col: int, header_sig: str) -> list[li
     return out
 
 
-def extract_tables(pdf_path: str) -> dict[str, list[list[str]]]:
-    """{'objectives': [...], 'clos': [...], 'assessments': [...], 'schedule': [...]} — mỗi phần: [header, *rows đã ghép]."""
-    import pymupdf  # noqa: PLC0415 - nặng, chỉ nạp trong worker
+def _collect_table(found: dict[str, dict], rows: list[list[str]]) -> None:
+    """Gom một bảng (dòng đầu là tiêu đề) vào đúng loại bảng; bỏ qua bảng không liên quan."""
+    if not rows:
+        return
+    kind = classify_table(rows[0])
+    if kind is None:
+        return
+    slot = found.setdefault(kind, {"header": rows[0], "rows": []})
+    slot["rows"].extend(rows[1:] if fold(" ".join(rows[0])) == fold(" ".join(slot["header"])) else rows)
 
-    found: dict[str, dict] = {}
-    doc = pymupdf.open(pdf_path)
-    for page in doc:
-        # find_tables rất chậm: chỉ chạy trên trang có từ khóa của các bảng cần lấy (CO/CLO/đánh giá/kế hoạch tuần).
-        low = fold(page.get_text("text"))
-        if not any(k in low for k in ("clo", "cdr", "tuan", "week", "buoi", "trong so", "weight", "muc tieu", "objective")):
-            continue
-        try:
-            tabs = page.find_tables().tables
-        except Exception:  # noqa: BLE001
-            continue
-        for t in tabs:
-            rows = [[clean(page.get_text("text", clip=pymupdf.Rect(c), sort=True)) if c else "" for c in row.cells] for row in t.rows]
-            if not rows:
-                continue
-            kind = classify_table(rows[0])
-            if kind is None:
-                continue
-            slot = found.setdefault(kind, {"header": rows[0], "rows": []})
-            slot["rows"].extend(rows[1:] if fold(" ".join(rows[0])) == fold(" ".join(slot["header"])) else rows)
-    doc.close()
+
+def _finish_tables(found: dict[str, dict]) -> dict[str, list[list[str]]]:
     result: dict[str, list[list[str]]] = {}
     for kind, slot in found.items():
         header = slot["header"]
@@ -295,6 +282,97 @@ def extract_tables(pdf_path: str) -> dict[str, list[list[str]]]:
         merged = _merge_rows(slot["rows"], key_col, fold(" ".join(header)))
         result[kind] = [header, *merged]
     return result
+
+
+def tables_from_raw(raw_tables: list[dict]) -> dict[str, list[list[str]]]:
+    """Bảng đã trích sẵn (vd. notebook Colab ghi [{"page", "rows"}] hoặc {"page", "error"}) -> cùng kết quả như extract_tables."""
+    found: dict[str, dict] = {}
+    for t in raw_tables:
+        if "rows" not in t:
+            continue
+        _collect_table(found, [[clean(c) for c in row] for row in t["rows"]])
+    return _finish_tables(found)
+
+
+TABLE_PAGE_KEYS = ("clo", "cdr", "tuan", "week", "buoi", "trong so", "weight", "muc tieu", "objective")
+
+
+def single_thread_layout() -> None:
+    """Mô hình layout ONNX mặc định dùng mọi lõi (đo: ~12 lõi/tiến trình) -> nhiều worker song song làm nghẽn 100% CPU.
+    Ép 1 luồng cho mọi InferenceSession (phải gọi trước khi mô hình được nạp). Đo trên máy dev: 3 trang 4,2 s -> 1,9 s."""
+    try:
+        import onnxruntime as ort  # noqa: PLC0415
+    except ImportError:
+        return
+    if getattr(ort.SessionOptions, "_single_thread", False):
+        return
+    base = ort.SessionOptions
+
+    def options():
+        so = base()
+        so.intra_op_num_threads = 1
+        so.inter_op_num_threads = 1
+        return so
+
+    options._single_thread = True
+    ort.SessionOptions = options
+
+
+def page_tables(page) -> list:
+    """find_tables nhanh. PyMuPDF >= 2.x mặc định chạy mô hình layout (ONNX): ~14 giây nạp mỗi tiến trình
+    + vài giây mỗi trang, tự dùng nhiều lõi CPU, chậm 5–80 lần. Nên dò bảng theo đường kẻ trước (use_layout=False);
+    chỉ chạy lại trang với layout khi có bảng CẦN LẤY (classify_table nhận ra tiêu đề) mà mới thấy dòng tiêu đề —
+    vd. bảng CO không kẻ dòng bên trong. Mẫu 40 file: layout dự phòng trên mọi bảng chỉ-có-tiêu-đề không đổi kết quả file nào."""
+    import pymupdf  # noqa: PLC0415
+
+    try:
+        tabs = page.find_tables(use_layout=False).tables
+    except TypeError:  # PyMuPDF cũ: không có tham số use_layout và cũng không có mô hình layout
+        return page.find_tables().tables
+
+    def cell_text(c) -> str:
+        return clean(page.get_text("text", clip=pymupdf.Rect(c), sort=True)) if c else ""
+
+    def wanted_but_empty(t) -> bool:
+        # Bảng cần lấy mà thân gần như rỗng (chỉ tiêu đề, hoặc trung bình <= 1 ô có chữ mỗi dòng).
+        if not t.rows or len(t.rows) > 4 or classify_table([cell_text(c) for c in t.rows[0].cells]) is None:
+            return False
+        body = t.rows[1:]
+        return sum(1 for r in body for c in r.cells if cell_text(c)) <= len(body)
+
+    if any(wanted_but_empty(t) for t in tabs):
+        single_thread_layout()
+        try:
+            alt = page.find_tables().tables
+        except Exception:  # noqa: BLE001
+            alt = []
+        if sum(len(t.rows) for t in alt) > sum(len(t.rows) for t in tabs):
+            return alt
+    return tabs
+
+
+def extract_tables(pdf_path: str) -> dict[str, list[list[str]]]:
+    """{'objectives': [...], 'clos': [...], 'assessments': [...], 'schedule': [...]} — mỗi phần: [header, *rows đã ghép]."""
+    import pymupdf  # noqa: PLC0415 - nặng, chỉ nạp trong worker
+
+    found: dict[str, dict] = {}
+    doc = pymupdf.open(pdf_path)
+    for page in doc:
+        # find_tables chậm: chỉ chạy trên trang có từ khóa của các bảng cần lấy (CO/CLO/đánh giá/kế hoạch tuần).
+        low = fold(page.get_text("text"))
+        if not any(k in low for k in TABLE_PAGE_KEYS):
+            continue
+        try:
+            tabs = page_tables(page)
+        except Exception:  # noqa: BLE001
+            continue
+        for t in tabs:
+            rows = [[clean(page.get_text("text", clip=pymupdf.Rect(c), sort=True)) if c else "" for c in row.cells] for row in t.rows]
+            if not rows:
+                continue
+            _collect_table(found, rows)
+    doc.close()
+    return _finish_tables(found)
 
 
 def extract_tables_isolated(pdf_path: str, timeout: int = int(os.environ.get("OUTLINE_TABLE_TIMEOUT", "240"))) -> dict[str, list[list[str]]] | None:
@@ -372,8 +450,10 @@ def tables_to_records(tables: dict[str, list[list[str]]]) -> dict[str, list[dict
 
 
 # --------------------------------------------------------------------------- 5. một tài liệu
-def parse_document(text: str, pdf_path: str, *, with_tables: bool = True) -> dict:
-    """Trả về dict JSON-được: {doc_type, course, sections, materials, objectives, clos, assessments, schedule, detail, status}."""
+def parse_document(text: str, pdf_path: str, *, with_tables: bool = True, raw_tables: list[dict] | None = None) -> dict:
+    """Trả về dict JSON-được: {doc_type, course, sections, materials, objectives, clos, assessments, schedule, detail, status}.
+
+    raw_tables: bảng đã trích sẵn (từ Colab); nếu có thì không chạy PyMuPDF cục bộ."""
     text = normalize_text(text)
     sections = split_sections(text)
     kinds = {s["kind"] for s in sections}
@@ -394,11 +474,14 @@ def parse_document(text: str, pdf_path: str, *, with_tables: bool = True) -> dic
     records = {"objectives": [], "clos": [], "assessments": [], "schedule": []}
     tables_failed = False
     if with_tables and doc_type.startswith("syllabus"):
-        tabs = extract_tables_isolated(pdf_path)
-        if tabs is None:
-            tables_failed = True
+        if raw_tables is not None:
+            records = tables_to_records(tables_from_raw(raw_tables))
         else:
-            records = tables_to_records(tabs)
+            tabs = extract_tables_isolated(pdf_path)
+            if tabs is None:
+                tables_failed = True
+            else:
+                records = tables_to_records(tabs)
 
     missing = []
     if doc_type.startswith("syllabus"):
@@ -473,12 +556,13 @@ def parse_outlines(db: Session, data_dir: Path, *, limit: int | None = None, wor
     q = select(OutlineDocument.id, OutlineDocument.text, OutlineDocument.rel_path).where(OutlineDocument.text_status == "extracted")
     if only_ids:
         q = q.where(OutlineDocument.id.in_(only_ids))
+    if not force:  # chạy lại được sau khi bị ngắt: lọc tài liệu đã phân tích bằng phiên bản hiện tại TRƯỚC khi giới hạn số lượng
+        done_ids = select(OutlineCourse.document_id).where(OutlineCourse.parse_method == PARSER_VERSION)
+        q = q.where(OutlineDocument.id.not_in(done_ids))
+    q = q.order_by(OutlineDocument.id)
     if limit:
         q = q.limit(limit)
     jobs = [(i, t or "", str(data_dir / rel)) for i, t, rel in db.execute(q).all()]
-    if not force:  # chạy lại được sau khi bị ngắt: bỏ qua tài liệu đã phân tích bằng phiên bản hiện tại
-        done = set(db.scalars(select(OutlineCourse.document_id).where(OutlineCourse.parse_method == PARSER_VERSION)))
-        jobs = [j for j in jobs if j[0] not in done]
     stats = {"docs": len(jobs), "ok": 0, "partial": 0, "failed": 0, "skipped": 0, "errors": 0}
     # Luồng chỉ để chờ các tiến trình con (extract_tables_isolated) — an toàn khi một PDF làm sập PyMuPDF.
     with ThreadPoolExecutor(max_workers=workers) as ex:
@@ -487,11 +571,13 @@ def parse_outlines(db: Session, data_dir: Path, *, limit: int | None = None, wor
             doc_id, parsed, err = fut.result()
             if parsed is None:
                 stats["errors"] += 1
-                continue
-            save_parsed(db, doc_id, parsed)
-            stats[parsed["status"]] += 1
+                print(f"[parse-outlines] lỗi tài liệu {doc_id}: {err}", flush=True)
+            else:
+                save_parsed(db, doc_id, parsed)
+                stats[parsed["status"]] += 1
             if n % 8 == 0:  # lưu thường xuyên để thấy tiến độ và không mất việc khi bị ngắt
                 db.commit()
+                print(f"[parse-outlines] {n}/{len(jobs)} {stats}", flush=True)
     db.commit()
     stats["imported"] = stats["ok"] + stats["partial"]
     return stats
@@ -499,4 +585,6 @@ def parse_outlines(db: Session, data_dir: Path, *, limit: int | None = None, wor
 
 if __name__ == "__main__":  # chạy bởi extract_tables_isolated: in JSON các bảng của một PDF
     sys.stdout.reconfigure(encoding="utf-8")
+    for _k in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS"):  # trước khi numpy được nạp
+        os.environ.setdefault(_k, "1")
     print(json.dumps(extract_tables(sys.argv[1]), ensure_ascii=False))

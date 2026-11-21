@@ -2,6 +2,7 @@
 
 > Trạng thái: **PostgreSQL 17 (Docker) đã tạo bằng Alembic migration `0001` và đã nạp dữ liệu thật** (kiểm chứng 2026-11-21). Code: `api/app/models.py`, `api/migrations/`.
 > Nguồn dữ liệu và thư mục `data/`: xem `data/README.md`. Quyết định đã chốt: `docs/DECISIONS.md` (D4).
+> **Mô tả từng bảng/cột, khóa ngoại, quy tắc nối bảng và số liệu hiện tại: xem `docs/DATA_DICTIONARY.md`** (sinh tự động từ database thật bằng `scripts/gen_db_doc.py`). Các con số trong mục 3 và mục "Cập nhật 2026-11-21" của tài liệu này là ảnh chụp cũ, không còn khớp.
 
 ## 1. Nguyên tắc thiết kế
 1. **Một DB, mọi môi trường:** PostgreSQL ở dev (Docker), staging và production. SQLite chỉ dùng cho test nhanh/không Docker (`init_db()` tự tạo bảng ở SQLite; ở PostgreSQL schema do Alembic quản lý).

@@ -17,9 +17,18 @@ interface SettingsState {
   cohort: string;
   major: string;
   theme: Theme;
+  /** mã CTĐT của sinh viên, vd "K23406E" (xem lib/programCode.ts); "" = chưa nhập */
+  programCode: string;
+  /** đã hiện hộp thoại nhập mã CTĐT lần đầu (đóng hoặc lưu đều tính) */
+  programPrompted: boolean;
   setCohort: (c: string) => void;
   setMajor: (m: string) => void;
   setTheme: (t: Theme) => void;
+  setProgramCode: (c: string) => void;
+  setProgramPrompted: (v: boolean) => void;
+  /** đã có chứng chỉ đầu ra tiếng Anh → miễn Tiếng Anh 1–4 (tính là hoàn thành, không tính GPA) */
+  englishCertExempt: boolean;
+  setEnglishCertExempt: (v: boolean) => void;
 }
 
 export const useSettings = create<SettingsState>()(
@@ -28,9 +37,15 @@ export const useSettings = create<SettingsState>()(
       cohort: "",
       major: "",
       theme: "system",
+      programCode: "",
+      programPrompted: false,
+      englishCertExempt: false,
       setCohort: (cohort) => set({ cohort }),
       setMajor: (major) => set({ major }),
       setTheme: (theme) => set({ theme }),
+      setProgramCode: (programCode) => set({ programCode }),
+      setProgramPrompted: (programPrompted) => set({ programPrompted }),
+      setEnglishCertExempt: (englishCertExempt) => set({ englishCertExempt }),
     }),
     { name: "uelcourses-settings" },
   ),
@@ -179,14 +194,28 @@ interface PlannerStore extends PlanState {
   move: (code: string, target: string) => void;
   toggleCompleted: (code: string) => void;
   replaceModule: (oldCode: string, m: PlannedModule) => void;
+  /** Đồng bộ theo CTĐT của người dùng: danh sách chờ = mọi học phần của CTĐT chưa hoàn thành và chưa xếp kỳ. */
+  syncProgram: (modules: PlannedModule[], exemptCodes?: string[]) => void;
 }
 
-const defaultTerms = [
-  { id: "t1", name: "Năm 1 – HK1", modules: [] },
-  { id: "t2", name: "Năm 1 – HK2", modules: [] },
-  { id: "t3", name: "Năm 2 – HK1", modules: [] },
-  { id: "t4", name: "Năm 2 – HK2", modules: [] },
-];
+/** 4 năm × 3 học kỳ chính thức (HK1, HK2, HK3) = 12 học kỳ, từ "Năm 1 – HK1" đến "Năm 4 – HK3". HK3 không phải học kỳ hè. */
+export const PROGRAM_TERMS = Array.from({ length: 12 }, (_, i) => {
+  const year = Math.floor(i / 3) + 1;
+  const term = (i % 3) + 1;
+  return { id: `t${i + 1}`, name: `Năm ${year} – HK${term}`, modules: [] as string[] };
+});
+
+/** Bản lưu cũ (version 0) đặt tên học kỳ thứ 3 là "HKhè": đổi lại thành "HK3". */
+export function migratePlannerState(persisted: unknown, version: number): unknown {
+  if (version >= 1 || !persisted || typeof persisted !== "object") return persisted;
+  const state = persisted as { terms?: { name?: unknown }[] };
+  if (Array.isArray(state.terms)) {
+    state.terms = state.terms.map((t) => ({ ...t, name: typeof t.name === "string" ? t.name.replace(/HK\s*hè/gi, "HK3") : t.name }));
+  }
+  return state;
+}
+
+const defaultTerms = PROGRAM_TERMS.slice(0, 4);
 
 export const usePlanner = create<PlannerStore>()(
   persist(
@@ -222,8 +251,22 @@ export const usePlanner = create<PlannerStore>()(
           backlog: s.backlog.map((c) => (c === oldCode ? m.code : c)),
           terms: s.terms.map((t) => ({ ...t, modules: t.modules.map((c) => (c === oldCode ? m.code : c)) })),
         })),
+      syncProgram: (modules, exemptCodes = []) =>
+        set((s) => {
+          const catalog = { ...s.catalog };
+          for (const m of modules) catalog[m.code] = { ...catalog[m.code], ...m };
+          // Môn được miễn (chứng chỉ tiếng Anh) coi như đã hoàn thành.
+          const completed = Array.from(new Set([...s.completed, ...exemptCodes]));
+          const codes = modules.map((m) => m.code);
+          const placed = new Set(s.terms.flatMap((t) => t.modules));
+          const backlog = codes.filter((c) => !placed.has(c) && !completed.includes(c));
+          // Chưa có học kỳ nào được xếp: dùng đủ 12 học kỳ của CTĐT thay cho 4 học kỳ mặc định.
+          const untouched = s.terms.length <= defaultTerms.length && placed.size === 0;
+          const terms = untouched ? PROGRAM_TERMS.map((t) => ({ ...t, modules: [] as string[] })) : s.terms;
+          return { catalog, backlog, terms, completed };
+        }),
     }),
-    { name: "uelcourses-planner" },
+    { name: "uelcourses-planner", version: 1, migrate: migratePlannerState as never },
   ),
 );
 

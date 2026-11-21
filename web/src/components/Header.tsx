@@ -23,11 +23,11 @@ import {
 } from "lucide-react";
 import { MockBadge } from "./MockBadge";
 import { openCommandPalette } from "./CommandPalette";
-import { api } from "@/lib/api";
-import { useApi } from "@/lib/useApi";
 import { useSettings } from "@/lib/store";
 import { useMounted } from "@/lib/useMounted";
 import { useLang, useT } from "@/i18n";
+import { parseProgramCode } from "@/lib/programCode";
+import { appPrompt } from "@/lib/dialog";
 
 export interface NavItem {
   href: string;
@@ -56,8 +56,8 @@ export const openFeedback = () => window.dispatchEvent(new Event("uel:feedback")
 export function Logo() {
   const { t } = useT();
   return (
-    <Link href="/" className="flex items-center gap-1.5 text-lg font-bold tracking-tight" aria-label={t("header.home")}>
-      <GraduationCap className="h-5 w-5 text-brand-600 dark:text-brand-300" aria-hidden />
+    <Link href="/" className="flex items-center gap-2 text-[27px] font-bold tracking-tight" aria-label={t("header.home")}>
+      <GraduationCap className="h-[30px] w-[30px] text-brand-600 dark:text-brand-300" aria-hidden />
       <span>
         <span className="text-brand-600 dark:text-brand-300">UEL</span>
         <span className="text-slate-800 dark:text-slate-100">Courses</span>
@@ -74,52 +74,76 @@ export function LangToggle() {
   return (
     <button
       onClick={() => setLang(next)}
-      className="flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+      className="flex items-center gap-1.5 rounded px-3 py-1.5 text-[18px] font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
       aria-label={t("header.langAria")}
       title={t("header.langAria")}
     >
-      <Languages className="h-3.5 w-3.5" aria-hidden />
+      <Languages className="h-[18px] w-[18px]" aria-hidden />
       {lang === "vi" ? "VI" : "EN"}
     </button>
   );
 }
 
-/** Thin top bar: wordmark, quick search, current semester, language and dark-mode toggles. */
+/** Ô mã CTĐT trên thanh trên (vd K23406E); bấm để sửa, đổi lại được bất cứ lúc nào. */
+function HeaderProgramCode() {
+  const code = useSettings((s) => s.programCode);
+  const setCode = useSettings((s) => s.setProgramCode);
+
+  // Bấm nút → hộp thoại nổi để nhập mã (kiểm tra định dạng ngay trong hộp thoại).
+  const edit = async () => {
+    const v = await appPrompt("Nhập mã lớp của bạn để hệ thống lọc lại theo chương trình đào tạo từ phía nhà trường.", {
+      title: "Mã lớp của bạn",
+      defaultValue: code,
+      placeholder: "VD: K23406E1",
+      okLabel: "Lưu mã",
+      validate: (x) => (parseProgramCode(x) ? null : "Mã lớp chưa đúng. Ví dụ: K23406E1, K24416A hoặc K23406H."),
+    });
+    const parsed = v ? parseProgramCode(v) : null;
+    if (parsed) setCode(parsed.normalized);
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={edit}
+      className="hidden items-center gap-2 rounded border border-slate-200 px-3 py-1.5 text-[18px] text-slate-600 hover:bg-slate-50 sm:flex dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+      title="Mã lớp của bạn — bấm để đổi"
+    >
+      {code ? <span className="font-mono font-semibold">{code}</span> : <span>Nhập mã lớp</span>}
+    </button>
+  );
+}
+
+/** Thin top bar: wordmark, quick search, program code, language and dark-mode toggles. */
 export function Header() {
   const { t } = useT();
   const mounted = useMounted();
-  const sems = useApi(() => api.semesters(), []);
   const theme = useSettings((s) => s.theme);
   const setTheme = useSettings((s) => s.setTheme);
-  const cur = sems.data?.find((s) => s.is_current);
   const dark = mounted && (theme === "dark" || (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches));
   return (
-    <header className="sticky top-0 z-30 flex h-11 items-center gap-3 border-b border-slate-200 bg-white px-3 dark:border-slate-800 dark:bg-slate-900">
+    <header className="sticky top-0 z-30 flex h-[66px] items-center gap-[18px] border-b border-slate-200 bg-white px-[18px] dark:border-slate-800 dark:bg-slate-900">
       <Logo />
       <MockBadge />
-      <div className="ml-auto flex items-center gap-2">
-        {cur && (
-          <span className="hidden rounded border border-slate-200 px-2 py-0.5 text-xs text-slate-600 sm:inline dark:border-slate-700 dark:text-slate-300" title={t("header.semester")}>
-            {String(cur.year).replace("–", "-")} · HK{cur.term}
-          </span>
-        )}
+      <div className="ml-auto flex items-center gap-3">
+        <HeaderProgramCode />
         <button
           onClick={openCommandPalette}
-          className="flex items-center gap-2 rounded border border-slate-200 px-2 py-1 text-xs text-slate-500 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
+          className="flex items-center gap-3 rounded border border-slate-200 px-3 py-1.5 text-[18px] text-slate-500 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
           aria-label={t("header.searchAria")}
         >
-          <Search className="h-3.5 w-3.5" aria-hidden />
+          <Search className="h-[18px] w-[18px]" aria-hidden />
           <span className="hidden sm:inline">{t("header.search")}</span>
-          <kbd className="hidden rounded bg-slate-100 px-1 text-[10px] sm:inline dark:bg-slate-800">Ctrl K</kbd>
+          <kbd className="hidden rounded bg-slate-100 px-1.5 text-[15px] sm:inline dark:bg-slate-800">Ctrl K</kbd>
         </button>
         <LangToggle />
         <button
           onClick={() => setTheme(dark ? "light" : "dark")}
-          className="rounded p-1.5 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+          className="rounded p-2.5 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
           aria-label={dark ? t("header.toLight") : t("header.toDark")}
           aria-pressed={dark}
         >
-          {dark ? <Sun className="h-4 w-4" aria-hidden /> : <Moon className="h-4 w-4" aria-hidden />}
+          {dark ? <Sun className="h-6 w-6" aria-hidden /> : <Moon className="h-6 w-6" aria-hidden />}
         </button>
       </div>
     </header>
@@ -132,7 +156,7 @@ export function SideNav() {
   const path = usePathname();
   return (
     <nav
-      className="fixed bottom-0 left-0 top-11 z-20 hidden w-[170px] flex-col overflow-y-auto border-r border-slate-200 bg-white py-2 md:flex dark:border-slate-800 dark:bg-slate-900"
+      className="fixed bottom-0 left-0 top-[66px] z-20 hidden w-[212px] flex-col overflow-y-auto border-r border-slate-200 bg-white py-2 md:flex dark:border-slate-800 dark:bg-slate-900"
       aria-label={t("nav.main")}
     >
       {NAV.map((n) => {
@@ -142,22 +166,22 @@ export function SideNav() {
             key={n.href}
             href={n.href}
             aria-current={on ? "page" : undefined}
-            className={`mx-2 my-px flex items-center gap-2.5 rounded px-2.5 py-1.5 text-sm ${
+            className={`mx-2.5 my-px flex items-center gap-3 rounded px-3 py-2 text-[17.5px] ${
               on
                 ? "bg-brand-600 font-semibold text-white"
                 : "text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
             }`}
           >
-            <n.icon className="h-4 w-4 shrink-0" aria-hidden />
+            <n.icon className="h-5 w-5 shrink-0" aria-hidden />
             {t(n.labelKey)}
           </Link>
         );
       })}
       <button
         onClick={openFeedback}
-        className="mx-2 my-px flex items-center gap-2.5 rounded px-2.5 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+        className="mx-2.5 my-px flex items-center gap-3 rounded px-3 py-2 text-left text-[17.5px] text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
       >
-        <MessageSquarePlus className="h-4 w-4 shrink-0" aria-hidden />
+        <MessageSquarePlus className="h-5 w-5 shrink-0" aria-hidden />
         {t("nav.feedback")}
       </button>
     </nav>

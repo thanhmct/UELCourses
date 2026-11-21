@@ -6,6 +6,9 @@ export interface Semester {
   year: number | string;
   term: number | string;
   is_current: boolean;
+  /** ISO yyyy-mm-dd: ngày bắt đầu/kết thúc học kỳ (để xem phòng theo tháng) */
+  start_date?: string | null;
+  end_date?: string | null;
 }
 
 export interface ModuleRef {
@@ -30,6 +33,8 @@ export interface ModuleSummary extends ModuleRef {
   faculty?: string;
   /** mô tả học phần (từ DB hoặc đề cương) */
   description?: string | null;
+  /** mô tả học phần bằng tiếng Anh (null/thiếu nếu chưa có) — giao diện EN dùng trường này, giao diện VI dùng `description` */
+  description_en?: string | null;
   /** link Drive (PDF) đề cương của học phần */
   outline_url?: string | null;
   has_equivalents: boolean;
@@ -122,6 +127,9 @@ export interface VenueSession {
   module_name?: string;
   class_code?: string;
   weeks?: string;
+  /** ISO yyyy-mm-dd: ngày đầu/cuối của buổi (để xem theo tuần) */
+  date_start?: string | null;
+  date_end?: string | null;
 }
 
 export interface Venue {

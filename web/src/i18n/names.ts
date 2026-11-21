@@ -11,6 +11,22 @@ export function moduleName(m: { name: string; name_en?: string | null }, lang: L
   return lang === "en" && m.name_en ? m.name_en : m.name;
 }
 
+/**
+ * Mô tả học phần theo ngôn ngữ giao diện: VI → `description`, EN → `description_en`.
+ * Thiếu bản đúng ngôn ngữ thì dùng bản còn lại và đặt `fallback = true` để giao diện báo rõ (không tự dịch).
+ */
+export function moduleDescription(
+  m: { description?: string | null; description_en?: string | null },
+  lang: Lang,
+): { text: string | null; fallback: boolean } {
+  const vi = m.description?.trim() || null;
+  const en = m.description_en?.trim() || null;
+  const wanted = lang === "en" ? en : vi;
+  const other = lang === "en" ? vi : en;
+  if (wanted) return { text: wanted, fallback: false };
+  return other ? { text: other, fallback: true } : { text: null, fallback: false };
+}
+
 /** Khóa so khớp: bỏ tiền tố "Khoa ", gom khoảng trắng, chữ thường; "–" và "-" coi như nhau. */
 function key(v: string, prefix: RegExp): string {
   return v.trim().replace(prefix, "").replace(/\s+/g, " ").replace(/[–—]/g, "-").toLowerCase();

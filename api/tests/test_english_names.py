@@ -69,6 +69,21 @@ def test_tree_nodes_carry_name_en(client, db):
     assert root["children"][0]["code"] == "T1" and root["children"][0]["name_en"] == "Course One"
 
 
+def test_equivalents_carry_name_en(client, db):
+    from app.models import Equivalent
+    db.add_all([Module(code="E1", name="Kinh tế vi mô", name_en="Microeconomics"), Module(code="E2", name="Vi mô (cũ)")])
+    db.flush()
+    db.add(Equivalent(code="E1", name="Kinh tế vi mô", credits=3, equivalent_code="E2", equivalent_name="Vi mô (cũ)",
+                      equivalent_credits=3, search_text="e1 kinh te vi mo e2"))
+    db.commit()
+    items = client.get("/api/equivalents", params={"q": "e1"}).json()
+    it = [i for i in items if i["code"] == "E1"][0]
+    assert it["name_en"] == "Microeconomics"
+    assert it["equivalents"][0]["code"] == "E2" and it["equivalents"][0]["name_en"] is None
+    back = client.get("/api/equivalents/E2").json()  # chiều ngược lại: E2 tương đương E1 -> tên EN của E1
+    assert back["equivalents"][0]["code"] == "E1" and back["equivalents"][0]["name_en"] == "Microeconomics"
+
+
 def test_api_returns_name_en(client, db):
     db.add(Module(code="Z9", name="Luật hình sự", name_en="Criminal Law", name_en_source="seed_table",
                   search_text="z9 luat hinh su"))

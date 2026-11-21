@@ -153,7 +153,7 @@ def test_import_equivalents_and_query(client):
 
     items = client.get("/api/equivalents").json()
     assert [i["code"] for i in items] == ["ECO101", "LAW201"]
-    assert items[0]["equivalents"] == [{"code": "ECO100", "name": "Kinh tế học", "credits": 3}]
+    assert items[0]["equivalents"] == [{"code": "ECO100", "name": "Kinh tế học", "name_en": None, "credits": 3}]
     assert [i["code"] for i in client.get("/api/equivalents", params={"q": "dan luat"}).json()] == ["LAW201"]
 
     one = client.get("/api/equivalents/ECO101").json()

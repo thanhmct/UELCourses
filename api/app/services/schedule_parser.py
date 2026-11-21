@@ -123,14 +123,24 @@ def _make_lesson(weekday, start, end, room, weeks, raw, start_time=None, end_tim
         end = start
     if start > end:
         start, end = end, start
+    if MAX_PERIOD < end <= MAX_PERIOD + 2 and 1 <= start <= MAX_PERIOD:
+        # Tiết 15 là tiết cuối (kết thúc 20:15). Dữ liệu thật có 15.5/16/16.5/17 -> hiểu là kéo dài đến hết tiết 15.
+        # Giá trị vô nghĩa hơn (vd 20) vẫn bị từ chối.
+        end = MAX_PERIOD
     if not (1 <= start <= MAX_PERIOD and 1 <= end <= MAX_PERIOD):
+        return None
+    try:
+        start_time = start_time or period_start_time(start)
+        end_time = end_time or period_end_time(end)
+    except ValueError:
+        # Tiết không có trong bảng giờ chính thức (vd 5.5): chỉ đoạn này không hiểu được, KHÔNG làm mất các đoạn khác của lớp.
         return None
     return ParsedLesson(
         weekday=weekday,
         start_period=start,
         end_period=end,
-        start_time=start_time or period_start_time(start),
-        end_time=end_time or period_end_time(end),
+        start_time=start_time,
+        end_time=end_time,
         room=room or None,
         weeks=weeks or None,
         raw=raw,

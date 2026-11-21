@@ -3,14 +3,16 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronLeft, ChevronRight, Download, Eye, EyeOff, RefreshCw, RotateCcw, Share2, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
-import { useApi } from "@/lib/useApi";
+import { useSemesters } from "@/lib/semesters";
 import { useMounted } from "@/lib/useMounted";
 import { PALETTE, useTimetable } from "@/lib/store";
 import { buildShareUrl, decodeTimetable, type SharedTimetable } from "@/lib/shareUrl";
-import { conflictKeys, findConflicts } from "@/lib/conflicts";
+import { adjacencyViolations, conflictKeys, findConflicts } from "@/lib/conflicts";
+import { appConfirm, appPrompt } from "@/lib/dialog";
+import { SelectMenu } from "@/components/SelectMenu";
+import { useMyProgramId } from "@/lib/myProgram";
 import { totalCredits } from "@/lib/credits";
 import { buildIcs } from "@/lib/ics";
-import { PERIOD_COUNT, SESSION_BOUNDARIES } from "@/lib/periods";
 import type { ClassSection } from "@/lib/types";
 import { seatsAvailable } from "@/lib/modules";
 import { Empty, EnBadge, Loading } from "@/components/ui";
@@ -31,10 +33,11 @@ function download(name: string, href: string) {
 }
 
 export default function TimetablePage() {
-  const { t } = useT();
+  const { t, lang } = useT();
+  const myProgramId = useMyProgramId();
   const mounted = useMounted();
   const tt = useTimetable();
-  const sems = useApi(() => api.semesters(), []);
+  const sems = useSemesters();
   const [loaded, setLoaded] = useState<{ sem: string; data: Record<string, ClassSection[]> }>({ sem: "", data: {} });
   const [pendingImport, setPendingImport] = useState<SharedTimetable | null>(null);
   const [shareUrl, setShareUrl] = useState("");
@@ -115,6 +118,7 @@ export default function TimetablePage() {
     [entries, sections],
   );
   const conflicts = useMemo(() => findConflicts(selected), [selected]);
+  const adjViolations = useMemo(() => adjacencyViolations(selected), [selected]);
   const ckeys = useMemo(() => conflictKeys(selected), [selected]);
   const colorOf = useCallback((code: string) => PALETTE[(entries.find((e) => e.code === code)?.color ?? 0) % PALETTE.length], [entries]);
   const colors = useMemo(() => Object.fromEntries(entries.map((e) => [e.code, colorOf(e.code)])), [entries, colorOf]);
@@ -187,22 +191,35 @@ export default function TimetablePage() {
     <div className="space-y-3">
       {/* semester switcher */}
       <div className="flex flex-wrap items-center justify-center gap-2">
-        <button className="btn-outline px-2" onClick={() => stepSem(-1)} disabled={semIdx <= 0} aria-label={t("tt.prevSem")}>
-          <ChevronLeft className="h-4 w-4" aria-hidden />
-        </button>
-        <select
-          id="sem"
-          className="input w-auto min-w-[16rem] text-center font-semibold"
-          value={semester}
-          onChange={(e) => tt.setSemester(e.target.value)}
-          aria-label={t("tt.selectSem")}
+        <button
+          type="button"
+          className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-100 text-brand-700 transition hover:bg-brand-200 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-brand-900/50 dark:text-brand-200 dark:hover:bg-brand-800"
+          onClick={() => stepSem(-1)}
+          disabled={semIdx <= 0}
+          aria-label={t("tt.prevSem")}
         >
-          {sems.data?.map((s) => (
-            <option key={s.id} value={s.id}>{semLabel(s)}</option>
-          ))}
-        </select>
-        <button className="btn-outline px-2" onClick={() => stepSem(1)} disabled={semIdx < 0 || semIdx >= (sems.data?.length ?? 0) - 1} aria-label={t("tt.nextSem")}>
-          <ChevronRight className="h-4 w-4" aria-hidden />
+          <ChevronLeft className="h-5 w-5" aria-hidden />
+        </button>
+        <SelectMenu
+          className="min-w-[17rem]"
+          ariaLabel={t("tt.selectSem")}
+          value={semester}
+          onChange={(v) => tt.setSemester(v)}
+          options={(sems.data ?? []).map((s) => ({
+            value: s.id,
+            label: `Học kỳ ${s.term}`,
+            display: semLabel(s),
+            group: `Năm học ${String(s.year).replace("-", "–")}`,
+          }))}
+        />
+        <button
+          type="button"
+          className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-100 text-brand-700 transition hover:bg-brand-200 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-brand-900/50 dark:text-brand-200 dark:hover:bg-brand-800"
+          onClick={() => stepSem(1)}
+          disabled={semIdx < 0 || semIdx >= (sems.data?.length ?? 0) - 1}
+          aria-label={t("tt.nextSem")}
+        >
+          <ChevronRight className="h-5 w-5" aria-hidden />
         </button>
       </div>
 
@@ -232,6 +249,19 @@ export default function TimetablePage() {
           })}
         </div>
       )}
+      {adjViolations.length > 0 && (
+        <div className="rounded-md border border-amber-400 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/50 dark:text-amber-200" role="alert">
+          <strong>Vi phạm quy định xếp lớp: {adjViolations.length} cặp lớp học cạnh nhau.</strong>
+          <p className="mt-1 text-xs">
+            Không được có hai lớp học liền kề qua ranh giới tiết 6 | 7 (sáng – chiều) và tiết 12 | 13 (chiều – tối) theo quy định phòng đào tạo.
+          </p>
+          <ul className="mt-1 list-disc pl-5 text-xs">
+            {adjViolations.slice(0, 5).map((c, i) => (
+              <li key={i}>{c.a.module_code} ({c.a.class_code}) và {c.b.module_code} ({c.b.class_code})</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* grid + toolbar */}
       <section className="min-w-0 space-y-2" aria-label={t("tt.title")}>
@@ -243,16 +273,6 @@ export default function TimetablePage() {
           showNames={showNames}
           onChangeClass={(code, cls) => { tt.setClass(code, cls); flash(t("tt.changed", { code, cls })); }}
         />
-        <p className="text-xs text-slate-500">
-          {t("tt.semInfo", {
-            sem: semText,
-            m: SESSION_BOUNDARIES.morningEnd,
-            m1: SESSION_BOUNDARIES.morningEnd + 1,
-            a: SESSION_BOUNDARIES.afternoonEnd,
-            a1: SESSION_BOUNDARIES.afternoonEnd + 1,
-            p: PERIOD_COUNT,
-          })}
-        </p>
         {unscheduled.length > 0 && (
           <p className="text-xs text-amber-600">{t("tt.unscheduled", { codes: unscheduled.map((e) => e.code).join(", ") })}</p>
         )}
@@ -276,8 +296,8 @@ export default function TimetablePage() {
             <button className="btn-outline" onClick={() => setShowWebcal(true)}><RefreshCw className="h-4 w-4" aria-hidden /> {t("tt.sync")}</button>
             <button
               className="btn-outline text-red-600"
-              onClick={() => {
-                if (entries.length && confirm(t("tt.confirmReset"))) tt.replaceSemester(semester, []);
+              onClick={async () => {
+                if (entries.length && (await appConfirm(t("tt.confirmReset"), { danger: true, okLabel: "Xóa hết" }))) tt.replaceSemester(semester, []);
               }}
               disabled={!entries.length}
             >
@@ -292,7 +312,16 @@ export default function TimetablePage() {
         <div className="card space-y-3">
           <div>
             <p className="label">{t("tt.addLabel")}</p>
-            <ModuleSearch onPick={(m) => tt.addModule(m)} exclude={entries.map((e) => e.code)} placeholder={t("tt.addPlaceholder")} />
+            <ModuleSearch
+              onPick={(m) => tt.addModule(m)}
+              exclude={entries.map((e) => e.code)}
+              placeholder={t("tt.addPlaceholder")}
+              programId={myProgramId}
+              semester={semester}
+            />
+            {!myProgramId && (
+              <p className="mt-1 text-xs text-slate-500">Nhập mã lớp (vd K23406E1) để chỉ hiện học phần trong chương trình của bạn.</p>
+            )}
           </div>
           {entries.length === 0 ? (
             <Empty>{t("tt.emptyList")}</Empty>
@@ -358,7 +387,12 @@ export default function TimetablePage() {
                       <select className="input py-1 text-xs" value={e.class_code ?? ""} onChange={(ev) => tt.setClass(e.code, ev.target.value)} aria-label={t("tt.chooseClass", { code: e.code })}>
                         {list.map((s) => (
                           <option key={s.class_code} value={s.class_code}>
-                            {s.class_code} — {s.lessons.map((l) => `${weekdayName(t, l.weekday, true)} t${l.start_period}-${l.end_period}`).join(", ") || t("tt.noSchedule")}
+                            {s.class_code} — {s.lessons.map((l) => {
+                              const time = l.start_time && l.end_time ? ` (${l.start_time} – ${l.end_time})` : "";
+                              const dmy = (iso: string) => iso.split("-").reverse().join("/");
+                              const dates = l.date_start ? `, từ ngày ${dmy(l.date_start)}${l.date_end && l.date_end !== l.date_start ? ` đến ${dmy(l.date_end)}` : ""}` : "";
+                              return `${weekdayName(t, l.weekday)}, tiết ${l.start_period} đến tiết ${l.end_period}${time}${dates}`;
+                            }).join("; ") || t("tt.noSchedule")}
                             {seatsAvailable(s) !== null ? ` (${seatsAvailable(s) === 0 ? t("tt.full") : t("tt.seatsLeft", { n: seatsAvailable(s) ?? 0 })})` : ""}
                           </option>
                         ))}
@@ -381,13 +415,13 @@ export default function TimetablePage() {
         {/* drafts */}
         <div className="card space-y-2 self-start">
           <div className="label mb-0">{t("tt.drafts")}</div>
-          <div className="flex flex-wrap items-center gap-1.5">
+          <div className="flex flex-wrap items-center gap-[6.3px]">
             {draftNames.map((name) => (
               <button
                 key={name}
                 onClick={() => tt.switchDraft(semester, name)}
                 aria-pressed={name === activeDraft}
-                className={`rounded px-2.5 py-1 text-xs font-semibold ${
+                className={`rounded px-[11.5px] py-[5px] text-[13.8px] font-semibold ${
                   name === activeDraft
                     ? "bg-brand-600 text-white"
                     : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
@@ -397,11 +431,17 @@ export default function TimetablePage() {
               </button>
             ))}
             <button
-              onClick={() => {
-                const name = prompt(t("tt.newDraftPrompt"), `${t("tt.drafts")} ${draftNames.length + 1}`);
-                if (name && name.trim()) tt.createDraft(semester, name.trim(), false);
+              onClick={async () => {
+                const name = await appPrompt(t("tt.newDraftPrompt"), {
+                  title: "Thêm bản nháp",
+                  defaultValue: `${t("tt.drafts")} ${draftNames.length + 1}`,
+                  placeholder: "Tên bản nháp",
+                  okLabel: "Tạo",
+                  validate: (v) => (v ? null : "Vui lòng nhập tên bản nháp."),
+                });
+                if (name) tt.createDraft(semester, name, false);
               }}
-              className="rounded border border-dashed border-slate-300 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:border-brand-500 hover:text-brand-600 dark:border-slate-700 dark:text-slate-400"
+              className="rounded border border-dashed border-slate-300 px-[11.5px] py-[5px] text-[13.8px] font-semibold text-slate-600 hover:border-brand-500 hover:text-brand-600 dark:border-slate-700 dark:text-slate-400"
               title={t("tt.newDraftTitle")}
             >
               {t("tt.newDraft")}
@@ -409,27 +449,33 @@ export default function TimetablePage() {
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => {
-                const name = prompt(t("tt.duplicatePrompt"), `${activeDraft} (${t("tt.duplicate")})`);
-                if (name && name.trim()) {
-                  tt.createDraft(semester, name.trim(), true);
-                  flash(t("tt.duplicated", { name: name.trim() }));
+              onClick={async () => {
+                const name = await appPrompt(t("tt.duplicatePrompt"), {
+                  title: "Nhân bản bản nháp",
+                  defaultValue: `${activeDraft} (${t("tt.duplicate")})`,
+                  placeholder: "Tên bản nháp mới",
+                  okLabel: "Nhân bản",
+                  validate: (v) => (v ? null : "Vui lòng nhập tên bản nháp."),
+                });
+                if (name) {
+                  tt.createDraft(semester, name, true);
+                  flash(t("tt.duplicated", { name }));
                 }
               }}
-              className="btn-outline py-1 text-xs"
+              className="rounded-md border border-brand-300 bg-brand-50 px-[11.5px] py-[5px] text-[13.8px] font-semibold text-brand-700 transition hover:bg-brand-100 dark:border-brand-700 dark:bg-brand-900/40 dark:text-brand-200 dark:hover:bg-brand-900/70"
               title={t("tt.duplicateTitle")}
             >
               {t("tt.duplicate")}
             </button>
             {draftNames.length > 1 && (
               <button
-                onClick={() => {
-                  if (confirm(t("tt.confirmDeleteDraft", { name: activeDraft }))) {
+                onClick={async () => {
+                  if (await appConfirm(t("tt.confirmDeleteDraft", { name: activeDraft }), { danger: true, okLabel: "Xóa bản nháp" })) {
                     tt.deleteDraft(semester, activeDraft);
                     flash(t("tt.draftDeleted"));
                   }
                 }}
-                className="btn-ghost py-1 text-xs text-red-600"
+                className="rounded-md border border-red-300 bg-red-50 px-[11.5px] py-[5px] text-[13.8px] font-semibold text-red-600 transition hover:bg-red-100 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300 dark:hover:bg-red-950/70"
               >
                 {t("tt.deleteDraft")}
               </button>

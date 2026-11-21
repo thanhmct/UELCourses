@@ -59,10 +59,51 @@ export function findConflicts(sections: ClassSection[]): Conflict[] {
   return out;
 }
 
-/** Set of keys "MODULE#lessonIndex" that are in conflict, for highlighting. */
+/**
+ * Quy định phòng đào tạo: không được có hai lớp học cạnh nhau qua ranh giới
+ * sáng | chiều (tiết 6 | 7) và chiều | tối (tiết 12 | 13).
+ */
+export const ADJACENCY_BOUNDARIES: [number, number][] = [
+  [6, 7],
+  [12, 13],
+];
+
+export function lessonsAdjacent(a: Lesson, b: Lesson): boolean {
+  if (a.weekday !== b.weekday) return false;
+  const adjacent = ADJACENCY_BOUNDARIES.some(
+    ([x, y]) => (a.end_period === x && b.start_period === y) || (b.end_period === x && a.start_period === y),
+  );
+  return adjacent && weeksOverlap(a.weeks, b.weeks);
+}
+
+/** Các cặp lớp vi phạm quy định liền kề (cùng ngày, cùng tuần, cùng thời gian hiệu lực). */
+export function adjacencyViolations(sections: ClassSection[]): Conflict[] {
+  const out: Conflict[] = [];
+  for (let i = 0; i < sections.length; i++) {
+    for (let j = i + 1; j < sections.length; j++) {
+      const A = sections[i];
+      const B = sections[j];
+      if (A.module_code === B.module_code && A.class_code === B.class_code) continue;
+      if (!datesOverlap(A, B)) continue;
+      A.lessons.forEach((la, ia) =>
+        B.lessons.forEach((lb, ib) => {
+          if (lessonsAdjacent(la, lb)) {
+            out.push({
+              a: { module_code: A.module_code, class_code: A.class_code, lessonIndex: ia },
+              b: { module_code: B.module_code, class_code: B.class_code, lessonIndex: ib },
+            });
+          }
+        }),
+      );
+    }
+  }
+  return out;
+}
+
+/** Set of keys "MODULE#lessonIndex" that are in conflict (trùng lịch hoặc vi phạm liền kề), for highlighting. */
 export function conflictKeys(sections: ClassSection[]): Set<string> {
   const keys = new Set<string>();
-  for (const c of findConflicts(sections)) {
+  for (const c of [...findConflicts(sections), ...adjacencyViolations(sections)]) {
     keys.add(`${c.a.module_code}#${c.a.lessonIndex}`);
     keys.add(`${c.b.module_code}#${c.b.lessonIndex}`);
   }

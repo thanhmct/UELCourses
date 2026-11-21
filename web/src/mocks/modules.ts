@@ -10,7 +10,7 @@ import { parseSchedules } from "@/lib/schedule";
 export const mockSemesters: Semester[] = [
   { id: "2026-2027-1", name: "Học kỳ 1 năm học 2026–2027", year: "2026-2027", term: 1, is_current: true },
   { id: "2026-2027-2", name: "Học kỳ 2 năm học 2026–2027", year: "2026-2027", term: 2, is_current: false },
-  { id: "2026-2027-3", name: "Học kỳ 3 (Hè) năm học 2026–2027", year: "2026-2027", term: 3, is_current: false },
+  { id: "2026-2027-3", name: "Học kỳ 3 năm học 2026–2027", year: "2026-2027", term: 3, is_current: false },
   { id: "251", name: "Học kỳ 1 năm học 2025–2026", year: "2025-2026", term: 1, is_current: false },
   { id: "252", name: "Học kỳ 2 năm học 2025–2026", year: "2025-2026", term: 2, is_current: false },
   { id: "261", name: "Học kỳ 1 năm học 2026–2027 (Mẫu)", year: "2026-2027", term: 1, is_current: false },
