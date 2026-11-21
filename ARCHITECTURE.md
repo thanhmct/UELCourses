@@ -7,7 +7,7 @@ Khóa luận: nền tảng lập kế hoạch học tập cho sinh viên UEL (l�
 | Thư mục | Chủ sở hữu | Nội dung |
 |---|---|---|
 | `web/` | agent `web-frontend` | Next.js 15 (App Router, TypeScript, Tailwind) |
-| `api/` (trừ `api/app/rag/`) | agent `api-backend` | FastAPI + SQLAlchemy, SQLite mặc định (Postgres tùy chọn) |
+| `api/` (trừ `api/app/rag/`) | agent `api-backend` | FastAPI + SQLAlchemy, **một** PostgreSQL (SQLite chỉ cho test) |
 | `api/app/rag/`, `api/scripts/ingest_regulations.py`, `api/tests/rag/` | agent `regulations-rag` | Pipeline RAG quy chế |
 | `regulations/` | agent `regulations-collector` | Văn bản quy chế gốc + `catalog.json` |
 | `research/` | agent `ux-research` | Khảo sát, persona, kế hoạch kiểm thử, phân tích feedback |
@@ -108,7 +108,7 @@ Tra cứu học phần (search, lọc), trang chi tiết học phần, **Thời 
 
 ## Chạy
 
-Cách chuẩn cho cả nhóm: Docker — xem `DEPLOY.md` (`docker-compose.yml`, `docker-compose.dev.yml`, `docker/`). Trong Docker dùng PostgreSQL; cấu hình qua biến môi trường `DATABASE_URL, DATA_DIR, REGULATIONS_DIR, RAG_INDEX_DIR, CORS_ORIGINS, LLM_PROVIDER, OLLAMA_URL, OLLAMA_MODEL, ANTHROPIC_API_KEY, NEXT_PUBLIC_API_URL`. Chạy không cần Docker (SQLite):
+Cách chuẩn cho cả nhóm: Docker — xem `DEPLOY.md` (`docker-compose.yml`, `docker-compose.dev.yml`, `docker/`). Cấu hình qua biến môi trường `DATABASE_URL, DATA_DIR, REGULATIONS_DIR, RAG_INDEX_DIR, CORS_ORIGINS, LLM_PROVIDER, OLLAMA_URL, OLLAMA_MODEL, ANTHROPIC_API_KEY, NEXT_PUBLIC_API_URL`. **Một database duy nhất là PostgreSQL** (từ 2026-11-21): không có `DATABASE_URL` thì API/CLI chạy trên máy tự ghép kết nối `localhost:5432` từ `POSTGRES_*` trong `<repo>/.env` (Docker `db` phải đang chạy); SQLite chỉ dùng trong test. Không tự nạp dữ liệu mẫu (`AUTO_SEED=false` mặc định). Kế hoạch tối ưu và lộ trình: `docs/ROADMAP.md`. Chạy API/web trực tiếp trên máy (DB vẫn là Postgres trong Docker):
 
 ```bash
 cd api && python -m venv .venv && .venv\Scripts\pip install -r requirements.txt && .venv\Scripts\uvicorn app.main:app --reload
