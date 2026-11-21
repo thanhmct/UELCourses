@@ -13,7 +13,7 @@ import re
 from collections import Counter
 from typing import Any
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.models import Equivalent, ModuleRelation, Program, ProgramModule
@@ -57,6 +57,41 @@ def parse_suggested_semester(text: Any) -> str | None:
     """"HK02 năm học 2022-2023" -> "2022-2023-2"; "Chưa phân học kỳ" -> None."""
     m = _SEM_RE.search(str(text or ""))
     return f"{m.group(2)}-{m.group(3)}-{int(m.group(1))}" if m else None
+
+
+# 'EAA2028-Nguyên lý kế toán [3 TC]; EN03-Tiếng Anh 3 [5 TC]' — mỗi mục: MÃ-Tên [n TC], cách nhau bằng ';' (hoặc ',', xuống dòng).
+# KHÔNG dùng parse_requirement (cú pháp tiên quyết): nó tách cả chữ trong tên môn thành "mã" rác ('T', 'TRONG', '3', 'TC'…).
+_EQ_CODE = re.compile(r"^\s*([A-Z][A-Z0-9]{2,9})\s*(?:[-–:\[(]|$)")
+
+
+def parse_equivalent_codes(raw: Any) -> list[str]:
+    out: list[str] = []
+    for part in re.split(r"[;,\n]+", str(raw or "")):
+        m = _EQ_CODE.match(part.strip())
+        if m and m.group(1) not in out:
+            out.append(m.group(1))
+    return out
+
+
+def rebuild_equivalent_relations(db: Session, *, dry_run: bool = False) -> dict:
+    """Dựng lại cạnh `module_relations.type='equivalent'` từ `program_modules.equivalent_raw` đã lưu (không gọi cổng trường).
+    Mã hệ cũ (D13) không thành cạnh; mã chưa có trong `modules` vẫn giữ (đồ thị hiển thị theo mã)."""
+    old = db.scalar(select(func.count()).select_from(ModuleRelation).where(ModuleRelation.type == "equivalent")) or 0
+    edges: set[tuple[str, str, str]] = set()
+    for pid, code, raw in db.execute(
+        select(ProgramModule.program_id, ProgramModule.module_code, ProgramModule.equivalent_raw).where(ProgramModule.equivalent_raw.is_not(None))
+    ):
+        for eq in parse_equivalent_codes(raw):
+            if eq != code and not skip_legacy_code(eq):
+                edges.add((eq, code, pid))
+    stats = {"old_edges": old, "new_edges": len(edges), "dry_run": dry_run}
+    if not dry_run:
+        db.execute(delete(ModuleRelation).where(ModuleRelation.type == "equivalent"))
+        for src, tgt, pid in sorted(edges):
+            db.add(ModuleRelation(source=src[:64], target=tgt[:64], type="equivalent", program_id=pid))
+        db.commit()
+    stats["imported"] = 0 if dry_run else len(edges)
+    return stats
 
 
 def is_required(v: Any) -> bool:
@@ -129,10 +164,11 @@ def import_ctdt(db: Session, payload: Any, *, is_sample: bool = False) -> Import
                         relations.add((src, code, rtype))
             eq_raw = get_ci(r, "HPTuongDuong")
             pm.equivalent_raw = clip(str(eq_raw).strip(), 512) if eq_raw else None
-            for eq in tree_codes(parse_requirement(eq_raw)):
+            for eq in parse_equivalent_codes(eq_raw):
                 if eq == code:
                     continue
-                relations.add((eq, code, "equivalent"))
+                if not skip_legacy_code(eq):  # mã hệ cũ: giữ trong bảng equivalents (D13), không thành cạnh đồ thị
+                    relations.add((eq, code, "equivalent"))
                 if (code, eq) not in existing_eq and (eq, code) not in existing_eq:
                     db.add(Equivalent(code=code, name=clip(get_ci(r, "TenHP"), 512), credits=to_int(get_ci(r, "STC")),
                                       equivalent_code=eq, is_sample=is_sample,
