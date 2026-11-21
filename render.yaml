@@ -1,0 +1,32 @@
+# UELCourses — Render Blueprint cho bản triển khai miễn phí (Free Web Service, Docker)
+# Hướng dẫn chi tiết: docs/DEPLOY_FREE.md
+
+services:
+  - type: web
+    name: uelcourses-api
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: docker/api.Dockerfile
+    dockerContext: api
+    # Gói Render Free không hỗ trợ preDeployCommand (chỉ có trên gói trả phí).
+    # dockerCommand chạy migration qua Alembic trước khi uvicorn phục vụ request:
+    dockerCommand: /bin/sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers"
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        sync: false # Người dùng tự dán chuỗi kết nối PostgreSQL từ Neon (postgresql+psycopg://...)
+      - key: SESSION_SECRET
+        generateValue: true # Render tự sinh chuỗi bí mật ngẫu nhiên an toàn cho production
+      - key: CORS_ORIGINS
+        sync: false # Dán URL frontend Vercel (ví dụ: https://uelcourses.vercel.app)
+      - key: AUTO_SEED
+        value: "false" # Không nạp dữ liệu mẫu vào database production
+      - key: ENV
+        value: production # Kích hoạt chốt chặn an toàn production trong app/config.py
+      - key: FRONTEND_BASE_URL
+        sync: false # URL frontend Vercel để redirect sau đăng nhập (ví dụ: https://uelcourses.vercel.app)
+      - key: OAUTH_REDIRECT_BASE
+        sync: false # URL công khai của API Render (ví dụ: https://uelcourses-api.onrender.com)
+      - key: PORT
+        value: "8000"

@@ -6,7 +6,7 @@
 ## 0. Khóa phiên (ai đang sửa gì — xóa dòng của bạn khi xong)
 | AI | Bắt đầu | Đang sửa vùng nào |
 |---|---|---|
-| Codex | 2026-11-21 | `web/`: thiết kế lại chọn học kỳ, phương án, chọn lớp; chuẩn hóa thứ/tiết/giờ/phòng |
+| Codex điều phối / Antigravity W5 | 2026-11-21 | Theo brief `scripts/agent_briefs/W5_program_tracks_second_major.md`: CTĐT hệ E, hồ sơ ngành chính/ngành 2, các trang liên quan; Antigravity sửa code, GPT kiểm tra/vận hành |
 
 > 2026-11-21: đổi tên thương hiệu UELPlan → **UELCourses** (code, docs, localStorage key). GIỮ NGUYÊN `uelplan` cho tên DB/user Postgres, `name: uelplan` trong compose (volume) và file `uelplan.db` để không mất dữ liệu đang chạy. Docker: db + workspace chạy; api ở host :8001, web ở :3001 (workspace). `dev.ps1` đã sửa lỗi stderr của PowerShell 5.1.
 
@@ -80,3 +80,8 @@
 
 ## 7. Môi trường
 Windows 11, PowerShell 5.1, Python 3.14, Node 24, Docker Desktop 29.x. **Chạy lệnh trong container:** `.\scripts\dev.ps1 run|api|web <lệnh>`. Venv local: `api\.venv` (chuẩn), `research\.venv`. Token của trường **không** nằm trong file nào. File `.env` (mật khẩu Postgres ngẫu nhiên) tạo bởi `dev.ps1 init`, đã `.gitignore`.
+
+### Codex điều phối 2026-11-21 — đang chạy W5
+- Yêu cầu mới: CTĐT theo mã lớp E và ngành 2; brief scripts/agent_briefs/W5_program_tracks_second_major.md; AGY đang chạy, log data/agy_W5.log. Không sửa các file trong brief đồng thời.
+- W4b đã sửa TypeScript (tsc qua) và lọc có dấu (5 test API qua). Frontend còn 9 lỗi do thiếu cleanup giữa test; giao W4c chỉ hai file test, log data/agy_W4c.log. Chưa xác nhận hoàn tất.
+- GPT chỉ điều phối code qua Antigravity; dữ liệu/DB/vận hành/kiểm tra tự làm. Chưa commit.
