@@ -16,3 +16,5 @@ node_modules/
 docs/CONTEXT_PACK.md
 reference/nusmodifications/
 .next-test/
+# mọi thư mục build Next riêng (UEL_PREVIEW_DIST_DIR=.next-xxx) của từng AI/CI
+.next-*/
