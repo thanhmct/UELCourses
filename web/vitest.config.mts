@@ -11,5 +11,7 @@ export default defineConfig({
     environment: "jsdom",
     include: ["src/**/*.test.{ts,tsx}"],
     setupFiles: ["./vitest.setup.ts"],
+    // Các test hiện có chạy trên dữ liệu mẫu (src/mocks). Ứng dụng thật mặc định TẮT dữ liệu mẫu.
+    env: { NEXT_PUBLIC_USE_MOCKS: "true" },
   },
 });

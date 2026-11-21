@@ -149,7 +149,7 @@ export function OutlineBlock({ code }: { code: string }) {
           <ul className="list-disc space-y-1 pl-5 text-sm">
             {materials.map((m, i) => (
               <li key={i}>
-                <span className="mr-1 text-xs text-slate-500">{m.kind === "textbook" ? t("outline.textbook") : t("outline.reference")}:</span>
+                <span className="mr-1 text-xs text-slate-500">{m.kind === "textbook" ? t("outline.textbook") : m.kind === "software" ? t("outline.software") : t("outline.reference")}:</span>
                 {m.citation}
               </li>
             ))}

@@ -1,6 +1,7 @@
 // API client following the REST contract in ARCHITECTURE.md.
-// Every call falls back to src/mocks/ when the API is unreachable, and reports
-// `mock: true` so pages can show the "Dữ liệu mẫu" label.
+// Real data only by default: when the API is unreachable the call fails (pages show an error and the
+// header shows an "offline" badge). Mock data from src/mocks/ is used ONLY when NEXT_PUBLIC_USE_MOCKS=true
+// (dev/demo/tests); then results carry `mock: true` so pages show the "Dữ liệu mẫu" label.
 import type {
   AskResponse,
   Backlink,
@@ -71,8 +72,17 @@ export class ApiError extends Error {
   }
 }
 
+/** Mock fallback is opt-in (NEXT_PUBLIC_USE_MOCKS=true). Read at call time so tests can toggle it. */
+export function mocksEnabled(): boolean {
+  return process.env.NEXT_PUBLIC_USE_MOCKS === "true";
+}
+
 function markMock(mock: boolean) {
   if (typeof window !== "undefined") useDataSource.getState().setMock(mock);
+}
+
+function markOffline(offline: boolean) {
+  if (typeof window !== "undefined") useDataSource.getState().setOffline(offline);
 }
 
 async function raw<T>(path: string, init?: RequestInit): Promise<T> {
@@ -96,6 +106,19 @@ async function raw<T>(path: string, init?: RequestInit): Promise<T> {
  * fall back to mock. 4xx other than 404 propagate (real validation errors).
  */
 async function withFallback<T>(path: string, fallback: () => T, init?: RequestInit, map?: (x: unknown) => T): Promise<ApiResult<T>> {
+  if (!mocksEnabled()) {
+    // Real data only: never substitute mock data; surface the failure to the page.
+    try {
+      const data = await raw<unknown>(path, init);
+      markOffline(false);
+      markMock(false);
+      return { data: map ? map(data) : (data as T), mock: false };
+    } catch (e) {
+      if (!(e instanceof ApiError) || e.status >= 500) markOffline(true);
+      if (e instanceof ApiError) throw e;
+      throw new ApiError(0, "Không kết nối được máy chủ dữ liệu. Vui lòng thử lại sau.");
+    }
+  }
   if (typeof window === "undefined" || Date.now() - downSince < RETRY_AFTER_MS) {
     markMock(true);
     return { data: fallback(), mock: true };
