@@ -12,7 +12,7 @@ from app.config import get_settings
 from app.db import SessionLocal, init_db
 from app.models import Module
 from app.routers import auth as auth_router
-from app.routers import equivalents, feedback, imports, modules, programs, reviews, semesters, sync, venues
+from app.routers import calendar, equivalents, feedback, imports, modules, programs, reviews, semesters, sync, venues
 
 log = logging.getLogger("uelcourses")
 
@@ -54,7 +54,7 @@ def health():
     return {"status": "ok"}
 
 
-for r in (semesters, modules, programs, equivalents, venues, imports, sync, feedback, reviews):
+for r in (semesters, modules, programs, equivalents, venues, imports, sync, feedback, reviews, calendar):
     app.include_router(r.router, prefix="/api")
 app.include_router(auth_router.router, prefix="/api")
 

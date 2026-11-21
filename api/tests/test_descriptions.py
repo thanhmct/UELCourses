@@ -60,3 +60,22 @@ def test_api_returns_both_descriptions(client, db):
     assert item["description"] == VI and item["description_en"] == EN
     detail = client.get("/api/modules/D1").json()
     assert detail["description"] == VI and detail["description_en"] == EN
+
+
+def test_syllabus_en_routes_to_description_en(db):
+    db.add(Module(code="EFF4017", name="Data Mining (E)"))
+    db.flush()
+    # Đề cương tiếng Anh với doc_type='syllabus_en'
+    db.add(OutlineDocument(id=10, sha256="0" * 64, file_name="10.pdf", rel_path="x/10.pdf", size_bytes=1))
+    db.flush()
+    # Văn bản mô tả có thể chứa một số từ mượn/tên người có dấu, nhưng doc_type='syllabus_en' nên bắt buộc vào description_en
+    desc = "This course covers data mining in finance. Giảng viên: Nguyễn Văn A. Topics include clustering."
+    db.add(OutlineCourse(document_id=10, doc_type="syllabus_en", description=desc, parse_status="ok"))
+    db.add(OutlineModuleLink(document_id=10, module_code="EFF4017", source="catalog"))
+    db.commit()
+
+    fill_descriptions(db)
+    m = db.get(Module, "EFF4017")
+    assert m.description_en == desc
+    assert m.description is None
+

@@ -39,13 +39,13 @@ def backfill_lesson_dates(db: Session, *, dry_run: bool = False) -> dict:
     ).all()
     for cs in sections:
         stats["classes_with_schedule"] += 1
-        if cs.lessons and all(l.date_start for l in cs.lessons):
-            stats["already_dated"] += 1
-            continue
         res = parse_schedules(cs.schedule_raw)
         dated = [pl for pl in res.lessons if pl.date_start]
         if not dated:
             stats["source_has_no_dates"] += 1  # lịch kiểu cũ: chỉ có tuần học
+            continue
+        if cs.lessons and all(l.date_start for l in cs.lessons) and len(cs.lessons) >= len(res.lessons):
+            stats["already_dated"] += 1
             continue
         if any(_lesson_like(u) for u in res.unparsed):
             # Có đoạn tiết chưa hiểu (vd 5.5, 16–17 chưa có giờ chính thức): KHÔNG thay lớp (tránh mất buổi), chỉ điền ngày cho các

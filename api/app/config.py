@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     # Thư mục chứa dữ liệu chạy của ứng dụng (chỉ mục RAG, file tạm, bản sao lưu). Mặc định <repo>/data/db.
     # Dữ liệu nguồn nằm ở <repo>/data/raw (xem data/README.md). Docker đặt DATA_DIR qua biến môi trường.
     data_dir: Path = API_DIR.parent / "data" / "db"
+    # Môi trường chạy ứng dụng: development | production | staging | test.
+    # Khi ENV=production, validate_production() kích hoạt các chốt chặn an toàn (SESSION_SECRET, CORS_ORIGINS).
+    env: str = "development"
     # MỘT database duy nhất: PostgreSQL. Thứ tự: DATABASE_URL (Docker: ...@db:5432/uelplan; test: SQLite tạm)
     # -> ghép từ POSTGRES_* trong <repo>/.env (chạy trực tiếp trên máy: localhost:5432)
     # -> chỉ khi không có cả hai mới dùng SQLite trong DATA_DIR (chế độ thử, không phải dữ liệu thật).
@@ -87,6 +90,39 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
+
+
+def validate_production(settings: Settings | None = None) -> None:
+    """Chốt chặn kiểm tra an toàn cấu hình khi chạy production.
+
+    Nếu ENV=production mà:
+    - SESSION_SECRET vẫn là mặc định 'dev-only-change-me' (hoặc rỗng/khoảng trắng/ngắn hơn 16 ký tự),
+    - hoặc CORS_ORIGINS chứa 'localhost' / '127.0.0.1',
+    thì ném RuntimeError để ngăn server khởi động với cấu hình nguy hiểm.
+    Ở môi trường khác (development, staging, test) hàm này không làm gì.
+    """
+    if settings is None:
+        settings = get_settings()
+
+    if settings.env.lower().strip() != "production":
+        return
+
+    # 1. Kiểm tra SESSION_SECRET
+    secret = (settings.session_secret or "").strip()
+    if not secret or secret == "dev-only-change-me" or len(secret) < 16:
+        raise RuntimeError(
+            "Cấu hình production không an toàn: SESSION_SECRET không được để trống, dùng giá trị mặc định 'dev-only-change-me' "
+            "hoặc ngắn hơn 16 ký tự. Vui lòng thiết lập chuỗi bí mật ngẫu nhiên dài qua biến môi trường SESSION_SECRET."
+        )
+
+    # 2. Kiểm tra CORS_ORIGINS
+    for origin in settings.cors_origin_list:
+        o_lower = origin.lower()
+        if "localhost" in o_lower or "127.0.0.1" in o_lower:
+            raise RuntimeError(
+                f"Cấu hình production không an toàn: CORS_ORIGINS không được chứa localhost hoặc 127.0.0.1 (tìm thấy: '{origin}'). "
+                "Vui lòng cấu hình chính xác tên miền frontend công khai (ví dụ: https://uelcourses.vercel.app)."
+            )
 
 
 # ---------------------------------------------------------------------------

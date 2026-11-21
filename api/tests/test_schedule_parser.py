@@ -144,3 +144,101 @@ def test_never_raises_on_weird_input():
         parse_schedules(v)
     # tiết ngược thứ tự được đảo lại
     assert simple("Thứ 2, tiết 3-1, P.B101")[0] == [(2, 1, 3, "B101")]
+
+
+def test_multi_tier_same_weekday_and_room_distinct_dates():
+    # Lớp có lịch nhiều tầng ngày (cùng thứ, tiết, phòng nhưng khác khoảng ngày)
+    # Lỗi trước đây: deduplication chỉ xét (thứ, tiết_đầu, tiết_cuối, phòng, tuần)
+    # nên nuốt mất các tầng sau của cùng một phòng/tiết.
+    raw = (
+        "Thứ 2, Tiết 7->10.5, 07/09/2026->16/11/2026, Phòng B1.204<br/>"
+        "Thứ 2, Tiết 7->10.5, 26/10/2026->26/10/2026, Phòng B1.204"
+    )
+    res = parse_schedules(raw)
+    assert len(res.lessons) == 2
+    l1, l2 = res.lessons
+    assert (l1.weekday, l1.start_period, l1.end_period, l1.room) == (2, 7, 10.5, "B1.204")
+    assert (l1.date_start, l1.date_end) == ("2026-09-07", "2026-11-16")
+    assert (l2.weekday, l2.start_period, l2.end_period, l2.room) == (2, 7, 10.5, "B1.204")
+    assert (l2.date_start, l2.date_end) == ("2026-10-26", "2026-10-26")
+
+
+def test_three_tier_schedule_extracted_completely():
+    # Mẫu 3 tầng ngày thật: môn Ngân hàng đầu tư / Luật doanh nghiệp có 3 đợt ngày khác nhau
+    raw = (
+        "Thứ 2, Tiết 7->10.5, 04/05/2026->08/06/2026, Phòng B1.204<br/>"
+        "Thứ 2, Tiết 7->10.5, 15/06/2026->29/06/2026, Phòng A.609<br/>"
+        "Thứ 2, Tiết 7->10.5, 06/07/2026->06/07/2026, Phòng B1.401"
+    )
+    res = parse_schedules(raw)
+    assert len(res.lessons) == 3
+    assert [l.room for l in res.lessons] == ["B1.204", "A.609", "B1.401"]
+    assert [(l.date_start, l.date_end) for l in res.lessons] == [
+        ("2026-05-04", "2026-06-08"),
+        ("2026-06-15", "2026-06-29"),
+        ("2026-07-06", "2026-07-06"),
+    ]
+    assert all(l.weekday == 2 and l.start_period == 7 and l.end_period == 10.5 for l in res.lessons)
+    assert all(l.start_time == "12:30" and l.end_time == "16:30" for l in res.lessons)
+
+
+def test_four_tier_schedule_with_online_room_and_note():
+    # Mẫu 4 tầng ngày: kết hợp phòng online ("Phòng . Online 007"), phòng học thường, và ghi chú cuối
+    raw = (
+        "Thứ 2, Tiết 7->10.5, 05/10/2026->05/10/2026, Phòng . Online 007<br/>"
+        "Thứ 2, Tiết 7->10.5, 07/09/2026->26/10/2026, Phòng B1.505<br/>"
+        "Thứ 2, Tiết 7->10.5, 16/11/2026->16/11/2026, Phòng B1.506<br/>"
+        "Thứ 7, Tiết 1->4.5, 03/10/2026->03/10/2026, Phòng A.309<br/>"
+        "*Giảng bằng Tiếng anh"
+    )
+    res = parse_schedules(raw)
+    assert len(res.lessons) == 4
+    assert res.unparsed == ["*Giảng bằng Tiếng anh"]
+    assert res.lessons[0].room == "Online 007"
+    assert (res.lessons[0].date_start, res.lessons[0].date_end) == ("2026-10-05", "2026-10-05")
+    assert (res.lessons[1].room, res.lessons[1].date_start) == ("B1.505", "2026-09-07")
+    assert (res.lessons[2].room, res.lessons[2].date_start) == ("B1.506", "2026-11-16")
+    assert (res.lessons[3].weekday, res.lessons[3].start_period, res.lessons[3].end_period) == (7, 1, 4.5)
+    assert res.lessons[3].room == "A.309"
+
+
+def test_exact_duplicates_with_dates_still_deduplicated():
+    # Khi chuỗi nguồn lặp lại đúng từng dòng (cùng thứ/tiết/phòng/khoảng ngày) -> vẫn lọc trùng
+    raw = (
+        "Thứ 2, Tiết 7->10.5, 07/09/2026->16/11/2026, Phòng B1.204<br/>"
+        "Thứ 2, Tiết 7->10.5, 07/09/2026->16/11/2026, Phòng B1.204"
+    )
+    res = parse_schedules(raw)
+    assert len(res.lessons) == 1
+
+
+def test_multi_tier_different_separators():
+    # Phân tách tầng bằng newline hoặc chấm phẩy
+    raw = (
+        "Thứ 2, Tiết 7->10.5, 04/05/2026->08/06/2026, Phòng B1.204\n"
+        "Thứ 2, Tiết 7->10.5, 15/06/2026->29/06/2026, Phòng B1.204;\n"
+        "Thứ 2, Tiết 7->10.5, 06/07/2026->06/07/2026, Phòng B1.204"
+    )
+    res = parse_schedules(raw)
+    assert len(res.lessons) == 3
+    assert [(l.date_start, l.date_end) for l in res.lessons] == [
+        ("2026-05-04", "2026-06-08"),
+        ("2026-06-15", "2026-06-29"),
+        ("2026-07-06", "2026-07-06"),
+    ]
+
+
+def test_dict_with_dates_extracted():
+    # Dạng object có chứa trường ngày
+    data = {
+        "DayOfWeek": 2,
+        "StartPeriod": 7,
+        "EndPeriod": 10,
+        "Room": "B1.204",
+        "StartDate": "2026-09-07",
+        "EndDate": "2026-11-16",
+    }
+    res = parse_schedules(data)
+    assert len(res.lessons) == 1
+    assert (res.lessons[0].date_start, res.lessons[0].date_end) == ("2026-09-07", "2026-11-16")
+

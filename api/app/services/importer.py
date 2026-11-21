@@ -242,9 +242,11 @@ class ImportContext:
         if type:
             m.type = clip(type, 128)
         if faculty:
-            m.faculty = clip(faculty, 256)
+            from app.services.faculty_names import faculty_vi
+            m.faculty = clip(faculty_vi(faculty) or faculty, 256)
         if department:
-            m.department = clip(department, 256)
+            from app.services.faculty_names import department_vi
+            m.department = clip(department_vi(department) or department, 256)
         if is_english:
             m.is_english = True
         # Phân loại ngôn ngữ / CNTN ngay khi nạp (API upload không chạy classify-languages).

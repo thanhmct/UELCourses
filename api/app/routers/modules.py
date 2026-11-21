@@ -43,7 +43,10 @@ from app.schemas import (
     OutlineObjectiveOut,
     OutlineOut,
     OutlineScheduleOut,
+    ProgramRequired,
 )
+from app.services.faculty_names import department_en, faculty_en
+from app.services.program_tracks import get_program_track_codes
 from app.services.text import search_tokens
 
 router = APIRouter(tags=["modules"])
@@ -94,7 +97,8 @@ def _summary(m: Module, has_eq: bool, plans: list[OfferingPlanOut], open_sems: l
              has_outline: bool = False, description: str | None = None, outline_url: str | None = None,
              description_en: str | None = None) -> ModuleSummary:
     return ModuleSummary(code=m.code, name=m.name, name_en=m.name_en, credits=m.credits, type=m.type, faculty=m.faculty,
-                         department=m.department, description=description, description_en=description_en, outline_url=outline_url, is_english=bool(m.is_english) or m.language_track == "en", has_equivalents=has_eq,
+                         faculty_en=faculty_en(m.faculty), department=m.department, department_en=department_en(m.department),
+                         description=description, description_en=description_en, outline_url=outline_url, is_english=bool(m.is_english) or m.language_track == "en", has_equivalents=has_eq,
                          offering_plan=plans, language_track=m.language_track or "vi", language_basis=m.language_basis,
                          is_talent_program=bool(m.is_talent_program), counterpart_code=m.counterpart_code,
                          open_semesters=open_sems or [], has_outline=has_outline, is_sample=m.is_sample)
@@ -121,18 +125,33 @@ def _modules_with_outline_subquery():
             .where(OutlineCourse.parse_status.in_(("ok", "partial"))))
 
 
+def _text_case_variants(text: str) -> list[str]:
+    """Tạo các biến thể chữ hoa/thường (gốc, lower, upper, title, capitalize)
+    để hỗ trợ tìm kiếm không phân biệt hoa thường với ký tự tiếng Việt có dấu
+    trên cả SQLite (hàm lower() chỉ hỗ trợ ASCII) và PostgreSQL."""
+    s = text.strip()
+    if not s:
+        return []
+    variants = {s, s.lower(), s.upper(), s.title(), s.capitalize()}
+    return [v for v in variants if v]
+
+
 @router.get("/modules", response_model=ModuleList, summary="Tìm kiếm học phần")
 def list_modules(
     q: str | None = Query(None, description="Mã/tên học phần, không phân biệt dấu"),
     faculty: str | None = None,
+    faculty_in: list[str] | None = Query(None, description="Danh sách khoa/bộ môn (lặp tham số ?faculty_in=...)"),
     credits: int | None = Query(None, ge=0, le=60),
+    credits_in: str | None = Query(None, description="Danh sách tín chỉ, phân cách bằng dấu phẩy, vd '2,3,4'"),
     type: str | None = Query(None, description="Loại học phần (vd 'Lý thuyết', 'Bắt buộc')"),
+    type_in: str | None = Query(None, description="Danh sách loại học phần, phân cách bằng dấu phẩy"),
     is_english: bool | None = Query(None, description="(cũ) tương đương language=en"),
     language: str | None = Query(None, pattern="^(en|vi)$", description="en = dạy bằng tiếng Anh, vi = tiếng Việt"),
     talent: bool | None = Query(None, description="Chỉ môn thuộc chương trình Cử nhân tài năng (CNTN)"),
     has_outline: bool | None = Query(None, description="Chỉ môn đã có đề cương chi tiết"),
     semester: str | None = Query(None, description="Chỉ môn có lớp mở trong học kỳ này"),
     program_id: str | None = Query(None, description="Chỉ môn thuộc CTĐT này, vd K23406 (khóa 23, ngành 406)"),
+    program_ids: list[str] | None = Query(None, description="Danh sách mã CTĐT (lặp tham số ?program_ids=...)"),
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=500),
     db: Session = Depends(get_db),
@@ -142,15 +161,73 @@ def list_modules(
     stmt = stmt.where(or_(Module.credits.is_(None), Module.credits != 0))
     for tok in search_tokens(q):
         stmt = stmt.where(Module.search_text.like(f"%{like_escape(tok)}%", escape="\\"))
-    if program_id:
-        stmt = stmt.where(Module.code.in_(select(ProgramModule.module_code).where(ProgramModule.program_id == program_id.strip())))
-    if faculty:  # "Khoa / Bộ môn" gộp một bộ lọc: khớp cột khoa HOẶC bộ môn
-        f = faculty.strip().lower()
-        stmt = stmt.where(or_(func.lower(Module.faculty) == f, func.lower(Module.department) == f))
+    pids: list[str] = []
+    if program_id and program_id.strip():
+        pids.append(program_id.strip())
+    if program_ids:
+        for item in program_ids:
+            if isinstance(item, str) and item.strip():
+                pids.append(item.strip())
+    if pids:
+        allowed_codes: set[str] = set()
+        for pid in pids:
+            allowed_codes.update(get_program_track_codes(db, pid))
+        stmt = stmt.where(Module.code.in_(allowed_codes))
+
+    # Khoa / Bộ môn: khớp cột faculty HOẶC department cho từng giá trị được chọn
+    parsed_faculties: list[str] = []
+    if faculty and faculty.strip():
+        parsed_faculties.append(faculty.strip())
+    if faculty_in:
+        for item in faculty_in:
+            if isinstance(item, str) and item.strip():
+                parsed_faculties.append(item.strip())
+    if parsed_faculties:
+        fac_variants = list(dict.fromkeys(v for f in parsed_faculties for v in _text_case_variants(f)))
+        fac_targets = [func.lower(v) for v in fac_variants]
+        stmt = stmt.where(or_(
+            func.lower(Module.faculty).in_(fac_targets),
+            func.lower(Module.department).in_(fac_targets),
+            Module.faculty.in_(fac_variants),
+            Module.department.in_(fac_variants),
+        ))
+
+    # Tín chỉ: kết hợp credits (đơn) và credits_in (nhiều, phân cách dấu phẩy)
+    parsed_credits: list[int] = []
     if credits is not None:
-        stmt = stmt.where(Module.credits == credits)
-    if type:
-        stmt = stmt.where(func.lower(Module.type) == type.strip().lower())
+        parsed_credits.append(credits)
+    if credits_in:
+        for part in credits_in.split(","):
+            part = part.strip()
+            if not part:
+                continue
+            try:
+                val = int(part)
+            except ValueError:
+                raise HTTPException(422, f"Giá trị tín chỉ không hợp lệ: {part}")
+            if val < 0 or val > 60:
+                raise HTTPException(422, f"Tín chỉ phải từ 0 đến 60: {val}")
+            parsed_credits.append(val)
+    if parsed_credits:
+        stmt = stmt.where(Module.credits.in_(list(set(parsed_credits))))
+
+    # Loại học phần: kết hợp type (đơn) và type_in (nhiều, phân cách dấu phẩy)
+    parsed_types: list[str] = []
+    if type and type.strip():
+        parsed_types.append(type.strip())
+    if type_in:
+        for part in type_in.split(","):
+            part = part.strip()
+            if part:
+                parsed_types.append(part)
+    if parsed_types:
+        type_variants = list(dict.fromkeys(v for t in parsed_types for v in _text_case_variants(t)))
+        type_targets = [func.lower(v) for v in type_variants]
+        stmt = stmt.where(or_(
+            func.lower(Module.type).in_(type_targets),
+            Module.type.in_(type_variants),
+        ))
+
     if is_english is not None:  # cùng nguồn với hiển thị: cột language_track HOẶC cờ is_english (ghi chú "Giảng bằng Tiếng Anh")
         en = or_(Module.language_track == "en", Module.is_english.is_(True))
         stmt = stmt.where(en if is_english else ~en)
@@ -214,7 +291,11 @@ def _get_module(db: Session, code: str) -> Module:
 
 
 @router.get("/modules/{code}", response_model=ModuleDetail, summary="Chi tiết học phần")
-def get_module(code: str, db: Session = Depends(get_db)):
+def get_module(
+    code: str,
+    program_id: str | None = Query(None, description="Mã CTĐT để tra cứu trạng thái bắt buộc của môn học"),
+    db: Session = Depends(get_db),
+):
     m = _get_module(db, code)
     eqs = equivalents_for(db, m.code)
     sems = sorted(s for s in db.scalars(
@@ -226,8 +307,32 @@ def get_module(code: str, db: Session = Depends(get_db)):
     base = _summary(m, bool(eqs), _plans_for(db, [m.code]).get(m.code, []), open_sems, has_outline,
                     description=vi, description_en=en).model_dump()
     base.pop("description", None)
-    return ModuleDetail(**base, description=vi, prerequisites=m.prerequisites or [],
-                        equivalents=eqs, semesters=sems)
+
+    # Ô bắt buộc: required_in_programs, is_required_any, required
+    pm_rows = db.execute(
+        select(ProgramModule.program_id, ProgramModule.required)
+        .where(ProgramModule.module_code == m.code)
+        .order_by(ProgramModule.program_id)
+    ).all()
+    req_in_progs = [ProgramRequired(program_id=pid, required=bool(req)) for pid, req in pm_rows]
+    is_req_any = any(rp.required for rp in req_in_progs)
+    current_req = None
+    if program_id:
+        clean_pid = program_id.strip()
+        match = next((rp for rp in req_in_progs if rp.program_id == clean_pid), None)
+        if match is not None:
+            current_req = match.required
+
+    return ModuleDetail(
+        **base,
+        description=vi,
+        prerequisites=m.prerequisites or [],
+        equivalents=eqs,
+        semesters=sems,
+        required_in_programs=req_in_progs,
+        is_required_any=is_req_any,
+        required=current_req,
+    )
 
 
 def class_to_out(cs: ClassSection) -> ClassSectionOut:

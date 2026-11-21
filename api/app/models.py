@@ -619,3 +619,28 @@ class Review(Base):
     status: Mapped[str] = mapped_column(String(16), default="approved", index=True)
     moderation_reasons: Mapped[Any | None] = mapped_column(JsonType, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+# =============================================================================
+# Lịch năm học và sự kiện đào tạo (academic_events)
+# =============================================================================
+class AcademicEvent(Base):
+    """Sự kiện năm học (lịch học tập, thi cử, nghỉ lễ, xét tốt nghiệp, xét học vụ...). Nguồn: TB 223/TB-ĐHKTL-ĐT."""
+
+    __tablename__ = "academic_events"
+    __table_args__ = (
+        Index("ix_academic_events_year_start", "academic_year", "start_date"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    academic_year: Mapped[str] = mapped_column(String(16))  # vd "2026-2027"
+    kind: Mapped[str] = mapped_column(String(32), index=True)  # teaching, makeup_day, midterm_exam, holiday, etc.
+    title: Mapped[str] = mapped_column(String(512))
+    start_date: Mapped[date] = mapped_column(Date)
+    end_date: Mapped[date | None] = mapped_column(Date, nullable=True)  # NULL nếu sự kiện 1 ngày
+    semester_id: Mapped[str | None] = mapped_column(String(32), nullable=True)  # FK mềm tới semesters.id (không ép khóa ngoại)
+    cohorts: Mapped[list[str]] = mapped_column(JsonType, default=list)  # ["K23", "K24"] hoặc ["all"]
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    verified: Mapped[bool] = mapped_column(Boolean, default=True)
+    source: Mapped[str] = mapped_column(String(128), default="TB 223/TB-ĐHKTL-ĐT")
+

@@ -47,7 +47,9 @@ class ModuleSummary(BaseModel):
     credits: int | None = None
     type: str | None = None
     faculty: str | None = None
+    faculty_en: str | None = Field(None, description="Tên khoa tiếng Anh; None nếu chưa có")
     department: str | None = None
+    department_en: str | None = Field(None, description="Tên bộ môn tiếng Anh; None nếu chưa có")
     description: str | None = Field(None, description="Mô tả học phần bằng TIẾNG VIỆT (NULL nếu chưa có)")
     description_en: str | None = Field(None, description="Mô tả học phần bằng TIẾNG ANH (NULL nếu chưa có); giao diện EN dùng trường này")
     outline_url: str | None = Field(None, description="Link trực tiếp tới file PDF đề cương (Google Drive) của học phần")
@@ -70,11 +72,23 @@ class ModuleList(BaseModel):
     size: int
 
 
+class ProgramRequired(BaseModel):
+    program_id: str
+    required: bool
+
+
 class ModuleDetail(ModuleSummary):
     description: str | None = None
     prerequisites: list[str] = []
     equivalents: list[EquivalentRef] = []
     semesters: list[str] = []
+    required_in_programs: list[ProgramRequired] = Field(
+        default_factory=list, description="Danh sách CTĐT chứa môn này và trạng thái bắt buộc trong từng CTĐT"
+    )
+    is_required_any: bool = Field(False, description="True nếu là môn bắt buộc trong ít nhất một CTĐT")
+    required: bool | None = Field(
+        None, description="Trạng thái bắt buộc của môn trong CTĐT được chỉ định bởi tham số program_id"
+    )
 
 
 class LessonOut(BaseModel):
@@ -202,6 +216,13 @@ class ProgramBlock(BaseModel):
     required_credits: int = Field(0, description="Tổng TC học phần bắt buộc trong khối (xấp xỉ)")
     total_credits: int = 0
     modules: list[ProgramModuleOut] = []
+
+
+class ElectiveGroup(BaseModel):
+    block: str = Field(description="Tên nhóm hoặc khối môn tự chọn")
+    required_credits: float = Field(description="Số tín chỉ tối thiểu phải hoàn thành trong nhóm")
+    available_credits: float = Field(description="Tổng số tín chỉ khả dụng từ các môn tự chọn trong nhóm")
+    modules: list[ProgramModuleOut] = Field(default_factory=list, description="Danh sách các môn học trong nhóm tự chọn")
 
 
 class ProgramDetail(BaseModel):
@@ -442,3 +463,30 @@ class OutlineOut(BaseModel):
     schedule: list[OutlineScheduleOut] = []
     materials: list[OutlineMaterialOut] = []
     alternatives: list[OutlineDocumentInfo] = Field([], description="Các đề cương khác của cùng học phần (bản Anh/Việt, khóa khác)")
+
+
+# =============================================================================
+# Lịch năm học (academic_events)
+# =============================================================================
+class AcademicEventOut(ORM):
+    id: int
+    academic_year: str
+    kind: str
+    title: str
+    start_date: date
+    end_date: date | None = None
+    semester_id: str | None = None
+    cohorts: list[str] = []
+    note: str | None = None
+    verified: bool = True
+    source: str = "TB 223/TB-ĐHKTL-ĐT"
+
+
+class CalendarPhaseOut(BaseModel):
+    date: date
+    semester_id: str | None = None
+    phase: str = Field(description="teaching|exam|break|holiday|reserve|none")
+    week_no: int | None = None
+    weeks_total: int | None = None
+    events: list[AcademicEventOut] = []
+

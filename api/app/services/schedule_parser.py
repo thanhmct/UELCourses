@@ -113,7 +113,7 @@ def _num_period(text: str):
 
 
 def _clean_room(text: str) -> str:
-    return text.strip().rstrip(".,;:-)").strip()
+    return text.strip().lstrip(".:- ").rstrip(".,;:-)").strip()
 
 
 def _make_lesson(weekday, start, end, room, weeks, raw, start_time=None, end_time=None) -> ParsedLesson | None:
@@ -302,6 +302,8 @@ _KEYS = {
     "weeks": ("weeks", "week", "tuan", "tuanhoc", "studyweeks", "weekstudy"),
     "start_time": ("starttime", "begintime", "timestart", "giobatdau", "fromtime"),
     "end_time": ("endtime", "timeend", "gioketthuc", "totime"),
+    "date_start": ("datestart", "startdate", "begindate", "fromdate", "ngaybatdau", "ngaybd"),
+    "date_end": ("dateend", "enddate", "todate", "ngayketthuc", "ngaykt"),
 }
 
 
@@ -375,6 +377,10 @@ def _parse_dict(d: dict, result: ParseResult) -> None:
         raw, st, et,
     )
     if lesson:
+        raw_ds, raw_de = _pick(d, "date_start"), _pick(d, "date_end")
+        if raw_ds:
+            lesson.date_start = _iso_date(str(raw_ds)) or str(raw_ds).strip()
+            lesson.date_end = _iso_date(str(raw_de)) or (str(raw_de).strip() if raw_de else lesson.date_start)
         result.lessons.append(lesson)
         return
     # Không có trường cấu trúc -> thử ghép các chuỗi trong object rồi parse.
@@ -425,10 +431,10 @@ def parse_schedules(value: Any) -> ParseResult:
     except Exception:  # noqa: BLE001 — parser phải chịu lỗi
         result.lessons = []
         result.unparsed = [raw]
-    # Bỏ trùng (cùng thứ/tiết/phòng/tuần)
+    # Bỏ trùng (cùng thứ/tiết/phòng/tuần/khoảng ngày)
     seen, unique = set(), []
     for l in result.lessons:
-        key = (l.weekday, l.start_period, l.end_period, l.room, l.weeks)
+        key = (l.weekday, l.start_period, l.end_period, l.room, l.weeks, l.date_start, l.date_end)
         if key not in seen:
             seen.add(key)
             unique.append(l)

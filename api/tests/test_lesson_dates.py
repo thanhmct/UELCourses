@@ -105,3 +105,31 @@ def test_dry_run_changes_nothing_and_rerun_is_idempotent(db):
     again = backfill_lesson_dates(db)
     assert again.get("classes_updated", 0) == 0 and again["already_dated"] == 1
     assert db.query(Lesson).count() == 1
+
+
+def test_backfill_updates_class_with_missing_tiers(db):
+    # Lớp trước đây bị deduplicate nuốt mất tầng (chỉ có 1 lesson lưu trong DB dù có ngày),
+    # khi chạy lại backfill với parser mới phải nạp đủ mọi tầng.
+    _setup(db)
+    raw_3tiers = (
+        "Thứ 2, Tiết 7->10.5, 04/05/2026->08/06/2026, Phòng A.305<br/>"
+        "Thứ 2, Tiết 7->10.5, 15/06/2026->29/06/2026, Phòng A.305<br/>"
+        "Thứ 2, Tiết 7->10.5, 06/07/2026->06/07/2026, Phòng A.305"
+    )
+    # Giả lập DB cũ chỉ có 1 lesson do lỗi deduplication trước đây
+    _class(db, "C-3TIER", raw_3tiers, [
+        Lesson(weekday=2, start_period=7, end_period=10.5, start_time="12:30", end_time="16:30", room="A.305",
+               date_start=date(2026, 5, 4), date_end=date(2026, 6, 8))
+    ])
+    db.commit()
+
+    res = backfill_lesson_dates(db)
+    assert res["classes_updated"] == 1
+    lessons = db.query(ClassSection).filter_by(class_code="C-3TIER").one().lessons
+    assert len(lessons) == 3
+    assert [(l.date_start, l.date_end) for l in lessons] == [
+        (date(2026, 5, 4), date(2026, 6, 8)),
+        (date(2026, 6, 15), date(2026, 6, 29)),
+        (date(2026, 7, 6), date(2026, 7, 6)),
+    ]
+

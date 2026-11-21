@@ -1,9 +1,14 @@
 """Mô tả học phần song ngữ: điền `modules.description` (tiếng Việt) và `modules.description_en` (tiếng Anh).
 
 Nguồn: phần "Mô tả học phần" của đề cương đã phân tích (`outline_courses.description`, liên kết qua `outline_module_links`).
-Ngôn ngữ từng đoạn được nhận diện (có chữ cái tiếng Việt có dấu → Việt, ngược lại → Anh) rồi xếp vào đúng cột; không dịch.
+Ngôn ngữ theo loại tài liệu:
+  - Nếu đề cương tiếng Anh (`outline_courses.doc_type='syllabus_en'`) -> luôn xếp vào tiếng Anh (`modules.description_en`).
+  - Nếu đề cương tiếng Việt (`outline_courses.doc_type='syllabus_vi'`) -> luôn xếp vào tiếng Việt (`modules.description`).
+  - Loại khác: nhận diện theo văn bản (chữ cái tiếng Việt có dấu -> vi, ngược lại -> en).
 Bước 2: học phần chưa có một bản thì chép từ bản Anh<->Việt tương ứng (`counterpart_code`, cùng một môn học ở hai ngôn ngữ giảng dạy)
 và ghi `*_source = 'counterpart'`.
+
+Đồng thời điền `modules.faculty` và `modules.department` khi rỗng/không khớp từ đề cương và bản đối ứng (fill_faculties).
 
 Idempotent. Không ghi đè mô tả nhập tay (có nội dung nhưng `*_source` NULL). Đề cương có `parse_status = failed` vẫn được dùng nếu
 đoạn mô tả có độ dài hợp lý (60–2500 ký tự): lỗi phân tích thường ở các mục khác; đoạn quá dài thường là phân tích nuốt thêm mục khác.
@@ -17,6 +22,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import Module, OutlineCourse, OutlineModuleLink
+from app.services.faculty_names import fill_faculties
 
 _VI_CHARS = re.compile(r"[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]", re.I)
 MIN_LEN, MAX_LEN = 60, 2500
@@ -39,14 +45,26 @@ def clean_description(text: str | None) -> str | None:
 def fill_descriptions(db: Session) -> dict:
     cand: dict[str, dict[str, str]] = {}  # module_code -> {"vi": ..., "en": ...} (đề cương tốt nhất cho từng ngôn ngữ)
     rows = db.execute(
-        select(OutlineModuleLink.module_code, OutlineCourse.description, OutlineCourse.parse_status, OutlineCourse.document_id)
+        select(
+            OutlineModuleLink.module_code,
+            OutlineCourse.description,
+            OutlineCourse.parse_status,
+            OutlineCourse.document_id,
+            OutlineCourse.doc_type,
+        )
         .join(OutlineCourse, OutlineCourse.document_id == OutlineModuleLink.document_id)
         .where(OutlineCourse.description.is_not(None))
     ).all()
-    for code, desc, status, doc_id in sorted(rows, key=lambda r: (r[0], _RANK.get(r[2], 2), r[3])):
+    for code, desc, status, doc_id, doc_type in sorted(rows, key=lambda r: (r[0], _RANK.get(r[2], 2), r[3])):
         d = clean_description(desc)
         if d:
-            cand.setdefault(code, {}).setdefault(detect_lang(d), d)
+            if doc_type == "syllabus_en":
+                lang = "en"
+            elif doc_type == "syllabus_vi":
+                lang = "vi"
+            else:
+                lang = detect_lang(d)
+            cand.setdefault(code, {}).setdefault(lang, d)
 
     mods = {m.code: m for m in db.scalars(select(Module))}
     manual_vi = manual_en = 0
@@ -77,6 +95,10 @@ def fill_descriptions(db: Session) -> dict:
             setattr(m, src_attr, val[1] if val else None)
             if val:
                 stats[lang][val[1]] += 1
+
+    # Đồng thời điền faculty/department khi rỗng/không khớp từ đề cương và counterpart
+    fill_faculties(db)
+
     db.commit()
     return {"modules": len(mods), "vi": stats["vi"], "en": stats["en"],
             "vi_total": sum(stats["vi"].values()) + manual_vi, "en_total": sum(stats["en"].values()) + manual_en,

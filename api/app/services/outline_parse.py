@@ -62,6 +62,14 @@ def clean(s: str | None) -> str:
     return re.sub(r"\s+", " ", (s or "").replace("​", "")).strip()
 
 
+_FORM_MARKS = re.compile(r"^(?:\(\s*\)\s*)+")
+
+
+def cell_text(s: str | None) -> str:
+    """Chữ trong một ô bảng: như clean(), bỏ thêm ký hiệu ô đánh dấu của mẫu Word ở đầu ô ('( ) ( ) CO1', '( ) T')."""
+    return _FORM_MARKS.sub("", clean(s))
+
+
 # --------------------------------------------------------------------------- 1. tách mục
 # '1. Thông tin…' và cả '1.Thông tin…' / '1.General Information' (dính, không dấu cách) — nhưng không nhận '1.1' (mục con).
 _NUM_HEAD = re.compile(r"^[ \t]{0,12}(\d{1,2})\.(?:[ \t]+|(?=[^\W\d_]))(\S[^\n]{2,110}?)[ \t]*:?[ \t]*$", re.M)
@@ -592,7 +600,7 @@ def tables_from_raw(raw_tables: list[dict]) -> dict[str, list[list[str]]]:
     for t in raw_tables:
         if "rows" not in t:
             continue
-        _collect_table(found, [[clean(c) for c in row] for row in t["rows"]], t.get("page"))
+        _collect_table(found, [[cell_text(c) for c in row] for row in t["rows"]], t.get("page"))
     return _finish_tables(found)
 
 
@@ -671,7 +679,7 @@ def extract_tables(pdf_path: str) -> dict[str, list[list[str]]]:
         except Exception:  # noqa: BLE001
             continue
         for t in tabs:
-            rows = [[clean(page.get_text("text", clip=pymupdf.Rect(c), sort=True)) if c else "" for c in row.cells] for row in t.rows]
+            rows = [[cell_text(page.get_text("text", clip=pymupdf.Rect(c), sort=True)) if c else "" for c in row.cells] for row in t.rows]
             if not rows:
                 continue
             _collect_table(found, rows, pno)

@@ -171,3 +171,14 @@ def test_level_columns_reject_long_sentences_from_shifted_columns():
                                 ["CLO2", "Tranh luận", "Actively search and update documents to debate and participate in social criticism on issues"]]}]
     c = tables_to_records(tables_from_raw(raw))["clos"]
     assert [(x["code"], x["teaching_levels"]) for x in c] == [("CLO1", "I, T"), ("CLO2", None)]
+
+
+def test_word_form_marks_at_start_of_cells_are_removed():
+    raw = [{"page": 2, "rows": [
+        ["Mục tiêu (COx) (1)", "Mô tả mục tiêu (2)", "CĐR của học phần (CLOx) (3)", "TĐNL (4)"],
+        ["( ) ( ) CO1", "( ) Trình bày vai trò của cơ sở dữ liệu", "( ) ( ) CLO1", "( ) 2"],
+        ["CO2", "Mô tả mô hình dữ liệu", "CLO1, CLO6", "3"],
+    ]}]
+    o = tables_to_records(tables_from_raw(raw))["objectives"]
+    assert [(x["code"], x["description"], x["clo_codes"], x["competency_level"]) for x in o] == [
+        ("CO1", "Trình bày vai trò của cơ sở dữ liệu", ["CLO1"], "2"), ("CO2", "Mô tả mô hình dữ liệu", ["CLO1", "CLO6"], "3")]

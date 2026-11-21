@@ -102,6 +102,7 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("backfill-lesson-dates", help="Nạp lại date_start/date_end của buổi học từ schedule_raw (sửa lịch bị lặp hằng tuần)")
     p.add_argument("--dry-run", action="store_true", help="Chỉ đếm, không ghi")
     sub.add_parser("fill-descriptions", help="Điền mô tả học phần song ngữ (modules.description VI / description_en EN) từ đề cương")
+    sub.add_parser("fill-faculties", help="Điền khoa/bộ môn (modules.faculty/department) từ đề cương và bản đối ứng")
     sub.add_parser("fill-english-names", help="Điền modules.name_en từ đề cương, catalog CTĐT và bảng api/seed/module_names_en.tsv")
     sub.add_parser("classify-languages", help="Phân loại môn tiếng Anh/tiếng Việt (mã E…/(E)) và ghép cặp Anh–Việt")
     p = sub.add_parser("export-language-split", help="Xuất danh sách môn tiếng Anh / tiếng Việt ra CSV (data/processed)")
@@ -123,6 +124,8 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("link-outlines", help="Liên kết mỗi đề cương PDF với mã học phần (từ danh mục CTĐT 2025)")
     p = sub.add_parser("import-regulations", help="Nạp danh mục văn bản quy chế (regulations/catalog.json)")
     p.add_argument("path", nargs="?", default=str(Path(__file__).resolve().parents[2] / "regulations" / "catalog.json"))
+    p = sub.add_parser("import-academic-calendar", help="Nạp lịch năm học (academic_events) từ file seed JSON")
+    p.add_argument("--file", help="Đường dẫn file JSON (mặc định: api/seed/academic_calendar_2026_2027.json)")
     p = sub.add_parser("seed", help="Nạp dữ liệu ban đầu (file thật trong DATA_DIR/raw, nếu không có: dữ liệu mẫu)")
     p.add_argument("--sample", action="store_true", help="Chỉ nạp dữ liệu mẫu")
     sub.add_parser("clear-sample", help="Xóa dữ liệu mẫu")
@@ -171,6 +174,9 @@ def main(argv: list[str] | None = None) -> int:
             elif args.cmd == "fill-descriptions":
                 from app.services.descriptions import fill_descriptions
                 res = fill_descriptions(db)
+            elif args.cmd == "fill-faculties":
+                from app.services.faculty_names import fill_faculties
+                res = fill_faculties(db)
             elif args.cmd == "fill-english-names":
                 from app.services.english_names import fill_english_names
                 res = fill_english_names(db)
@@ -189,6 +195,10 @@ def main(argv: list[str] | None = None) -> int:
                 res = link_outlines_to_modules(db)
             elif args.cmd == "import-regulations":
                 res = import_regulation_catalog(db, _path(args.path))
+            elif args.cmd == "import-academic-calendar":
+                from app.services.academic_calendar import import_academic_calendar
+                file_p = _path(args.file) if args.file else None
+                res = import_academic_calendar(db, path=file_p)
             elif args.cmd == "seed":
                 res = run_seed(db, sample_only=args.sample)
             else:
@@ -200,7 +210,8 @@ def main(argv: list[str] | None = None) -> int:
                 fill_descriptions(db)  # mô tả học phần VI/EN lấy từ đề cương: cập nhật khi đề cương đổi
             # Nhật ký nguồn dữ liệu (không ghi cho dữ liệu cá nhân như TKB portal).
             if args.cmd.startswith("import-") and args.cmd != "import-portal-timetable" and isinstance(res, dict):
-                log_run(db, args.cmd[len("import-"):], Path(args.path) if getattr(args, "path", None) else None, res)
+                src_path = Path(args.path) if getattr(args, "path", None) else (Path(args.file) if getattr(args, "file", None) else None)
+                log_run(db, args.cmd[len("import-"):], src_path, res)
     except ImportFormatError as e:
         sys.exit(f"Lỗi định dạng: {e}")
     print(json.dumps(res, ensure_ascii=False, default=str))

@@ -13,6 +13,7 @@ from app.schemas import (
     BlockedModule,
     CheckRequest,
     CheckResult,
+    ElectiveGroup,
     GraphEdge,
     GraphNode,
     PlannedIssue,
@@ -24,6 +25,14 @@ from app.schemas import (
     TreeNode,
 )
 from app.services.program_check import ReqModule, check
+from app.services.elective_groups import get_elective_groups
+from app.services.program_tracks import (
+    check_contextual_program,
+    get_contextual_module_tree,
+    get_contextual_program_detail,
+    get_contextual_program_graph,
+    resolve_program_and_track,
+)
 from app.services.requirements import find_cycles
 from app.services.text import search_tokens
 
@@ -102,41 +111,43 @@ def _pm_out(pm: ProgramModule, eq: dict[str, set[str]]) -> ProgramModuleOut:
 
 
 @router.get("/programs/{program_id}", response_model=ProgramDetail, summary="Chi tiết CTĐT theo khối kiến thức")
-def get_program(program_id: str, db: Session = Depends(get_db)):
-    p = _get_program(db, program_id)
-    eq = equivalence_map(db, p.id)
-    blocks: dict[tuple[str, str | None], ProgramBlock] = {}
-    for pm in sorted(p.modules, key=lambda x: (x.suggested_order or 999, x.module_code)):
-        key = (pm.block or "Khác", pm.parent_block)
-        b = blocks.setdefault(key, ProgramBlock(name=key[0], parent=key[1]))
-        b.modules.append(_pm_out(pm, eq))
-        cr = (pm.module.credits or 0) if pm.module else 0
-        b.total_credits += cr
-        if pm.required:
-            b.required_credits += cr
-    return ProgramDetail(program=_summary(p), blocks=list(blocks.values()))
+def get_program(
+    program_id: str,
+    track: str | None = Query(None, description="Hệ đào tạo: en | english | vi"),
+    db: Session = Depends(get_db),
+):
+    p, is_english, contextual_id = resolve_program_and_track(db, program_id, track)
+    return get_contextual_program_detail(db, p, is_english, contextual_id)
+
+
+@router.get(
+    "/programs/{program_id}/elective-groups",
+    response_model=list[ElectiveGroup],
+    summary="Danh sách nhóm môn tự chọn của CTĐT",
+)
+def get_program_elective_groups(
+    program_id: str,
+    track: str | None = Query(None, description="Hệ đào tạo: en | english | vi"),
+    db: Session = Depends(get_db),
+):
+    """Lấy danh sách các nhóm môn tự chọn của CTĐT kèm số tín chỉ yêu cầu.
+
+    Trả về [{block, required_credits, available_credits, modules[]}].
+    Nếu CTĐT không có quy định số tín chỉ tự chọn trong DB (thiếu ở trường note, block, và catalog entries),
+    hàm trả về mảng rỗng [] — tuyệt đối không bịa số.
+    """
+    p, is_english, _ = resolve_program_and_track(db, program_id, track)
+    return get_elective_groups(db, p, is_english)
 
 
 @router.get("/programs/{program_id}/graph", response_model=ProgramGraph, summary="Đồ thị môn học của CTĐT")
-def program_graph(program_id: str, db: Session = Depends(get_db)):
-    p = _get_program(db, program_id)
-    rels = list(db.scalars(select(ModuleRelation).where(ModuleRelation.program_id == p.id)
-                           .order_by(ModuleRelation.source, ModuleRelation.target)))
-    nodes = {pm.module_code: GraphNode(
-        code=pm.module_code, name=pm.module.name if pm.module else None,
-        name_en=pm.module.name_en if pm.module else None,
-        credits=pm.module.credits if pm.module else None, required=pm.required,
-        suggested_term=pm.suggested_term, suggested_order=pm.suggested_order, block=pm.block,
-    ) for pm in p.modules}
-    extra = {c for r in rels for c in (r.source, r.target)} - nodes.keys()
-    for m in db.scalars(select(Module).where(Module.code.in_(extra))) if extra else []:
-        nodes[m.code] = GraphNode(code=m.code, name=m.name, name_en=m.name_en, credits=m.credits, in_program=False)
-    for c in extra - nodes.keys():
-        nodes[c] = GraphNode(code=c, in_program=False)
-    edges = [GraphEdge(source=r.source, target=r.target, type=r.type) for r in rels]
-    cycles = find_cycles((e.source, e.target) for e in edges if e.type in REQ_TYPES)
-    return ProgramGraph(nodes=sorted(nodes.values(), key=lambda n: (n.suggested_order or 999, n.code)),
-                        edges=edges, cycles=cycles)
+def program_graph(
+    program_id: str,
+    track: str | None = Query(None, description="Hệ đào tạo: en | english | vi"),
+    db: Session = Depends(get_db),
+):
+    p, is_english, _ = resolve_program_and_track(db, program_id, track)
+    return get_contextual_program_graph(db, p, is_english)
 
 
 @router.get("/modules/{code}/tree", response_model=TreeNode, summary="Cây tiên quyết / mở khóa của một học phần")
@@ -148,57 +159,16 @@ def module_tree(
     depth: int = Query(10, ge=1, le=30),
     db: Session = Depends(get_db),
 ):
-    code = code.strip()
-    stmt = select(ModuleRelation).where(ModuleRelation.type.in_(REQ_TYPES))
-    if program_id:
-        stmt = stmt.where(ModuleRelation.program_id == program_id)
-    adj: dict[str, list[tuple[str, str]]] = defaultdict(list)
-    for r in db.scalars(stmt):
-        if direction == "prereq":
-            adj[r.target].append((r.source, r.type))
-        else:
-            adj[r.source].append((r.target, r.type))
-    for k in adj:
-        adj[k] = sorted(set(adj[k]))
-    codes = {code} | {c for v in adj.values() for c, _ in v} | set(adj)
-    name_rows = db.execute(select(Module.code, Module.name, Module.name_en).where(Module.code.in_(codes))).all()
-    names = {c: n for c, n, _ in name_rows}
-    names_en = {c: e for c, _, e in name_rows}
-    if code not in names and code not in adj and not any(code == c for v in adj.values() for c, _ in v):
-        raise HTTPException(404, f"Không tìm thấy học phần {code}.")
-    trees: dict[str, tuple] = {}
-    if program_id and direction == "prereq":
-        for pm in db.scalars(select(ProgramModule).where(ProgramModule.program_id == program_id)):
-            trees[pm.module_code] = (pm.prereq_tree, pm.previous_tree)
-
-    def build(c: str, rtype: str, path: tuple[str, ...], level: int) -> TreeNode:
-        pt, vt = trees.get(c, (None, None))
-        node = TreeNode(code=c, name=names.get(c), name_en=names_en.get(c), type=rtype, prereq_tree=pt, previous_tree=vt)
-        if c in path:
-            node.cycle = True
-            return node
-        if level >= depth:
-            node.truncated = bool(adj.get(c))
-            return node
-        node.children = [build(child, t, path + (c,), level + 1) for child, t in adj.get(c, [])]
-        return node
-
-    return build(code, "root", (), 0)
+    return get_contextual_module_tree(db, code, program_id, direction, depth)
 
 
 @router.post("/programs/{program_id}/check", response_model=CheckResult,
              summary="Kiểm tra môn đủ điều kiện / bị chặn theo CTĐT")
-def check_program(program_id: str, body: CheckRequest, db: Session = Depends(get_db)):
-    p = _get_program(db, program_id)
-    mods = [ReqModule(code=pm.module_code, prereq=pm.prereq_tree, previous=pm.previous_tree,
-                      coreq=pm.coreq_tree, order=pm.suggested_order) for pm in p.modules]
-    res = check(mods, [(c.code, c.grade) for c in body.completed], body.planned, equivalence_map(db, p.id))
-    return CheckResult(
-        eligible_now=res.eligible_now,
-        blocked=[BlockedModule(**b) for b in res.blocked],
-        passed=res.passed,
-        planned_issues=[PlannedIssue(**x) for x in res.planned_issues],
-        warnings=res.warnings,
-        # Liên kết quy chế (Điều/Khoản về tiên quyết/học trước) do module RAG cung cấp; chưa ánh xạ tự động.
-        rule_refs=[],
-    )
+def check_program(
+    program_id: str,
+    body: CheckRequest,
+    track: str | None = Query(None, description="Hệ đào tạo: en | english | vi"),
+    db: Session = Depends(get_db),
+):
+    p, is_english, _ = resolve_program_and_track(db, program_id, track)
+    return check_contextual_program(db, p, is_english, body)
