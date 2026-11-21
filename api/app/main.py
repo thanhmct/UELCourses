@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from sqlalchemy import select
 
 from app.config import get_settings
@@ -37,6 +38,8 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Nén phản hồi lớn (/venues ~2 MB JSON, /equivalents ~100 KB). Phản hồi nhỏ hơn 1 KB giữ nguyên.
+app.add_middleware(GZipMiddleware, minimum_size=1024)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=get_settings().cors_origin_list,

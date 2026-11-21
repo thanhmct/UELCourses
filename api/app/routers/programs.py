@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import or_, select
+from sqlalchemy import case, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.db import get_db
@@ -63,14 +63,30 @@ def equivalence_map(db: Session, program_id: str | None = None) -> dict[str, set
 @router.get("/programs", response_model=list[ProgramSummary], summary="Danh sách chương trình đào tạo")
 def list_programs(cohort: str | None = Query(None, description="vd K24"), q: str | None = None,
                   db: Session = Depends(get_db)):
-    stmt = select(Program).options(selectinload(Program.modules).selectinload(ProgramModule.module)).order_by(Program.id)
+    stmt = select(Program).order_by(Program.id)
     if cohort:
         stmt = stmt.where(Program.cohort == cohort.strip().upper())
     else:
         stmt = stmt.where(Program.cohort >= "K23")
     for tok in search_tokens(q):
         stmt = stmt.where(Program.search_text.like(f"%{like_escape(tok)}%", escape="\\"))
-    return [_summary(p) for p in db.scalars(stmt)]
+    progs = list(db.scalars(stmt))
+    # Tổng hợp bằng một truy vấn (trước đây nạp toàn bộ học phần của mọi CTĐT chỉ để cộng tín chỉ: ~240 ms -> vài chục ms).
+    required_credits = case((ProgramModule.required.is_(True), func.coalesce(Module.credits, 0)), else_=0)
+    agg = {
+        pid: (n, float(total or 0))
+        for pid, n, total in db.execute(
+            select(ProgramModule.program_id, func.count(ProgramModule.id), func.sum(required_credits))
+            .outerjoin(Module, Module.code == ProgramModule.module_code)
+            .where(ProgramModule.program_id.in_([p.id for p in progs]))
+            .group_by(ProgramModule.program_id)
+        )
+    } if progs else {}
+    return [
+        ProgramSummary(program_id=p.id, name=p.name, cohort=p.cohort, faculty=p.faculty,
+                       total_credits=agg.get(p.id, (0, 0.0))[1], module_count=agg.get(p.id, (0, 0.0))[0], is_sample=p.is_sample)
+        for p in progs
+    ]
 
 
 def _pm_out(pm: ProgramModule, eq: dict[str, set[str]]) -> ProgramModuleOut:
