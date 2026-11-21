@@ -16,21 +16,29 @@ SEED_DIR = API_DIR / "seed"
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=str(API_DIR / ".env"), extra="ignore")
+    # <repo>/.env (do `dev.ps1 init` tạo, chứa POSTGRES_*) rồi api/.env (nếu có). Biến môi trường luôn được ưu tiên hơn file.
+    model_config = SettingsConfigDict(env_file=(str(API_DIR.parent / ".env"), str(API_DIR / ".env")), extra="ignore")
 
-    # Thư mục chứa dữ liệu chạy của ứng dụng (SQLite dev, chỉ mục RAG, file tạm). Mặc định <repo>/data/db.
+    # Thư mục chứa dữ liệu chạy của ứng dụng (chỉ mục RAG, file tạm, bản sao lưu). Mặc định <repo>/data/db.
     # Dữ liệu nguồn nằm ở <repo>/data/raw (xem data/README.md). Docker đặt DATA_DIR qua biến môi trường.
     data_dir: Path = API_DIR.parent / "data" / "db"
-    # Mặc định: SQLite trong DATA_DIR (tương đương sqlite:///./data/uelplan.db khi chạy
-    # từ api/). Docker: postgresql+psycopg://uelplan:...@db:5432/uelplan
+    # MỘT database duy nhất: PostgreSQL. Thứ tự: DATABASE_URL (Docker: ...@db:5432/uelplan; test: SQLite tạm)
+    # -> ghép từ POSTGRES_* trong <repo>/.env (chạy trực tiếp trên máy: localhost:5432)
+    # -> chỉ khi không có cả hai mới dùng SQLite trong DATA_DIR (chế độ thử, không phải dữ liệu thật).
     database_url: str | None = None
+    postgres_user: str = "uelplan"
+    postgres_password: str | None = None
+    postgres_db: str = "uelplan"
+    postgres_host: str = "localhost"
+    postgres_port: int = 5432
     # Thư mục chứa file Excel/JSON thật cho `seed` (mặc định DATA_DIR/raw, rồi <repo>/data/raw).
     raw_data_dir: Path | None = None
     # Danh sách origin phân tách bởi dấu phẩy.
     cors_origins: str = "http://localhost:3000"
 
-    # Tự nạp dữ liệu mẫu khi DB chưa có học phần nào (tiện cho dev frontend).
-    auto_seed: bool = True
+    # Tự nạp dữ liệu MẪU (api/seed/*.json) khi DB chưa có học phần nào. Tắt mặc định: DB chỉ chứa dữ liệu thật
+    # (chủ dự án yêu cầu 2026-11-21). Bật bằng AUTO_SEED=true khi cần DB thử trống.
+    auto_seed: bool = False
     # Bỏ qua học phần mã hệ cũ (4 ký tự có chữ số: AA01, EN21…) khi nạp dữ liệu — xem app/services/legacy.py.
     skip_legacy_codes: bool = True
     # Bỏ qua chương trình đào tạo của các khóa cũ hơn (K19–K22 đã/đang tốt nghiệp). 0 = nạp tất cả.
@@ -64,6 +72,11 @@ class Settings(BaseSettings):
     def resolved_database_url(self) -> str:
         if self.database_url:
             return self.database_url
+        if self.postgres_password:
+            from urllib.parse import quote  # noqa: PLC0415
+
+            return (f"postgresql+psycopg://{quote(self.postgres_user, safe='')}:{quote(self.postgres_password, safe='')}"
+                    f"@{self.postgres_host}:{self.postgres_port}/{quote(self.postgres_db, safe='')}")
         return f"sqlite:///{(self.resolved_data_dir / 'uelplan.db').as_posix()}"
 
     @property

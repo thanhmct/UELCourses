@@ -174,11 +174,60 @@ def extract_outline_texts(db: Session, data_dir: Path, *, limit: int | None = No
             d.page_count, d.text_chars = pages, len(text)
             if len(re.sub(r"\s+", "", text)) < 300:
                 d.text, d.text_status, needs_ocr = None, "needs_ocr", needs_ocr + 1
+                d.ocr_status = d.ocr_status or "pending"  # PDF scan: để dành OCR sau (lệnh ocr-outlines)
             else:
                 d.text, d.text_status, d.text_method = text, "extracted", "pdf_text"
                 d.extracted_at, done = datetime.now(timezone.utc), done + 1
     db.commit()
     return {"imported": done, "extracted": done, "needs_ocr": needs_ocr, "failed": failed}
+
+
+def _ocr_pdf(path: Path, dpi: int = 300) -> tuple[str, int]:
+    """PDF scan -> văn bản: pdftoppm (ảnh PNG từng trang) + tesseract vie+eng. Giữ khoảng trắng giữa các cột
+    (preserve_interword_spaces) để luật 'nhãn   giá trị' của bước phân tích vẫn dùng được."""
+    import tempfile  # noqa: PLC0415
+
+    ppm, tess = shutil.which("pdftoppm"), shutil.which("tesseract")
+    if not (ppm and tess):
+        raise RuntimeError("Cần pdftoppm + tesseract (tesseract-ocr-vie). Container `jobs`/`workspace` đã có sẵn.")
+    with tempfile.TemporaryDirectory() as tmp:
+        subprocess.run([ppm, "-r", str(dpi), "-png", str(path), str(Path(tmp) / "p")], check=True, capture_output=True, timeout=600)
+        pages = sorted(Path(tmp).glob("p-*.png"))
+        texts = []
+        for img in pages:
+            r = subprocess.run([tess, str(img), "-", "-l", "vie+eng", "--psm", "4", "-c", "preserve_interword_spaces=1"],
+                               capture_output=True, timeout=300)
+            texts.append(r.stdout.decode("utf-8", "replace"))
+    return "\n".join(texts).replace("\x00", "").strip(), len(pages)
+
+
+def ocr_outline_texts(db: Session, data_dir: Path, *, only_ids: list[int] | None = None, dpi: int = 300) -> dict:
+    """OCR các đề cương đánh dấu ocr_status='pending' (PDF scan). Kết quả lưu ở `ocr_text` (ocr_status='done') và chép
+    sang `text` (text_status='extracted', text_method='ocr_tesseract') để parse-outlines xử lý như mọi tài liệu khác
+    (bảng trong ảnh scan không dò được bằng find_tables nên thường chỉ ra 'partial')."""
+    q = select(OutlineDocument).where(OutlineDocument.ocr_status == "pending")
+    if only_ids:
+        q = q.where(OutlineDocument.id.in_(only_ids))
+    done = failed = 0
+    for d in db.scalars(q).all():
+        try:
+            text, pages = _ocr_pdf(data_dir / d.rel_path, dpi)
+        except Exception as e:  # noqa: BLE001
+            print(f"[ocr-outlines] lỗi {d.id} {d.file_name}: {e}"[:300], flush=True)
+            failed += 1
+            continue
+        if len(re.sub(r"\s+", "", text)) < 300:
+            print(f"[ocr-outlines] {d.id}: OCR gần như không ra chữ, giữ 'pending'", flush=True)
+            failed += 1
+            continue
+        now = datetime.now(timezone.utc)
+        d.ocr_text, d.ocr_engine, d.ocr_at, d.ocr_status = text, f"tesseract vie+eng psm4 {dpi}dpi", now, "done"
+        d.text, d.text_status, d.text_method = text, "extracted", "ocr_tesseract"
+        d.page_count, d.text_chars, d.extracted_at = pages, len(text), now
+        db.commit()
+        done += 1
+        print(f"[ocr-outlines] {d.id} {d.file_name}: {pages} trang, {len(text)} ký tự", flush=True)
+    return {"imported": done, "ocr_done": done, "failed": failed}
 
 
 # --------------------------------------------------------------------------- regulations

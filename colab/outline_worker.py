@@ -42,24 +42,67 @@ def fold(s: str) -> str:
     return " ".join(s.lower().split())
 
 
+def fold_ns(s: str) -> str:
+    return fold(s or "").replace(" ", "")
+
+
 def clean(s: str) -> str:
     return re.sub(r"\s+", " ", (s or "").replace("​", "")).strip()
 
 
 def classify_table(header: list) -> str | None:
-    """Bản sao classify_table trong api/app/services/outline_parse.py (giữ đồng bộ)."""
-    h = fold(" ".join(header)).replace(" ", "")
+    """Bản sao TỰ ĐỘNG của outline_parse.classify_table (colab/sync_worker.py)."""
+    h = fold_ns(" ".join(header))
     if (("muctieu" in h or "objective" in h) and ("clo" in h or "cdr" in h) and ("mota" in h or "description" in h)) or (
         "cox" in h and "clox" in h
+    ) or (
+        # 'General Goals COx | Description | Course Learning Outcomes | Level capacity'
+        ("goal" in h or "muctieu" in h or "objective" in h) and ("description" in h or "mota" in h) and ("learningoutcome" in h or "chuandaura" in h)
+        # cột mức độ giảng dạy (I, T, U) / cột đầu 'Learning outcomes', 'CLO' chỉ có ở bảng CĐR (mẫu đôi khi ghi nhầm 'Description of Objectives')
+        and not any(k in h for k in ("levelofinstruction", "teachinglevel", "levelofteaching", "mucdogiangday", "(i,t,u"))
+        and not re.match(r"^(?:learningoutcome|clo|cdr|chuandaura)", fold_ns(header[0]) if header else "")
     ):
         return "objectives"
+    first = fold_ns(header[0]) if header else ""
     if ("motacdr" in h or "motachuandaura" in h) or ("cdr" in h and ("mucdogiangday" in h or "teachinglevel" in h)) or (
         "clox" in h and "cox" not in h and ("teachinglevel" in h or "description" in h)
+    ) or (
+        # 'CLO (1) | CLO Description (2) | Program Learning Outcomes | Bloom Scale/Teaching Level' (ô đầu chỉ là 'CLO')
+        re.match(r"^(?:clo|cdr)(?![a-z])", first) and ("description" in h or "mota" in h or "noidungclo" in h)
+        and "weight" not in h and "trongso" not in h
+    ) or (
+        # dịch máy: 'Fans (1) | Description of the Complaints (2) | PLOs | Level of instruction (I, T, U)'
+        ("plo" in h or "programlearningoutcome" in h) and ("levelofinstruction" in h or "teachinglevel" in h or "mucdogiangday" in h)
+        and "weight" not in h and "trongso" not in h
+    ) or (
+        # 'CLO | Chuẩn đầu ra môn học (CLOs) | Trình độ năng lực | Chuẩn đầu ra CTĐT (PLOs)' — không có cột 'mô tả'
+        re.match(r"^(?:clo|cdr)(?![a-z])", first) and ("plo" in h or "ctdt" in h or "programlearning" in h)
+        and "weight" not in h and "trongso" not in h
+    ) or (
+        # 'No. | Course Learning Outcomes | Level capacity | Program Learning Outcomes' (cột đầu là số thứ tự)
+        re.match(r"^(?:no|stt|tt|#)", first) and ("courselearningoutcome" in h or "chuandauramonhoc" in h)
+        and ("programlearningoutcome" in h or "plo" in h or "ctdt" in h) and "weight" not in h and "trongso" not in h
     ):
         return "clos"
-    if "thanhphandanhgia" in h or ("baidanhgia" in h and "trongso" in h) or ("assessment" in h and "weight" in h):
+    if (
+        "thanhphandanhgia" in h or ("baidanhgia" in h and "trongso" in h) or ("assessment" in h and "weight" in h)
+        or "(ax.x)" in h or "(axx)" in h or ("ax.x" in h and ("trongso" in h or "weight" in h or "proportion" in h or "criteria" in h or "tieuchi" in h))
+        # 'Evaluation component | Evaluation code | CLO | Criteria | Duration | Percentage', 'Assessment Component | Form | Proportion'
+        or (("evaluation" in h or "assessment" in h or "danhgia" in h) and ("component" in h or "thanhphan" in h)
+            and ("percentage" in h or "proportion" in h or "weight" in h or "tyle" in h or "tile" in h or "trongso" in h))
+    ):
         return "assessments"
     if ("tuan" in h or "week" in h or "buoi" in h) and ("noidung" in h or "content" in h):
+        return "schedule"
+    # 'Số tiết | Nội dung | CĐR môn học | Hoạt động dạy và học', 'Time | Content | CLOs | PLOs | Teaching and learning activities'
+    if (
+        ("noidung" in h or "content" in h) and ("clo" in h or "cdr" in h or "chuandaura" in h)
+        and ("hoatdong" in h or "teaching" in h or "activit" in h or "danhgia" in h or "assessment" in h)
+        and "noidungclo" not in h and "clocontent" not in h  # 'Kí hiệu CLO | Nội dung CLO | Cần đánh giá…' là bảng kế hoạch đánh giá CLO
+    ) or (
+        # 'Class | Description | Activities | CLOs and Evaluation' (bảng CĐR/mục tiêu đã được nhận ở trên nên không nhầm)
+        ("class" in h or "session" in h or "buoi" in h) and "description" in h and "clo" in h and "activit" in h
+    ):
         return "schedule"
     return None
 

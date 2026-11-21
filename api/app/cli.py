@@ -18,7 +18,7 @@ import sys
 from pathlib import Path
 
 from app.db import SessionLocal, init_db
-from app.services.ctdt_import import import_ctdt
+from app.services.ctdt_import import import_ctdt, rebuild_equivalent_relations
 from app.services.excel_import import import_ta_plan, import_uis_classes
 from app.services.importer import (
     ImportFormatError,
@@ -31,7 +31,13 @@ from app.services.importer import (
 from app.services.language import classify_languages, export_language_split
 from app.services.legacy import purge_legacy_codes, purge_old_programs
 from app.services.lineage import log_run
-from app.services.outline_import import extract_outline_texts, import_outlines, import_regulation_catalog, link_outlines_to_modules
+from app.services.outline_import import (
+    extract_outline_texts,
+    import_outlines,
+    import_regulation_catalog,
+    link_outlines_to_modules,
+    ocr_outline_texts,
+)
 from app.services.outline_colab import import_colab_results
 from app.services.outline_parse import parse_outlines
 from app.services.portal_timetable import import_portal_timetable
@@ -82,6 +88,9 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--force", action="store_true", help="Trích lại cả những file đã có văn bản")
     p = sub.add_parser("purge-legacy-codes", help="Xóa học phần mã hệ cũ (4 ký tự có chữ số) khỏi DB — nên sao lưu trước")
     p.add_argument("--dry-run", action="store_true", help="Chỉ đếm, không xóa")
+    p = sub.add_parser("repair-equivalent-edges",
+                       help="Dựng lại cạnh 'tương đương' của CTĐT từ program_modules.equivalent_raw (sửa cạnh rác 'T', 'TRONG', '3'…)")
+    p.add_argument("--dry-run", action="store_true", help="Chỉ đếm, không ghi")
     p = sub.add_parser("purge-old-programs", help="Xóa chương trình đào tạo của khóa cũ (mặc định < K23) — nên sao lưu trước")
     p.add_argument("--before", type=int, help="Xóa khóa < số này (vd 23 = K19–K22)")
     p.add_argument("--dry-run", action="store_true")
@@ -102,7 +111,12 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--limit", type=int)
     p.add_argument("--workers", type=int, default=4)
     p.add_argument("--ids", type=int, nargs="*", help="Chỉ phân tích các outline_documents.id này")
-    p.add_argument("--force", action="store_true", help="Phân tích lại cả tài liệu đã xong bằng phiên bản hiện tại")
+    p.add_argument("--force", action="store_true", help="Phân tích lại cả tài liệu đã chạy bằng phiên bản hiện tại (vẫn bỏ qua tài liệu đã 'ok')")
+    p.add_argument("--include-ok", action="store_true", help="Phân tích lại cả đề cương đã 'ok' (mặc định bỏ qua)")
+    p = sub.add_parser("ocr-outlines", help="OCR (Tesseract vie+eng) các PDF đề cương scan (text_status=needs_ocr); cần pdftoppm + tesseract (container jobs)")
+    p.add_argument("--data-dir", default=str(Path(__file__).resolve().parents[2] / "data"))
+    p.add_argument("--ids", type=int, nargs="*", help="Chỉ OCR các outline_documents.id này")
+    p.add_argument("--dpi", type=int, default=300)
     p = sub.add_parser("import-colab-outlines", help="Nạp outline_results.jsonl (Colab: văn bản + bảng PyMuPDF) và phân tích lại đề cương")
     p.add_argument("--file", required=True, help="Đường dẫn outline_results.jsonl đã tải từ Drive")
     p.add_argument("--data-dir", default=str(Path(__file__).resolve().parents[2] / "data"))
@@ -137,6 +151,8 @@ def main(argv: list[str] | None = None) -> int:
                 res = extract_outline_texts(db, _path(args.data_dir), limit=args.limit, workers=args.workers, force=args.force)
             elif args.cmd == "purge-legacy-codes":
                 res = purge_legacy_codes(db, dry_run=args.dry_run)
+            elif args.cmd == "repair-equivalent-edges":
+                res = rebuild_equivalent_relations(db, dry_run=args.dry_run)
             elif args.cmd == "purge-old-programs":
                 res = purge_old_programs(db, before=args.before, dry_run=args.dry_run)
             elif args.cmd == "import-portal-equivalents":
@@ -163,7 +179,10 @@ def main(argv: list[str] | None = None) -> int:
             elif args.cmd == "export-language-split":
                 res = export_language_split(db, Path(args.out))
             elif args.cmd == "parse-outlines":
-                res = parse_outlines(db, _path(args.data_dir), limit=args.limit, workers=args.workers, only_ids=args.ids, force=args.force)
+                res = parse_outlines(db, _path(args.data_dir), limit=args.limit, workers=args.workers, only_ids=args.ids, force=args.force,
+                                     include_ok=args.include_ok)
+            elif args.cmd == "ocr-outlines":
+                res = ocr_outline_texts(db, _path(args.data_dir), only_ids=args.ids, dpi=args.dpi)
             elif args.cmd == "import-colab-outlines":
                 res = import_colab_results(db, _path(args.file), _path(args.data_dir))
             elif args.cmd == "link-outlines":

@@ -2,7 +2,7 @@ import json
 
 from app.models import OutlineCourse, OutlineDocument
 from app.services.outline_colab import import_colab_results, load_colab_records
-from app.services.outline_parse import tables_from_raw, tables_to_records
+from app.services.outline_parse import PARSER_VERSION, tables_from_raw, tables_to_records
 
 SCHEDULE_TABLE = {
     "page": 3,
@@ -75,4 +75,4 @@ def test_import_colab_results_fills_text_and_reparses(db, tmp_path):
     db.refresh(empty)
     assert empty.text == "văn bản pdftotext có sẵn"
     row = db.query(OutlineCourse).filter_by(document_id=doc.id).one()
-    assert row.parse_method == "rules-5"
+    assert row.parse_method == PARSER_VERSION

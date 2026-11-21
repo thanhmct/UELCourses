@@ -347,6 +347,13 @@ class OutlineDocument(Base):
     language: Mapped[str | None] = mapped_column(String(8), nullable=True)
     text: Mapped[str | None] = mapped_column(Text, nullable=True)
     extracted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # OCR để làm sau (PDF scan, không có lớp chữ). NULL = không cần OCR; 'pending' = cần OCR, chưa xong;
+    # 'done' = đã OCR (văn bản ở ocr_text, đồng thời chép sang `text` để parse-outlines dùng).
+    # `ocr_text` của tài liệu 'pending' (nếu có) chỉ là bản chạy thử chưa duyệt — chưa đưa vào phân tích.
+    ocr_status: Mapped[str | None] = mapped_column(String(16), nullable=True, index=True)
+    ocr_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ocr_engine: Mapped[str | None] = mapped_column(String(64), nullable=True)  # vd 'tesseract vie+eng psm4 300dpi'
+    ocr_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     resources: Mapped[list[OutlineResource]] = relationship(back_populates="document")
     sections: Mapped[list[OutlineSection]] = relationship(
@@ -417,9 +424,9 @@ class OutlineCourse(Base):
     knowledge_block: Mapped[str | None] = mapped_column(String(256), nullable=True)
     level: Mapped[str | None] = mapped_column(String(64), nullable=True)
     major: Mapped[str | None] = mapped_column(String(256), nullable=True)
-    cohort_range: Mapped[str | None] = mapped_column(String(32), nullable=True)  # "2025 - 2029"
-    academic_year: Mapped[str | None] = mapped_column(String(32), nullable=True)
-    term: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    cohort_range: Mapped[str | None] = mapped_column(String(128), nullable=True)  # "2025 - 2029" hoặc "2023 – 2027, 2024 – 2028, 2025 - 2029"
+    academic_year: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    term: Mapped[str | None] = mapped_column(String(64), nullable=True)
     credits: Mapped[float | None] = mapped_column(Float, nullable=True)
     hours_lecture: Mapped[float | None] = mapped_column(Float, nullable=True)
     hours_practice: Mapped[float | None] = mapped_column(Float, nullable=True)
@@ -445,7 +452,7 @@ class OutlineMaterial(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     document_id: Mapped[int] = mapped_column(ForeignKey("outline_documents.id", ondelete="CASCADE"), index=True)
-    kind: Mapped[str] = mapped_column(String(16))  # textbook | reference
+    kind: Mapped[str] = mapped_column(String(16))  # textbook | reference | software
     ord: Mapped[int] = mapped_column(Integer, default=0)
     citation: Mapped[str] = mapped_column(Text)
 
@@ -460,7 +467,7 @@ class OutlineObjective(Base):
     code: Mapped[str] = mapped_column(String(16))
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     clo_codes: Mapped[Any | None] = mapped_column(JsonType, nullable=True)
-    competency_level: Mapped[str | None] = mapped_column(String(32), nullable=True)  # TĐNL
+    competency_level: Mapped[str | None] = mapped_column(String(128), nullable=True)  # TĐNL
 
 
 class OutlineClo(Base):
@@ -472,7 +479,7 @@ class OutlineClo(Base):
     document_id: Mapped[int] = mapped_column(ForeignKey("outline_documents.id", ondelete="CASCADE"), index=True)
     code: Mapped[str] = mapped_column(String(16))
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    teaching_levels: Mapped[str | None] = mapped_column(String(32), nullable=True)  # "I, T" / "T, U"
+    teaching_levels: Mapped[str | None] = mapped_column(String(128), nullable=True)  # "I, T" / "T, U"
 
 
 class OutlineAssessment(Base):
@@ -483,7 +490,7 @@ class OutlineAssessment(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     document_id: Mapped[int] = mapped_column(ForeignKey("outline_documents.id", ondelete="CASCADE"), index=True)
     ord: Mapped[int] = mapped_column(Integer, default=0)
-    component: Mapped[str | None] = mapped_column(String(256), nullable=True)  # "A1. Đánh giá quá trình"
+    component: Mapped[str | None] = mapped_column(Text, nullable=True)  # "A1. Đánh giá quá trình" (bảng lệch cột có thể dồn cả tiêu chí vào đây)
     item_code: Mapped[str | None] = mapped_column(String(16), nullable=True)  # "A1.1"
     item_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     clo_codes: Mapped[Any | None] = mapped_column(JsonType, nullable=True)
@@ -514,7 +521,7 @@ class OutlineScheduleItem(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     document_id: Mapped[int] = mapped_column(ForeignKey("outline_documents.id", ondelete="CASCADE"), index=True)
     ord: Mapped[int] = mapped_column(Integer, default=0)
-    week_label: Mapped[str | None] = mapped_column(String(32), nullable=True)  # "1", "2-3", "Ôn tập"
+    week_label: Mapped[str | None] = mapped_column(String(128), nullable=True)  # "1", "2-3", "Ôn tập"
     content: Mapped[str | None] = mapped_column(Text, nullable=True)
     clo_codes: Mapped[Any | None] = mapped_column(JsonType, nullable=True)
     activities: Mapped[str | None] = mapped_column(Text, nullable=True)

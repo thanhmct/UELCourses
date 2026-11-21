@@ -60,7 +60,7 @@ META = {
     "outline_clos": dict(one_row="Một chuẩn đầu ra học phần (CLO) của đề cương.", key="id", note=""),
     "outline_assessments": dict(one_row="Một thành phần/mục đánh giá của đề cương.", key="id", note=""),
     "outline_schedule": dict(one_row="Một dòng kế hoạch giảng dạy theo tuần.", key="id", note=""),
-    "outline_materials": dict(one_row="Một giáo trình hoặc tài liệu tham khảo.", key="id", note="`kind`: textbook / reference…"),
+    "outline_materials": dict(one_row="Một giáo trình hoặc tài liệu tham khảo.", key="id", note="`kind`: textbook / reference / software."),
     "regulation_documents": dict(one_row="Một văn bản quy chế/quy định.", key="id", note="Không bịa số quyết định/ngày: trường không rõ để NULL; `verified` = đã đọc trong chính văn bản."),
     "regulation_chunks": dict(one_row="Một Điều/Khoản/Điểm nguyên văn của văn bản quy chế (đơn vị truy xuất và trích dẫn của RAG).", key="id (duy nhất: doc_id + anchor)", note="Hiện CHƯA nạp (0 dòng): RAG quy chế đang chạy bằng chỉ mục riêng ngoài DB."),
     "users": dict(one_row="Một người dùng đăng nhập.", key="id (duy nhất: provider + subject)", note="Chứa dữ liệu cá nhân khi có người dùng thật — không đưa vào ví dụ hay commit."),
@@ -157,6 +157,9 @@ COLS = {
         "id": "Khóa thay thế tự tăng.", "sha256": "Mã băm nội dung file (duy nhất).", "file_name": "Tên file PDF.", "rel_path": "Đường dẫn tương đối tới file PDF.",
         "size_bytes": "Dung lượng file (byte).", "page_count": "Số trang.", "text_status": "pending | extracted | needs_ocr | failed.", "text_method": "pdf_text hoặc ocr.",
         "text_chars": "Số ký tự đã trích.", "language": "Mã ngôn ngữ phát hiện.", "text": "Văn bản trích xuất toàn bộ.", "extracted_at": "Thời điểm trích văn bản.",
+        "ocr_status": "OCR để làm sau: NULL = không cần (PDF có lớp chữ); pending = PDF scan cần OCR; done = đã OCR và đưa vào phân tích.",
+        "ocr_text": "Văn bản OCR (với 'pending': bản chạy thử chưa duyệt, chưa dùng để phân tích).",
+        "ocr_engine": "Công cụ/tham số OCR, vd 'tesseract vie+eng psm4 300dpi'.", "ocr_at": "Thời điểm OCR.",
     },
     "outline_sections": {
         "id": "Khóa thay thế tự tăng.", "document_id": "Đề cương chứa phần này.", "kind": "Loại phần (front, objectives, clo, content, assessment, textbooks, other…).",
@@ -181,7 +184,7 @@ COLS = {
         "item_name": "Tên mục.", "clo_codes": "CLO được đánh giá (JSONB).", "criteria": "Tiêu chí.", "duration": "Thời lượng.", "weight_pct": "Trọng số thành phần (%).", "sub_weight_pct": "Trọng số mục trong thành phần (%).",
     },
     "outline_schedule": {"id": "Khóa thay thế tự tăng.", "document_id": "Đề cương.", "ord": "Thứ tự.", "week_label": "Nhãn tuần/buổi.", "content": "Nội dung giảng dạy.", "clo_codes": "CLO liên quan (JSONB).", "activities": "Hoạt động dạy và học.", "assessment": "Mục đánh giá liên quan."},
-    "outline_materials": {"id": "Khóa thay thế tự tăng.", "document_id": "Đề cương.", "kind": "Loại: textbook | reference.", "ord": "Thứ tự.", "citation": "Trích dẫn tài liệu nguyên văn."},
+    "outline_materials": {"id": "Khóa thay thế tự tăng.", "document_id": "Đề cương.", "kind": "Loại: textbook | reference | software.", "ord": "Thứ tự.", "citation": "Trích dẫn tài liệu nguyên văn."},
     "regulation_documents": {
         "id": "Mã văn bản (khóa chính), vd uel-qcdt-1268-2022.", "title": "Tiêu đề văn bản.", "issuer": "Cơ quan ban hành.", "decision_no": "Số quyết định (NULL nếu không đọc được trong văn bản).",
         "issued_date": "Ngày ban hành.", "effective_from": "Ngày bắt đầu hiệu lực.", "effective_to": "Ngày hết hiệu lực.", "status": "active | expired | superseded | upcoming.",

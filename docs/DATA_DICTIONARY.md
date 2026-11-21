@@ -2,11 +2,11 @@
 
 *Tra cứu học phần, thời khóa biểu, kế hoạch học tập, CTĐT, học phần tương đương và quy chế học vụ của Trường ĐH Kinh tế – Luật (UEL)*
 
-Phiên bản tài liệu 1.0 · sinh tự động ngày 2026-11-21 từ database PostgreSQL đang chạy (Alembic `0012`). Tham chiếu độc lập cho database `uelplan` (tên giữ nguyên để không mất dữ liệu; thương hiệu là UELCourses). Số liệu và ví dụ lấy từ dữ liệu thật; thiết kế và vận hành xem `docs/DATABASE.md`.
+Phiên bản tài liệu 1.0 · sinh tự động ngày 2026-11-21 từ database PostgreSQL đang chạy (Alembic `0015`). Tham chiếu độc lập cho database `uelplan` (tên giữ nguyên để không mất dữ liệu; thương hiệu là UELCourses). Số liệu và ví dụ lấy từ dữ liệu thật; thiết kế và vận hành xem `docs/DATABASE.md`.
 
 | Bảng vật lý | Trường vật lý | Ràng buộc khóa ngoại | View SQL |
 |---:|---:|---:|---:|
-| **27** | **296** | **21** | **2** |
+| **27** | **300** | **21** | **2** |
 
 ## Nguồn dữ liệu
 
@@ -63,27 +63,27 @@ Mỗi mục nêu một dòng là gì, khóa chính và số dòng hiện tại. 
 
 | Cột | Kiểu / khóa | Ví dụ | Mô tả |
 |---|---|---|---|
-| `code` | VARCHAR(64) · NOT NULL · **PK** | BAA4006 | Mã học phần (khóa chính). Bản tiếng Anh mã `E…`, bản tiếng Việt `B…`; không gộp chỉ dựa vào tên. |
-| `name` | VARCHAR(512) · NOT NULL | Kế toán máy tính | Tên học phần (tiếng Việt, đôi khi còn hậu tố lớp vét/học ghép từ nguồn). |
+| `code` | VARCHAR(64) · NOT NULL · **PK** | BFF4080 | Mã học phần (khóa chính). Bản tiếng Anh mã `E…`, bản tiếng Việt `B…`; không gộp chỉ dựa vào tên. |
+| `name` | VARCHAR(512) · NOT NULL | Gói phần mềm ứng dụng cho tài chính… | Tên học phần (tiếng Việt, đôi khi còn hậu tố lớp vét/học ghép từ nguồn). |
 | `credits` | INTEGER · NULL | 3 | Số tín chỉ. |
 | `type` | VARCHAR(128) · NULL | Lý thuyết | Loại học phần theo nguồn (vd Lý thuyết). |
-| `faculty` | VARCHAR(256) · NULL | Khoa Kế toán - Kiểm toán | Khoa quản lý theo nguồn; một số khoa viết hai kiểu (có/không "Khoa "). |
+| `faculty` | VARCHAR(256) · NULL | Khoa Tài chính - Ngân hàng | Khoa quản lý theo nguồn; một số khoa viết hai kiểu (có/không "Khoa "). |
 | `department` | VARCHAR(256) · NULL | Bộ môn Kế toán | Bộ môn theo nguồn. |
 | `is_english` | BOOLEAN · NOT NULL | False | Tên có hậu tố `(E)`/ghi chú dạy bằng tiếng Anh (cờ cũ; ưu tiên dùng `language_track`). |
-| `description` | TEXT · NULL | (Vị trí của môn học đối với chương … | Mô tả học phần bằng TIẾNG VIỆT (giao diện VI hiển thị cột này). Điền bởi `fill-descriptions` từ đề cương; NULL nếu chưa có. |
+| `description` | TEXT · NULL | Môn học giới thiệu ngôn ngữ lập trì… | Mô tả học phần bằng TIẾNG VIỆT (giao diện VI hiển thị cột này). Điền bởi `fill-descriptions` từ đề cương; NULL nếu chưa có. |
 | `prerequisites` | JSONB · NULL | — | Danh sách mã tiên quyết (cột cũ, JSONB); quan hệ chính thức nằm ở module_relations/program_modules. |
-| `search_text` | TEXT · NOT NULL | baa4006 ke toan may tinh khoa ke to… | Bản không dấu, chữ thường để tìm kiếm tiếng Việt (chỉ mục trigram GIN trên PostgreSQL). |
+| `search_text` | TEXT · NOT NULL | bff4080 goi phan mem ung dung cho t… | Bản không dấu, chữ thường để tìm kiếm tiếng Việt (chỉ mục trigram GIN trên PostgreSQL). |
 | `is_sample` | BOOLEAN · NOT NULL | False | Cờ dữ liệu mẫu; `clear-sample` xóa các dòng này khi đã có dữ liệu thật. |
-| `updated_at` | TIMESTAMP · NOT NULL | 2026-11-20 20:26:21.205343+00:00 | Thời điểm cập nhật gần nhất (múi giờ UTC). |
+| `updated_at` | TIMESTAMP · NOT NULL | 2026-11-21 04:21:19.656437+00:00 | Thời điểm cập nhật gần nhất (múi giờ UTC). |
 | `language_track` | VARCHAR(2) · NOT NULL | vi | Ngôn ngữ giảng dạy suy ra: `en` hoặc `vi`. |
 | `language_basis` | VARCHAR(32) · NULL | default | Căn cứ phân loại ngôn ngữ (code_pattern, name_marker, cntn_confirmed, default…). |
-| `counterpart_code` | VARCHAR(64) · NULL | EAA4006 | Mã bản tương ứng Anh↔Việt (EEE1038 ↔ BEE1038). |
+| `counterpart_code` | VARCHAR(64) · NULL | EAA4026 | Mã bản tương ứng Anh↔Việt (EEE1038 ↔ BEE1038). |
 | `is_talent_program` | BOOLEAN · NOT NULL | False | Môn thuộc chương trình Cử nhân tài năng (CNTN). |
-| `name_en` | VARCHAR(512) · NULL | Computer Accounting | Tên tiếng Anh; NULL nếu chưa có nguồn. |
+| `name_en` | VARCHAR(512) · NULL | Advanced Financial Accounting 1 | Tên tiếng Anh; NULL nếu chưa có nguồn. |
 | `name_en_source` | VARCHAR(16) · NULL | seed_table | Nguồn của name_en: outline \| catalog \| seed_table \| portal; NULL + name_en có giá trị = nhập tay. |
 | `description_source` | VARCHAR(16) · NULL | outline | Nguồn của `description`: outline \| counterpart (chép từ bản Anh↔Việt tương ứng); NULL + có nội dung = nhập tay. |
-| `description_en` | TEXT · NULL | “Marketing Technology” course is bu… | Mô tả học phần bằng TIẾNG ANH (giao diện EN hiển thị cột này); NULL nếu chưa có — không tự dịch, giao diện sẽ dùng bản tiếng Việt và báo rõ. |
-| `description_en_source` | VARCHAR(16) · NULL | outline | Nguồn của `description_en`: outline \| counterpart; NULL + có nội dung = nhập tay. |
+| `description_en` | TEXT · NULL | The main content of the module aims… | Mô tả học phần bằng TIẾNG ANH (giao diện EN hiển thị cột này); NULL nếu chưa có — không tự dịch, giao diện sẽ dùng bản tiếng Việt và báo rõ. |
+| `description_en_source` | VARCHAR(16) · NULL | counterpart | Nguồn của `description_en`: outline \| counterpart; NULL + có nội dung = nhập tay. |
 
 > `name_en` là tên tiếng Anh để hiển thị khi giao diện ở chế độ EN; NULL = chưa có nguồn (giao diện dùng tên tiếng Việt, không tự dịch). Thứ tự ưu tiên nguồn: outline > catalog > seed_table > portal (cột `name_en_source`); giá trị nhập tay (`name_en` có, `name_en_source` NULL) không bị ghi đè. Mô tả song ngữ: `description` (VI) và `description_en` (EN) lấy từ đề cương, nhận diện ngôn ngữ từng đoạn; môn thiếu một bản có thể chép từ bản Anh↔Việt tương ứng (`*_source = counterpart`); lệnh `python -m app.cli fill-descriptions`.
 
@@ -140,22 +140,22 @@ Ràng buộc duy nhất: (class_code, semester_id).
 
 #### 05. `lessons`
 
-**Một dòng:** Một buổi học lặp lại hàng tuần của một lớp (một khối tiết). **Khóa:** id. **Số dòng hiện tại:** 6.706.
+**Một dòng:** Một buổi học lặp lại hàng tuần của một lớp (một khối tiết). **Khóa:** id. **Số dòng hiện tại:** 7.487.
 
 | Cột | Kiểu / khóa | Ví dụ | Mô tả |
 |---|---|---|---|
-| `id` | INTEGER · NOT NULL · **PK** | 22715 | Khóa thay thế tự tăng. |
-| `class_id` | INTEGER · NOT NULL · **FK** → class_sections.id | 1825 | Lớp học phần chứa buổi học. |
-| `weekday` | INTEGER · NOT NULL | 2 | Thứ trong tuần: 2–7 = Thứ 2–7, 8 = Chủ nhật. |
-| `start_period` | INTEGER · NOT NULL | 7 | Tiết bắt đầu. |
-| `end_period` | DOUBLE · NOT NULL | 10.0 | Tiết kết thúc (số thực vì có tiết lẻ). |
-| `start_time` | VARCHAR(5) · NOT NULL | 12:30 | Giờ bắt đầu HH:MM theo bảng tiết. |
-| `end_time` | VARCHAR(5) · NOT NULL | 16:05 | Giờ kết thúc HH:MM. |
-| `room` | VARCHAR(128) · NULL · **FK** → venues.room | A.308 | Phòng học (có thể NULL). |
-| `weeks` | VARCHAR(256) · NULL | 4-12 | Các tuần học, nguyên văn (vd `4-12`). |
-| `raw` | TEXT · NULL | Thứ 2, Tiết 7->10, 16/11/2026->07/1… | Đoạn lịch nguyên văn đã tách ra buổi học này. |
-| `date_start` | DATE · NULL | 2026-11-16 | Ngày đầu tiên của buổi học (nếu suy ra được). |
-| `date_end` | DATE · NULL | 2026-12-07 | Ngày cuối cùng của buổi học (nếu suy ra được). |
+| `id` | INTEGER · NOT NULL · **PK** | 22724 | Khóa thay thế tự tăng. |
+| `class_id` | INTEGER · NOT NULL · **FK** → class_sections.id | 376 | Lớp học phần chứa buổi học. |
+| `weekday` | INTEGER · NOT NULL | 7 | Thứ trong tuần: 2–7 = Thứ 2–7, 8 = Chủ nhật. |
+| `start_period` | INTEGER · NOT NULL | 2 | Tiết bắt đầu. |
+| `end_period` | DOUBLE · NOT NULL | 5.5 | Tiết kết thúc (số thực vì có tiết lẻ). |
+| `start_time` | VARCHAR(5) · NOT NULL | 07:50 | Giờ bắt đầu HH:MM theo bảng tiết. |
+| `end_time` | VARCHAR(5) · NOT NULL | 11:50 | Giờ kết thúc HH:MM. |
+| `room` | VARCHAR(128) · NULL · **FK** → venues.room | B1.406 | Phòng học (có thể NULL). |
+| `weeks` | VARCHAR(256) · NULL | 4-14 | Các tuần học, nguyên văn (vd `4-12`). |
+| `raw` | TEXT · NULL | Thứ 7, Tiết 2->5.5, 21/03/2026->28/… | Đoạn lịch nguyên văn đã tách ra buổi học này. |
+| `date_start` | DATE · NULL | 2026-03-21 | Ngày đầu tiên của buổi học (nếu suy ra được). |
+| `date_end` | DATE · NULL | 2026-03-28 | Ngày cuối cùng của buổi học (nếu suy ra được). |
 
 > `weekday` 2–8 (8 = Chủ nhật). `end_period` là số thực vì có tiết lẻ. `weeks` giữ nguyên văn các tuần học; `date_start/date_end` là khoảng ngày thật nếu suy ra được.
 
@@ -318,10 +318,14 @@ Ràng buộc duy nhất: (source_file, source_sheet, source_row).
 | `page_count` | INTEGER · NULL | 12 | Số trang. |
 | `text_status` | VARCHAR(16) · NOT NULL | needs_ocr | pending \| extracted \| needs_ocr \| failed. |
 | `text_method` | VARCHAR(16) · NULL | pdf_text | pdf_text hoặc ocr. |
-| `text_chars` | INTEGER · NULL | 0 | Số ký tự đã trích. |
+| `text_chars` | INTEGER · NULL | 55841 | Số ký tự đã trích. |
 | `language` | VARCHAR(8) · NULL | — | Mã ngôn ngữ phát hiện. |
 | `text` | TEXT · NULL | TRƯỜNG ĐẠI HỌC KINH TẾ - LUẬT KHOA … | Văn bản trích xuất toàn bộ. |
-| `extracted_at` | TIMESTAMP · NULL | 2026-11-20 16:55:01.204968+00:00 | Thời điểm trích văn bản. |
+| `extracted_at` | TIMESTAMP · NULL | 2026-11-21 05:55:50.760060+00:00 | Thời điểm trích văn bản. |
+| `ocr_status` | VARCHAR(16) · NULL | pending | OCR để làm sau: NULL = không cần (PDF có lớp chữ); pending = PDF scan cần OCR; done = đã OCR và đưa vào phân tích. |
+| `ocr_text` | TEXT · NULL | Mẫu 7: Đề cương chi tiết học phan T… | Văn bản OCR (với 'pending': bản chạy thử chưa duyệt, chưa dùng để phân tích). |
+| `ocr_engine` | VARCHAR(64) · NULL | tesseract vie+eng psm4 300dpi (chạy… | Công cụ/tham số OCR, vd 'tesseract vie+eng psm4 300dpi'. |
+| `ocr_at` | TIMESTAMP · NULL | 2026-11-21 05:55:50.760060+00:00 | Thời điểm OCR. |
 
 Ràng buộc duy nhất: (sha256).
 
@@ -329,17 +333,17 @@ Ràng buộc duy nhất: (sha256).
 
 #### 14. `outline_sections`
 
-**Một dòng:** Một phần có đánh số của đề cương (nguyên văn). **Khóa:** id. **Số dòng hiện tại:** 4.843.
+**Một dòng:** Một phần có đánh số của đề cương (nguyên văn). **Khóa:** id. **Số dòng hiện tại:** 8.286.
 
 | Cột | Kiểu / khóa | Ví dụ | Mô tả |
 |---|---|---|---|
-| `id` | INTEGER · NOT NULL · **PK** | 3108 | Khóa thay thế tự tăng. |
-| `document_id` | INTEGER · NOT NULL · **FK** → outline_documents.id | 269 | Đề cương chứa phần này. |
-| `kind` | VARCHAR(32) · NOT NULL | front | Loại phần (front, objectives, clo, content, assessment, textbooks, other…). |
-| `ord` | INTEGER · NOT NULL | 0 | Thứ tự trong đề cương. |
-| `heading` | VARCHAR(512) · NULL | Đầu trang | Tiêu đề mục. |
-| `text` | TEXT · NOT NULL | Mẫu 7: Đề cương chi tiết học phần T… | Nội dung nguyên văn. |
-| `search_text` | TEXT · NOT NULL | mau 7: de cuong chi tiet hoc phan t… | Bản không dấu, chữ thường để tìm kiếm tiếng Việt (chỉ mục trigram GIN trên PostgreSQL). |
+| `id` | INTEGER · NOT NULL · **PK** | 45047 | Khóa thay thế tự tăng. |
+| `document_id` | INTEGER · NOT NULL · **FK** → outline_documents.id | 195 | Đề cương chứa phần này. |
+| `kind` | VARCHAR(32) · NOT NULL | description | Loại phần (front, objectives, clo, content, assessment, textbooks, other…). |
+| `ord` | INTEGER · NOT NULL | 2 | Thứ tự trong đề cương. |
+| `heading` | VARCHAR(512) · NULL | 2. Mô tả môn học(Course description… | Tiêu đề mục. |
+| `text` | TEXT · NOT NULL |  Môn học cung cấp kiến thức về chu … | Nội dung nguyên văn. |
+| `search_text` | TEXT · NOT NULL | mon hoc cung cap kien thuc ve chu t… | Bản không dấu, chữ thường để tìm kiếm tiếng Việt (chỉ mục trigram GIN trên PostgreSQL). |
 
 > `kind` ví dụ front, objectives, clo, content, assessment, textbooks, other.
 
@@ -349,37 +353,37 @@ Ràng buộc duy nhất: (sha256).
 
 | Cột | Kiểu / khóa | Ví dụ | Mô tả |
 |---|---|---|---|
-| `document_id` | INTEGER · NOT NULL · **PK** · **FK** → outline_documents.id | 24 | Đề cương (khóa chính, 1–1 với outline_documents). |
-| `doc_type` | VARCHAR(16) · NOT NULL | other | Loại tài liệu: đề cương, khung… (other nếu không rõ). |
+| `document_id` | INTEGER · NOT NULL · **PK** · **FK** → outline_documents.id | 1 | Đề cương (khóa chính, 1–1 với outline_documents). |
+| `doc_type` | VARCHAR(16) · NOT NULL | syllabus_en | Loại tài liệu: đề cương, khung… (other nếu không rõ). |
 | `faculty` | VARCHAR(256) · NULL | ECONOMIC LAW | Khoa ghi trong đề cương. |
 | `department` | VARCHAR(256) · NULL | BUSINESS LAW | Bộ môn ghi trong đề cương. |
-| `name_vi` | VARCHAR(512) · NULL | Pháp luật về thương mại điện tử | Tên học phần tiếng Việt trong đề cương. |
-| `name_en` | VARCHAR(512) · NULL | Electronic Commerce Law | Tên học phần tiếng Anh trong đề cương (có thể thiếu hoặc sai lỗi chính tả). |
-| `course_code` | VARCHAR(64) · NULL | BKB4035 | Mã học phần như ghi trong đề cương. |
-| `course_code_norm` | VARCHAR(64) · NULL | BKB4035 | Mã đã chuẩn hóa (dùng để liên kết). |
-| `knowledge_block` | VARCHAR(256) · NULL | Kiến thức chuyên ngành | Khối kiến thức. |
+| `name_vi` | VARCHAR(512) · NULL | Quản lý chuỗi cung ứng | Tên học phần tiếng Việt trong đề cương. |
+| `name_en` | VARCHAR(512) · NULL | Law on real estate transactions | Tên học phần tiếng Anh trong đề cương (có thể thiếu hoặc sai lỗi chính tả). |
+| `course_code` | VARCHAR(64) · NULL | BRB4017 | Mã học phần như ghi trong đề cương. |
+| `course_code_norm` | VARCHAR(64) · NULL | BAA2028 | Mã đã chuẩn hóa (dùng để liên kết). |
+| `knowledge_block` | VARCHAR(256) · NULL | General Knowledge | Khối kiến thức. |
 | `level` | VARCHAR(64) · NULL | Undergraduate | Trình độ (Undergraduate…). |
-| `major` | VARCHAR(256) · NULL | Luật Kinh tế | Ngành. |
-| `cohort_range` | VARCHAR(32) · NULL | 2025-2029 | Khóa áp dụng, dạng 2025-2029. |
-| `academic_year` | VARCHAR(32) · NULL | Year 1 | Năm học trong khung chương trình. |
-| `term` | VARCHAR(32) · NULL | Semester 3 | Học kỳ trong khung chương trình. |
-| `credits` | DOUBLE · NULL | 3.0 | Số tín chỉ. |
-| `hours_lecture` | DOUBLE · NULL | 30.0 | Giờ lý thuyết. |
+| `major` | VARCHAR(256) · NULL | Economic law | Ngành. |
+| `cohort_range` | VARCHAR(128) · NULL | 2025-2029 | Khóa áp dụng, dạng 2025-2029. |
+| `academic_year` | VARCHAR(64) · NULL | Năm thứ 3 | Năm học trong khung chương trình. |
+| `term` | VARCHAR(64) · NULL | Học kỳ 5 | Học kỳ trong khung chương trình. |
+| `credits` | DOUBLE · NULL | 2.0 | Số tín chỉ. |
+| `hours_lecture` | DOUBLE · NULL | 45.0 | Giờ lý thuyết. |
 | `hours_practice` | DOUBLE · NULL | 0.0 | Giờ thực hành. |
 | `hours_self_study` | DOUBLE · NULL | 30.0 | Giờ tự học. |
-| `prerequisite_raw` | TEXT · NULL | Không | Tiên quyết nguyên văn. |
-| `previous_raw` | TEXT · NULL | Không | Học trước nguyên văn. |
-| `next_raw` | TEXT · NULL | Không | Học sau nguyên văn. |
-| `corequisite_raw` | TEXT · NULL | Quản trị chiến lược, Giao tiếp tron… | Song hành nguyên văn. |
-| `teaching_language` | VARCHAR(128) · NULL | Language of Instruction English | Ngôn ngữ giảng dạy nguyên văn. |
-| `lecturers` | JSONB · NULL | ["in charge"] | Danh sách giảng viên (JSONB). |
-| `assistants` | JSONB · NULL | ["theo đăng ký"] | Danh sách trợ giảng (JSONB). |
-| `description` | TEXT · NULL | Pháp luật Thương mại Điện tử là môn… | Mô tả học phần. |
+| `prerequisite_raw` | TEXT · NULL | Thống kê cơ bản. | Tiên quyết nguyên văn. |
+| `previous_raw` | TEXT · NULL | Luật quốc tế | Học trước nguyên văn. |
+| `next_raw` | TEXT · NULL | Other relevant subjects | Học sau nguyên văn. |
+| `corequisite_raw` | TEXT · NULL | Không | Song hành nguyên văn. |
+| `teaching_language` | VARCHAR(128) · NULL | Vietnamese | Ngôn ngữ giảng dạy nguyên văn. |
+| `lecturers` | JSONB · NULL | ["MS. Phan Thi Huong Giang Dr. Nguy… | Danh sách giảng viên (JSONB). |
+| `assistants` | JSONB · NULL | ["PGS.", "TS. Lê Hoành Sử, Ths. Ngu… | Danh sách trợ giảng (JSONB). |
+| `description` | TEXT · NULL | The course includes 5 chapters pres… | Mô tả học phần. |
 | `parse_status` | VARCHAR(16) · NOT NULL | failed | ok \| partial \| failed \| skipped. |
-| `parse_detail` | JSONB · NULL | {"counts": {"clos": 0, "schedule": … | Chi tiết kết quả phân tích (đếm số mục…). |
-| `parse_method` | VARCHAR(16) · NULL | rules-5 | Phiên bản bộ phân tích (vd rules-5). |
-| `parsed_at` | TIMESTAMP · NULL | 2026-11-20 20:23:42.566417+00:00 | Thời điểm phân tích. |
-| `language_track` | VARCHAR(2) · NULL | vi | Ngôn ngữ giảng dạy suy ra: en \| vi. |
+| `parse_detail` | JSONB · NULL | {"counts": {"clos": 4, "schedule": … | Chi tiết kết quả phân tích (đếm số mục…). |
+| `parse_method` | VARCHAR(16) · NULL | rules-7 | Phiên bản bộ phân tích (vd rules-5). |
+| `parsed_at` | TIMESTAMP · NULL | 2026-11-21 06:12:45.512040+00:00 | Thời điểm phân tích. |
+| `language_track` | VARCHAR(2) · NULL | en | Ngôn ngữ giảng dạy suy ra: en \| vi. |
 
 > `parse_status`: ok / partial / failed / skipped. Các trường `*_raw` giữ nguyên văn.
 
@@ -400,75 +404,75 @@ Ràng buộc duy nhất: (document_id, module_code).
 
 #### 17. `outline_objectives`
 
-**Một dòng:** Một mục tiêu học phần (CO) của đề cương. **Khóa:** id. **Số dòng hiện tại:** 36.
+**Một dòng:** Một mục tiêu học phần (CO) của đề cương. **Khóa:** id. **Số dòng hiện tại:** 2.221.
 
 | Cột | Kiểu / khóa | Ví dụ | Mô tả |
 |---|---|---|---|
-| `id` | INTEGER · NOT NULL · **PK** | 145 | Khóa thay thế tự tăng. |
-| `document_id` | INTEGER · NOT NULL · **FK** → outline_documents.id | 11 | Đề cương. |
+| `id` | INTEGER · NOT NULL · **PK** | 8810 | Khóa thay thế tự tăng. |
+| `document_id` | INTEGER · NOT NULL · **FK** → outline_documents.id | 193 | Đề cương. |
 | `code` | VARCHAR(16) · NOT NULL | CO1 | Mã mục tiêu (CO1…). |
-| `description` | TEXT · NULL | Hiểu và vận dụng được kiến thức để … | Nội dung mục tiêu. |
-| `clo_codes` | JSONB · NULL | ["CLO1", "CLO2"] | Các CLO tương ứng (JSONB). |
-| `competency_level` | VARCHAR(32) · NULL | 4 4 | Mức năng lực. |
+| `description` | TEXT · NULL | Áp dụng kiến thức Kinh tếcông vào p… | Nội dung mục tiêu. |
+| `clo_codes` | JSONB · NULL | [] | Các CLO tương ứng (JSONB). |
+| `competency_level` | VARCHAR(128) · NULL | 3 | Mức năng lực. |
 
 #### 18. `outline_clos`
 
-**Một dòng:** Một chuẩn đầu ra học phần (CLO) của đề cương. **Khóa:** id. **Số dòng hiện tại:** 24.
+**Một dòng:** Một chuẩn đầu ra học phần (CLO) của đề cương. **Khóa:** id. **Số dòng hiện tại:** 3.070.
 
 | Cột | Kiểu / khóa | Ví dụ | Mô tả |
 |---|---|---|---|
-| `id` | INTEGER · NOT NULL · **PK** | 193 | Khóa thay thế tự tăng. |
-| `document_id` | INTEGER · NOT NULL · **FK** → outline_documents.id | 78 | Đề cương. |
+| `id` | INTEGER · NOT NULL · **PK** | 9547 | Khóa thay thế tự tăng. |
+| `document_id` | INTEGER · NOT NULL · **FK** → outline_documents.id | 765 | Đề cương. |
 | `code` | VARCHAR(16) · NOT NULL | CLO1 | Mã CLO (CLO1…). |
-| `description` | TEXT · NULL | Sinh viên trình bày và giải thích đ… | Nội dung chuẩn đầu ra. |
-| `teaching_levels` | VARCHAR(32) · NULL | I, T | Mức giảng dạy I/T/U. |
+| `description` | TEXT · NULL | Trình bày được những khái niệm, đặc… | Nội dung chuẩn đầu ra. |
+| `teaching_levels` | VARCHAR(128) · NULL | I | Mức giảng dạy I/T/U. |
 
 #### 19. `outline_assessments`
 
-**Một dòng:** Một thành phần/mục đánh giá của đề cương. **Khóa:** id. **Số dòng hiện tại:** 42.
+**Một dòng:** Một thành phần/mục đánh giá của đề cương. **Khóa:** id. **Số dòng hiện tại:** 2.812.
 
 | Cột | Kiểu / khóa | Ví dụ | Mô tả |
 |---|---|---|---|
-| `id` | INTEGER · NOT NULL · **PK** | 332 | Khóa thay thế tự tăng. |
-| `document_id` | INTEGER · NOT NULL · **FK** → outline_documents.id | 197 | Đề cương. |
+| `id` | INTEGER · NOT NULL · **PK** | 11786 | Khóa thay thế tự tăng. |
+| `document_id` | INTEGER · NOT NULL · **FK** → outline_documents.id | 193 | Đề cương. |
 | `ord` | INTEGER · NOT NULL | 1 | Thứ tự. |
-| `component` | VARCHAR(256) · NULL | A1. Đánh giá quá trình | Thành phần đánh giá (A1, A2…). |
+| `component` | TEXT · NULL | A1. Đánh giá quá trình | Thành phần đánh giá (A1, A2…). |
 | `item_code` | VARCHAR(16) · NULL | A1.1 | Mã mục (A1.1…). |
-| `item_name` | TEXT · NULL | Tích cực | Tên mục. |
-| `clo_codes` | JSONB · NULL | [] | CLO được đánh giá (JSONB). |
-| `criteria` | TEXT · NULL | Individual/ group exercises at home… | Tiêu chí. |
-| `duration` | VARCHAR(128) · NULL |  | Thời lượng. |
-| `weight_pct` | DOUBLE · NULL | 30.0 | Trọng số thành phần (%). |
-| `sub_weight_pct` | DOUBLE · NULL | 50.0 | Trọng số mục trong thành phần (%). |
+| `item_name` | TEXT · NULL | (Individu al LMS) | Tên mục. |
+| `clo_codes` | JSONB · NULL | ["CLO1", "CLO2"] | CLO được đánh giá (JSONB). |
+| `criteria` | TEXT · NULL | Students can present fundamental kn… | Tiêu chí. |
+| `duration` | VARCHAR(128) · NULL | 20mins | Thời lượng. |
+| `weight_pct` | DOUBLE · NULL | 25.0 | Trọng số thành phần (%). |
+| `sub_weight_pct` | DOUBLE · NULL | 40.0 | Trọng số mục trong thành phần (%). |
 
 #### 20. `outline_schedule`
 
-**Một dòng:** Một dòng kế hoạch giảng dạy theo tuần. **Khóa:** id. **Số dòng hiện tại:** 54.
+**Một dòng:** Một dòng kế hoạch giảng dạy theo tuần. **Khóa:** id. **Số dòng hiện tại:** 4.772.
 
 | Cột | Kiểu / khóa | Ví dụ | Mô tả |
 |---|---|---|---|
-| `id` | INTEGER · NOT NULL · **PK** | 250 | Khóa thay thế tự tăng. |
-| `document_id` | INTEGER · NOT NULL · **FK** → outline_documents.id | 94 | Đề cương. |
+| `id` | INTEGER · NOT NULL · **PK** | 14550 | Khóa thay thế tự tăng. |
+| `document_id` | INTEGER · NOT NULL · **FK** → outline_documents.id | 252 | Đề cương. |
 | `ord` | INTEGER · NOT NULL | 1 | Thứ tự. |
-| `week_label` | VARCHAR(32) · NULL | 1 | Nhãn tuần/buổi. |
-| `content` | TEXT · NULL | Chương 1: TỔNG QUAN VỀ HỢP ĐỒNG 1.1… | Nội dung giảng dạy. |
-| `clo_codes` | JSONB · NULL | ["CLO1"] | CLO liên quan (JSONB). |
-| `activities` | TEXT · NULL | Giảng và hỏi đáp | Hoạt động dạy và học. |
-| `assessment` | TEXT · NULL | A1.1 | Mục đánh giá liên quan. |
+| `week_label` | VARCHAR(128) · NULL | 1 | Nhãn tuần/buổi. |
+| `content` | TEXT · NULL | Giới thiệu môn học | Nội dung giảng dạy. |
+| `clo_codes` | JSONB · NULL | [] | CLO liên quan (JSONB). |
+| `activities` | TEXT · NULL | Giảng viên: - Giới thiệu đề cương c… | Hoạt động dạy và học. |
+| `assessment` | TEXT · NULL |  | Mục đánh giá liên quan. |
 
 #### 21. `outline_materials`
 
-**Một dòng:** Một giáo trình hoặc tài liệu tham khảo. **Khóa:** id. **Số dòng hiện tại:** 1.471.
+**Một dòng:** Một giáo trình hoặc tài liệu tham khảo. **Khóa:** id. **Số dòng hiện tại:** 7.016.
 
 | Cột | Kiểu / khóa | Ví dụ | Mô tả |
 |---|---|---|---|
-| `id` | INTEGER · NOT NULL · **PK** | 2009 | Khóa thay thế tự tăng. |
-| `document_id` | INTEGER · NOT NULL · **FK** → outline_documents.id | 49 | Đề cương. |
-| `kind` | VARCHAR(16) · NOT NULL | reference | Loại: textbook \| reference. |
+| `id` | INTEGER · NOT NULL · **PK** | 29127 | Khóa thay thế tự tăng. |
+| `document_id` | INTEGER · NOT NULL · **FK** → outline_documents.id | 195 | Đề cương. |
+| `kind` | VARCHAR(16) · NOT NULL | textbook | Loại: textbook \| reference \| software. |
 | `ord` | INTEGER · NOT NULL | 1 | Thứ tự. |
-| `citation` | TEXT · NOT NULL | Học viên được khuyến khích đăng ký … | Trích dẫn tài liệu nguyên văn. |
+| `citation` | TEXT · NOT NULL | Bài giảng quản lý dự án đầu tư, Đỗ … | Trích dẫn tài liệu nguyên văn. |
 
-> `kind`: textbook / reference…
+> `kind`: textbook / reference / software.
 
 ### D. Quy chế học vụ
 
