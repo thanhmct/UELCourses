@@ -10,8 +10,9 @@ services:
     dockerfilePath: docker/api.Dockerfile
     dockerContext: api
     # Gói Render Free không hỗ trợ preDeployCommand (chỉ có trên gói trả phí).
-    # dockerCommand chạy migration qua Alembic trước khi uvicorn phục vụ request:
-    dockerCommand: /bin/sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers"
+    # Lệnh khởi động nằm trong api/start.sh (chạy Alembic rồi uvicorn).
+    # KHÔNG đặt chuỗi "a && b" thẳng ở đây: Render bọc lại bằng shell nên báo exit 127.
+    dockerCommand: sh /app/start.sh
     healthCheckPath: /api/health
     envVars:
       - key: DATABASE_URL
