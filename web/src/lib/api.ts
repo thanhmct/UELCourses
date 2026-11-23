@@ -1,21 +1,26 @@
 // API client following the REST contract in ARCHITECTURE.md.
 // Real data only by default: when the API is unreachable the call fails (pages show an error and the
-// header shows an "offline" badge). Mock data from src/mocks/ is used ONLY when NEXT_PUBLIC_USE_MOCKS=true
+// app shell shows a connection notice). Mock data from src/mocks/ is used ONLY when NEXT_PUBLIC_USE_MOCKS=true
 // (dev/demo/tests); then results carry `mock: true` so pages show the "Dữ liệu mẫu" label.
 import type {
   AskResponse,
+  AskScope,
   Backlink,
   CheckResult,
   ClassSection,
+  ElectiveGroup,
   RegulationGraph,
   RegulationMarkdown,
   CompareResponse,
   EquivalentItem,
   FeedbackPayload,
   ModuleDetail,
+  ModuleAskResponse,
   ModuleSummary,
   ModuleFacets,
   FacetCount,
+  ModuleComment,
+  ModuleCommentListResponse,
   ModuleTreeNode,
   Paged,
   ProgramDetail,
@@ -24,8 +29,10 @@ import type {
   RegulationDoc,
   RegulationDocDetail,
   Semester,
+  ValidProgramGroup,
   Venue,
 } from "./types";
+import { LANG_STORAGE_KEY, translate, type Lang } from "@/i18n";
 import { mockEquivalents, mockModules, mockSections, mockSemesters } from "@/mocks/modules";
 import {
   mockAsk,
@@ -39,19 +46,33 @@ import {
 } from "@/mocks/regulations";
 import {
   mockCheckProgram,
+  mockElectiveGroups,
   mockModuleTree,
   mockProgram,
   mockProgramGraph,
   mockPrograms,
+  mockValidProgramGroups,
 } from "@/mocks/programs";
+import { mockModuleComments } from "@/mocks/admin";
 import { stripFrontmatter } from "./vault";
 import { appliesToCohort, effectiveBadge, normalizeArticles } from "./regulations";
 import { matches } from "./text";
 import { venuesFromSections, filterVenues } from "./venues";
 import { parseSchedules } from "./schedule";
-import { useDataSource } from "./dataSource";
+import { connectionErrorMessage, isConnectionError, useDataSource } from "./dataSource";
+import type { AcademicHoliday } from "./holidays";
 
 export const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/$/, "");
+
+function interfaceLang(): Lang {
+  if (typeof window === "undefined") return "vi";
+  try {
+    const saved = JSON.parse(localStorage.getItem(LANG_STORAGE_KEY) || "null") as { state?: { lang?: Lang } } | null;
+    return saved?.state?.lang === "en" ? "en" : "vi";
+  } catch {
+    return "vi";
+  }
+}
 export const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || "0.1.0";
 
 export interface ApiResult<T> {
@@ -85,9 +106,9 @@ function markOffline(offline: boolean) {
   if (typeof window !== "undefined") useDataSource.getState().setOffline(offline);
 }
 
-async function raw<T>(path: string, init?: RequestInit): Promise<T> {
+async function raw<T>(path: string, init?: RequestInit, timeoutMs = TIMEOUT_MS): Promise<T> {
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
     const res = await fetch(`${API_URL}${path}`, {
       ...init,
@@ -95,7 +116,13 @@ async function raw<T>(path: string, init?: RequestInit): Promise<T> {
       headers: { Accept: "application/json", ...(init?.body && typeof init.body === "string" ? { "Content-Type": "application/json" } : {}), ...init?.headers },
     });
     if (!res.ok) throw new ApiError(res.status, `HTTP ${res.status}`);
-    return (await res.json()) as T;
+    const data = (res.status === 204 ? undefined : await res.json()) as T;
+    markOffline(false);
+    return data;
+  } catch (error) {
+    if (mocksEnabled() || (error instanceof ApiError && !isConnectionError(error))) throw error;
+    markOffline(true);
+    throw new ApiError(error instanceof ApiError ? error.status : 0, connectionErrorMessage());
   } finally {
     clearTimeout(timer);
   }
@@ -106,20 +133,17 @@ async function raw<T>(path: string, init?: RequestInit): Promise<T> {
  * fall back to mock. 4xx other than 404 propagate (real validation errors).
  */
 async function withFallback<T>(path: string, fallback: () => T, init?: RequestInit, map?: (x: unknown) => T): Promise<ApiResult<T>> {
+  if (process.env.NODE_ENV === "test" && mocksEnabled()) {
+    markMock(true);
+    return { data: fallback(), mock: true };
+  }
   if (!mocksEnabled()) {
     // Real data only: never substitute mock data; surface the failure to the page.
-    try {
-      const data = await raw<unknown>(path, init);
-      markOffline(false);
-      markMock(false);
-      return { data: map ? map(data) : (data as T), mock: false };
-    } catch (e) {
-      if (!(e instanceof ApiError) || e.status >= 500) markOffline(true);
-      if (e instanceof ApiError) throw e;
-      throw new ApiError(0, "Không kết nối được máy chủ dữ liệu. Vui lòng thử lại sau.");
-    }
+    const data = await raw<unknown>(path, init);
+    markMock(false);
+    return { data: map ? map(data) : (data as T), mock: false };
   }
-  if (typeof window === "undefined" || Date.now() - downSince < RETRY_AFTER_MS) {
+  if (typeof window === "undefined" || (process.env.NODE_ENV === "test" && mocksEnabled()) || Date.now() - downSince < RETRY_AFTER_MS) {
     markMock(true);
     return { data: fallback(), mock: true };
   }
@@ -135,9 +159,26 @@ async function withFallback<T>(path: string, fallback: () => T, init?: RequestIn
   }
 }
 
-function qs(params: Record<string, string | number | boolean | undefined | null>): string {
+function qs(params: Record<string, unknown>): string {
   const p = new URLSearchParams();
-  for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== null && v !== "") p.set(k, String(v));
+  for (const [k, v] of Object.entries(params)) {
+    if (v === undefined || v === null || v === "") continue;
+    if (Array.isArray(v)) {
+      if (v.length === 0) continue;
+      if (k === "credits_in" || k === "type_in") {
+        const joined = v.filter((x) => x !== "" && x != null).join(",");
+        if (joined) p.set(k, joined);
+      } else {
+        for (const item of v) {
+          if (item !== undefined && item !== null && item !== "") {
+            p.append(k, String(item));
+          }
+        }
+      }
+    } else {
+      p.set(k, String(v));
+    }
+  }
   const s = p.toString();
   return s ? `?${s}` : "";
 }
@@ -170,17 +211,24 @@ function normalizeSection(x: unknown): ClassSection {
 export type ModuleFilter = {
   q?: string;
   faculty?: string;
+  faculty_in?: string[];
   department?: string;
+  department_in?: string[];
   credits?: number | string;
+  credits_in?: (number | string)[] | string;
   type?: string;
+  type_in?: string[] | string;
   /** "en" | "vi" */
   language?: string;
   is_english?: boolean;
   /** "true" | "false" */
   talent?: string;
   has_outline?: string;
+  degree?: string;
   /** CTĐT, vd "K23406" (khóa 23, ngành 406) */
   program_id?: string;
+  /** Danh sách CTĐT, lặp tham số ?program_ids=... */
+  program_ids?: string[];
   /** semester id, e.g. "2026-2027-1" */
   semester?: string;
   page?: number;
@@ -190,6 +238,8 @@ export type ModuleFilter = {
 /** Syllabus payload from GET /api/modules/{code}/outline (loosely typed: fields may be missing). */
 export type OutlineData = {
   module_code?: string;
+  outline_year?: number | null;
+  outline_year_fallback?: boolean;
   document?: Record<string, unknown>;
   course?: Record<string, unknown>;
   objectives?: { code?: string; description?: string; clo_codes?: string[] }[];
@@ -199,41 +249,237 @@ export type OutlineData = {
   materials?: { kind?: string; citation?: string }[];
   alternatives?: unknown[];
 };
+
+function getMockProgramAllowedCodes(f: ModuleFilter): Set<string> | null {
+  const pids: string[] = [];
+  if (f.program_id && f.program_id.trim()) pids.push(f.program_id.trim());
+  if (f.program_ids) {
+    for (const item of f.program_ids) {
+      if (item && item.trim()) pids.push(item.trim());
+    }
+  }
+  if (pids.length === 0) return null;
+  const codes = new Set<string>();
+  for (const pid of pids) {
+    const p = mockProgram(pid);
+    if (p && p.blocks) {
+      for (const b of p.blocks) {
+        for (const m of b.modules) {
+          codes.add(m.code);
+        }
+      }
+    }
+  }
+  return codes;
+}
+
+function matchesModuleQuery(module: ModuleSummary, query: string | undefined): boolean {
+  const text = `${module.code} ${module.name} ${module.name_en ?? ""} ${module.faculty ?? ""} ${module.department ?? ""}`;
+  return (query ?? "").trim().split(/\s+/).every((token) => matches(text, token));
+}
+
 export const api = {
-  moduleFacets: () => withFallback<ModuleFacets>("/api/module-facets", () => {
-    const counts = (vals: (m: ModuleSummary) => string[]): FacetCount[] => {
-      const map = new Map<string, number>();
-      for (const m of mockModules) for (const v of vals(m)) if (v) map.set(v, (map.get(v) ?? 0) + 1);
-      return [...map].map(([value, count]) => ({ value, count }));
-    };
-    return {
-      total: mockModules.length,
-      language: counts((m) => [m.is_english ? "en" : "vi"]),
-      talent: counts(() => []),
-      credits: counts((m) => [String(m.credits)]),
-      faculty: counts((m) => [m.faculty ?? ""]),
-      department: counts((m) => [m.department ?? ""]),
-      type: counts((m) => [m.type]),
-      semester: counts((m) => (m.offering_plan ?? []).flatMap((p) => p.terms.map((t) => `${p.academic_year}-${t}`))),
-      has_outline: counts(() => ["false"]),
-    };
-  }),  health: () => withFallback<{ status: string }>("/api/health", () => ({ status: "mock" })),
+  async academicHolidays(academicYear: string, cohort?: string): Promise<ApiResult<AcademicHoliday[]>> {
+    const query = new URLSearchParams({ academic_year: academicYear, kind: "holiday" });
+    if (cohort) query.set("cohort", cohort);
+    if (process.env.NODE_ENV === "test" && mocksEnabled()) return { data: [], mock: true };
+    return { data: await raw<AcademicHoliday[]>(`/api/calendar?${query}`), mock: false };
+  },
+  moduleFacets: (f: ModuleFilter = {}) =>
+    withFallback<ModuleFacets>(`/api/module-facets${qs(f as Record<string, unknown>)}`, () => {
+      const allowedCodes = getMockProgramAllowedCodes(f);
+
+      const creditsSet = new Set<number>();
+      if (f.credits !== undefined && f.credits !== "") creditsSet.add(Number(f.credits));
+      if (f.credits_in) {
+        const parts = Array.isArray(f.credits_in) ? f.credits_in : String(f.credits_in).split(",");
+        for (const p of parts) {
+          const s = String(p).trim();
+          if (s) creditsSet.add(Number(s));
+        }
+      }
+
+      const typeSet = new Set<string>();
+      if (f.type) typeSet.add(f.type.trim().toLowerCase());
+      if (f.type_in) {
+        const parts = Array.isArray(f.type_in) ? f.type_in : String(f.type_in).split(",");
+        for (const p of parts) {
+          const s = String(p).trim().toLowerCase();
+          if (s) typeSet.add(s);
+        }
+      }
+
+      const facultySet = new Set<string>();
+      if (f.faculty) facultySet.add(f.faculty.trim().toLowerCase());
+      if (f.faculty_in) {
+        for (const fac of f.faculty_in) {
+          const s = fac.trim().toLowerCase();
+          if (s) facultySet.add(s);
+        }
+      }
+
+      const departmentSet = new Set<string>();
+      if (f.department) departmentSet.add(f.department.trim().toLowerCase());
+      if (f.department_in) {
+        for (const dept of f.department_in) {
+          const s = dept.trim().toLowerCase();
+          if (s) departmentSet.add(s);
+        }
+      }
+
+      const degree = f.degree || "dai_hoc";
+      const matchBase = (m: ModuleSummary) =>
+        (degree === "all" || (m.degree || "dai_hoc") === degree) &&
+        matchesModuleQuery(m, f.q) &&
+        (!allowedCodes || allowedCodes.has(m.code)) &&
+        (m.credits !== 0);
+
+      const matchGroup = (m: ModuleSummary, group: string) => {
+        if (group === "language") {
+          return (!f.is_english || !!m.is_english) && (!f.language || (f.language === "en") === !!m.is_english);
+        }
+        if (group === "credits") {
+          return creditsSet.size === 0 || creditsSet.has(m.credits);
+        }
+        if (group === "faculty") {
+          return (
+            facultySet.size === 0 ||
+            (m.faculty && facultySet.has(m.faculty.toLowerCase())) ||
+            (!f.department_in && m.department && facultySet.has(m.department.toLowerCase()))
+          );
+        }
+        if (group === "department") {
+          return departmentSet.size === 0 || (m.department && departmentSet.has(m.department.toLowerCase()));
+        }
+        if (group === "type") {
+          return typeSet.size === 0 || (m.type && typeSet.has(m.type.toLowerCase()));
+        }
+        if (group === "semester") {
+          return (
+            !f.semester ||
+            (m.offering_plan ?? []).some((p) => p.terms.some((term) => `${p.academic_year}-${term}` === f.semester))
+          );
+        }
+        if (group === "has_outline") {
+          return !f.has_outline || (f.has_outline === "true" ? !!m.has_outline : !m.has_outline);
+        }
+        return true;
+      };
+
+      const filterExcept = (ignoreGroup: string) => {
+        const groups = ["language", "credits", "faculty", "department", "type", "semester", "has_outline"];
+        return mockModules.filter((m) => {
+          if (!matchBase(m)) return false;
+          for (const g of groups) {
+            if (g !== ignoreGroup && !matchGroup(m, g)) return false;
+          }
+          return true;
+        });
+      };
+
+      const counts = (list: ModuleSummary[], vals: (m: ModuleSummary) => string[]): FacetCount[] => {
+        const map = new Map<string, number>();
+        for (const m of list) {
+          for (const v of vals(m)) {
+            if (v && v.trim()) map.set(v, (map.get(v) ?? 0) + 1);
+          }
+        }
+        return [...map.entries()]
+          .map(([value, count]) => ({ value, count }))
+          .filter((x) => x.count > 0);
+      };
+
+      const allFiltered = mockModules.filter((m) => {
+        if (!matchBase(m)) return false;
+        return (
+          matchGroup(m, "language") &&
+          matchGroup(m, "credits") &&
+          matchGroup(m, "faculty") &&
+          matchGroup(m, "department") &&
+          matchGroup(m, "type") &&
+          matchGroup(m, "semester") &&
+          matchGroup(m, "has_outline")
+        );
+      });
+
+      return {
+        total: allFiltered.length,
+        language: counts(filterExcept("language"), (m) => [m.is_english ? "en" : "vi"]),
+        talent: [],
+        credits: counts(filterExcept("credits"), (m) => [String(m.credits)]).sort(
+          (a, b) => Number(a.value) - Number(b.value),
+        ),
+        faculty: counts(filterExcept("faculty"), (m) => [m.faculty ?? ""]).sort((a, b) => b.count - a.count),
+        department: counts(filterExcept("department"), (m) => [m.department ?? ""]).sort((a, b) => b.count - a.count),
+        type: counts(filterExcept("type"), (m) => [m.type ?? ""]).sort((a, b) => b.count - a.count),
+        semester: counts(filterExcept("semester"), (m) =>
+          (m.offering_plan ?? []).flatMap((p) => p.terms.map((t) => `${p.academic_year}-${t}`)),
+        ),
+        has_outline: counts(filterExcept("has_outline"), (m) => [m.has_outline ? "true" : "false"]),
+        final_assessment: [],
+      };
+    }),  health: () => withFallback<{ status: string }>("/api/health", () => ({ status: "mock" })),
 
   semesters: () => withFallback<Semester[]>("/api/semesters", () => mockSemesters),
 
   modules: (f: ModuleFilter = {}) =>
-    withFallback<Paged<ModuleSummary>>(`/api/modules${qs(f)}`, () => {
+    withFallback<Paged<ModuleSummary>>(`/api/modules${qs(f as Record<string, unknown>)}`, () => {
+      const allowedCodes = getMockProgramAllowedCodes(f);
+
+      const creditsSet = new Set<number>();
+      if (f.credits !== undefined && f.credits !== "") creditsSet.add(Number(f.credits));
+      if (f.credits_in) {
+        const parts = Array.isArray(f.credits_in) ? f.credits_in : String(f.credits_in).split(",");
+        for (const p of parts) {
+          const s = String(p).trim();
+          if (s) creditsSet.add(Number(s));
+        }
+      }
+
+      const typeSet = new Set<string>();
+      if (f.type) typeSet.add(f.type.trim().toLowerCase());
+      if (f.type_in) {
+        const parts = Array.isArray(f.type_in) ? f.type_in : String(f.type_in).split(",");
+        for (const p of parts) {
+          const s = String(p).trim().toLowerCase();
+          if (s) typeSet.add(s);
+        }
+      }
+
+      const facultySet = new Set<string>();
+      if (f.faculty) facultySet.add(f.faculty.trim().toLowerCase());
+      if (f.faculty_in) {
+        for (const fac of f.faculty_in) {
+          const s = fac.trim().toLowerCase();
+          if (s) facultySet.add(s);
+        }
+      }
+
+      const departmentSet = new Set<string>();
+      if (f.department) departmentSet.add(f.department.trim().toLowerCase());
+      if (f.department_in) {
+        for (const dept of f.department_in) {
+          const s = dept.trim().toLowerCase();
+          if (s) departmentSet.add(s);
+        }
+      }
+
+      const targetDegree = f.degree || "dai_hoc";
       const items = mockModules.filter(
         (m) =>
-          (matches(m.code, f.q ?? "") || matches(m.name, f.q ?? "")) &&
+          (targetDegree === "all" || (m.degree || "dai_hoc") === targetDegree) &&
+          (!allowedCodes || allowedCodes.has(m.code)) &&
+          matchesModuleQuery(m, f.q) &&
           (!f.is_english || !!m.is_english) &&
           (!f.language || (f.language === "en") === !!m.is_english) &&
-          (!f.has_outline || f.has_outline === "true" ? true : !m.has_outline) &&
+          (!f.has_outline || (f.has_outline === "true" ? !!m.has_outline : !m.has_outline)) &&
           (!f.semester || (m.offering_plan ?? []).some((p) => p.terms.some((term) => `${p.academic_year}-${term}` === f.semester))) &&
-          (!f.department || m.department === f.department) &&
-          (!f.faculty || m.faculty === f.faculty) &&
-          (!f.credits || m.credits === Number(f.credits)) &&
-          (!f.type || m.type === f.type),
+          (departmentSet.size === 0 || (m.department && departmentSet.has(m.department.toLowerCase()))) &&
+          (facultySet.size === 0 ||
+            (m.faculty && facultySet.has(m.faculty.toLowerCase())) ||
+            (!f.department_in && m.department && facultySet.has(m.department.toLowerCase()))) &&
+          (creditsSet.size === 0 || creditsSet.has(m.credits)) &&
+          (typeSet.size === 0 || (m.type && typeSet.has(m.type.toLowerCase()))),
       );
       const size = f.size ?? 50;
       const page = f.page ?? 1;
@@ -241,16 +487,22 @@ export const api = {
     }),
 
   /** 404 (no syllabus yet) or any error -> null, never marks the app as sample data. */
-  outline: async (code: string): Promise<OutlineData | null> => {
+  outline: async (code: string, options?: { cohort?: string; ctdt_year?: number }): Promise<OutlineData | null> => {
     try {
-      return await raw<OutlineData>(`/api/modules/${encodeURIComponent(code)}/outline`);
+      const q = options ? qs(options as Record<string, unknown>) : "";
+      return await raw<OutlineData>(`/api/modules/${encodeURIComponent(code)}/outline${q}`);
     } catch {
       return null;
     }
   },
 
-  module: (code: string) =>
-    withFallback<ModuleDetail | null>(`/api/modules/${encodeURIComponent(code)}`, () => mockModules.find((m) => m.code === code) ?? null),
+  module: (code: string, options?: { program_id?: string; cohort?: string; ctdt_year?: number }) => {
+    const q = options ? qs(options as Record<string, unknown>) : "";
+    return withFallback<ModuleDetail | null>(
+      `/api/modules/${encodeURIComponent(code)}${q}`,
+      () => mockModules.find((m) => m.code === code) ?? null,
+    );
+  },
 
   classes: (code: string, semester?: string) =>
     withFallback<ClassSection[]>(
@@ -314,6 +566,15 @@ export const api = {
       { method: "POST", body: JSON.stringify({ question, cohort, mode }) },
     ),
 
+  askSources: (scope: AskScope, question: string, cohort: string | undefined, language: Lang) =>
+    raw<AskResponse | ModuleAskResponse>(`/api/${scope}/ask`, {
+      method: "POST",
+      body: JSON.stringify({ question, cohort, language }),
+    }, 65_000),
+
+  rateAnswer: (scope: AskScope, answer_id: string, helpful: boolean) =>
+    raw<void>("/api/ask/feedback", { method: "POST", body: JSON.stringify({ scope, answer_id, helpful }) }),
+
   compare: (topic: string, cohorts: string[]) =>
     withFallback<CompareResponse>("/api/regulations/compare", () => mockCompare(topic, cohorts), {
       method: "POST",
@@ -340,27 +601,111 @@ export const api = {
         .map(stripArticles),
     ),
 
-  programs: (f: { cohort?: string; q?: string } = {}) =>
+  programs: (f: { cohort?: string; q?: string; degree?: string } = {}) =>
     withFallback<ProgramSummary[]>(`/api/programs${qs(f)}`, () => mockPrograms(f)),
 
+  validGroups: () =>
+    withFallback<ValidProgramGroup[]>("/api/programs/valid-groups", () => mockValidProgramGroups()),
+
   program: (id: string) =>
-    withFallback<ProgramDetail | null>(`/api/programs/${encodeURIComponent(id)}`, () => mockProgram(id)),
+    withFallback<ProgramDetail | null>(`/api/programs/${encodeURIComponent(id)}`, () => {
+      const direct = mockProgram(id);
+      if (direct) return direct;
+      if (id.endsWith("E")) {
+        const base = mockProgram(id.slice(0, -1));
+        if (base) {
+          return {
+            ...base,
+            program: {
+              ...base.program,
+              program_id: id,
+              name: translate(interfaceLang(), "api.mockEnglishTrack", { name: base.program.name }),
+            },
+          };
+        }
+      }
+      return null;
+    }),
+
+  electiveGroups: (id: string, track?: string) =>
+    withFallback<ElectiveGroup[]>(
+      `/api/programs/${encodeURIComponent(id)}/elective-groups${qs({ track })}`,
+      () => mockElectiveGroups(id),
+    ),
 
   programGraph: (id: string) =>
-    withFallback<ProgramGraph | null>(`/api/programs/${encodeURIComponent(id)}/graph`, () => mockProgramGraph(id)),
+    withFallback<ProgramGraph | null>(`/api/programs/${encodeURIComponent(id)}/graph`, () => {
+      const direct = mockProgramGraph(id);
+      if (direct) return direct;
+      if (id.endsWith("E")) {
+        return mockProgramGraph(id.slice(0, -1));
+      }
+      return null;
+    }),
 
   moduleTree: (code: string, options?: { program_id?: string; direction?: "prereq" | "unlocks"; depth?: number }) =>
     withFallback<ModuleTreeNode | null>(
       `/api/modules/${encodeURIComponent(code)}/tree${qs(options ?? {})}`,
-      () => mockModuleTree(code, options),
+      () => {
+        const pid = options?.program_id;
+        const basePid = pid && pid.endsWith("E") ? pid.slice(0, -1) : pid;
+        return mockModuleTree(code, basePid ? { ...options, program_id: basePid } : options);
+      },
     ),
 
   checkProgram: (
     id: string,
     req: { completed: { code: string; grade?: string | number }[]; planned: Record<string, string[]> },
   ) =>
-    withFallback<CheckResult>(`/api/programs/${encodeURIComponent(id)}/check`, () => mockCheckProgram(id, req), {
+    withFallback<CheckResult>(`/api/programs/${encodeURIComponent(id)}/check`, () => {
+      const p = mockProgram(id) ?? (id.endsWith("E") ? mockProgram(id.slice(0, -1)) : null);
+      if (!p) {
+        return {
+          eligible_now: [],
+          blocked: [],
+          warnings: [translate(interfaceLang(), "api.programCheckNotFound")],
+          rule_refs: [],
+        };
+      }
+      return mockCheckProgram(p.program.program_id, req);
+    }, {
       method: "POST",
       body: JSON.stringify(req),
+    }),
+
+  moduleComments: (code: string, page = 1, size = 20) =>
+    withFallback<ModuleCommentListResponse>(
+      `/api/modules/${encodeURIComponent(code)}/comments${qs({ page, size })}`,
+      () => {
+        const list = mockModuleComments[code] || [];
+        const approved = list.filter((c) => c.status === "approved");
+        const total = approved.length;
+        const avg =
+          total > 0
+            ? Number(
+                (
+                  approved.reduce((s, c) => s + (c.rating || 0), 0) /
+                  (approved.filter((c) => c.rating).length || 1)
+                ).toFixed(1)
+              )
+            : null;
+        return {
+          items: approved.slice((page - 1) * size, page * size),
+          total,
+          page,
+          size,
+          average_rating: avg,
+        };
+      }
+    ),
+
+  postModuleComment: (
+    code: string,
+    payload: { body: string; rating?: number; anon_id?: string }
+  ) =>
+    raw<ModuleComment>(`/api/modules/${encodeURIComponent(code)}/comments`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
     }),
 };

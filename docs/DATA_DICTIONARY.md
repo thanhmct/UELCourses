@@ -1,8 +1,8 @@
-# UELCourses — Từ điển dữ liệu (Data Dictionary)
+# UELPATH — Từ điển dữ liệu (Data Dictionary)
 
 *Tra cứu học phần, thời khóa biểu, kế hoạch học tập, CTĐT, học phần tương đương và quy chế học vụ của Trường ĐH Kinh tế – Luật (UEL)*
 
-Phiên bản tài liệu 1.0 · sinh tự động ngày 2026-11-21 từ database PostgreSQL đang chạy (Alembic `0015`). Tham chiếu độc lập cho database `uelplan` (tên giữ nguyên để không mất dữ liệu; thương hiệu là UELCourses). Số liệu và ví dụ lấy từ dữ liệu thật; thiết kế và vận hành xem `docs/DATABASE.md`.
+Phiên bản tài liệu 1.0 · sinh tự động ngày 2026-11-21 từ database PostgreSQL đang chạy (Alembic `0015`). Tham chiếu độc lập cho database `uelplan` (tên giữ nguyên để không mất dữ liệu; thương hiệu là UELPATH). Số liệu và ví dụ lấy từ dữ liệu thật; thiết kế và vận hành xem `docs/DATABASE.md`.
 
 | Bảng vật lý | Trường vật lý | Ràng buộc khóa ngoại | View SQL |
 |---:|---:|---:|---:|

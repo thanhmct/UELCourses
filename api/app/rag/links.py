@@ -149,7 +149,7 @@ def _edge_kind(text: str, start: int) -> str:
     before = strip_accents(text[max(0, start - 60):start].lower())
     if re.search(r"sua doi|bo sung|thay the", before):
         return "amends"
-    if re.search(r"huong dan|quy dinh chi tiet|thuc hien", before):
+    if re.search(r"huong dan|quy dinh chi tiet", before):
         return "guides"
     return "references"
 

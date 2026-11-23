@@ -10,16 +10,17 @@ describe("học kỳ trong Planner", () => {
   });
 
   it("chuyển bản lưu cũ: HKhè -> HK3, giữ nguyên tên người dùng tự đặt và học phần", () => {
-    const old = { terms: [{ id: "t3", name: "Năm 1 – HKhè", modules: ["A1"] }, { id: "x", name: "Kỳ của tôi", modules: [] }], completed: ["Z"] };
+    const old = { terms: [{ id: "t3", name: "Năm 1 – HKhè", modules: ["A1"] }, { id: "x", name: "Kỳ của tôi", modules: [] }], backlog: ["B1"], completed: ["Z"] };
     const out = migratePlannerState(old, 0) as typeof old;
     expect(out.terms.map((t) => t.name)).toEqual(["Năm 1 – HK3", "Kỳ của tôi"]);
     expect(out.terms[0].modules).toEqual(["A1"]);
+    expect(out.backlog).toEqual(["B1"]);
     expect(out.completed).toEqual(["Z"]);
   });
 
   it("không đụng vào bản đã ở phiên bản mới hoặc dữ liệu lạ", () => {
     const cur = { terms: [{ id: "t3", name: "Năm 1 – HKhè", modules: [] }] };
-    expect(migratePlannerState(cur, 1)).toBe(cur);
+    expect(migratePlannerState(cur, 3)).toBe(cur);
     expect(migratePlannerState(null, 0)).toBeNull();
     expect(migratePlannerState({ terms: "lạ" }, 0)).toEqual({ terms: "lạ" });
   });

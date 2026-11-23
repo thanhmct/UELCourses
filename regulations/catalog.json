@@ -5,7 +5,7 @@
     "issuer": "Hiệu trưởng Trường Đại học Kinh tế - Luật",
     "decision_no": "2261/QĐ-ĐHKTL",
     "issued_date": "2025-09-04",
-    "effective_from": null,
+    "effective_from": "2025-09-04",
     "effective_to": null,
     "status": "active",
     "superseded_by": null,
@@ -25,9 +25,10 @@
       "tốt nghiệp"
     ],
     "source_url": "https://pdt.uel.edu.vn/van-ban-quy-che-828/quyet-dinh-so-2261-qd-dhktl-ngay-04-thang-09-nam-2025-cua-hieu-truong-truong-dai-hoc-kinh-te-luat-ban-hanh-quy-che-dao-tao-trinh-do-dai-hoc-ap-dung-cho-khoa-tuyen-sinh-tu-thang-09-nam-2025",
-    "file": null,
+    "file": "manual/uel-qcdt-2261-2025.txt",
     "verified": false,
-    "notes": "Số QĐ và ngày lấy từ tiêu đề trang Phòng Đào tạo. Toàn văn chỉ có qua Google Drive, cần đăng nhập email trường nên chưa tải được. Khóa áp dụng suy từ tiêu đề: 'khóa tuyển sinh từ tháng 09/2025', tức K25 (2025) trở đi; K26 thêm vào theo quy ước khóa. Chưa đọc được ngày hiệu lực, cũng chưa rõ có thay thế 1268 cho các khóa cũ hay không. Cần bản PDF (bỏ vào manual/)."
+    "ocr_transcript": true,
+    "notes": "Chép lại từ ảnh chụp màn hình bản xem Google Drive, chưa đối chiếu bản gốc. Quyết định có hiệu lực từ ngày ký 04/09/2025 và áp dụng cho các khóa tuyển sinh từ tháng 09/2025 (K25 trở đi). Điều 45 quy định QĐ 1268/2022 và QĐ 118/2024 tiếp tục áp dụng cho các khóa tuyển sinh trước tháng 09/2025."
   },
   {
     "doc_id": "uel-qcdt-1268-2022",
@@ -62,7 +63,8 @@
     "source_url": "https://pdt.uel.edu.vn/Resources/Docs/SubDomain/pdt/Quy%20che%20Chinh%20quy/1268.PDF",
     "file": "raw/uel-qcdt-1268-2022.pdf",
     "verified": true,
-    "notes": "Đã đọc trong văn bản (bản scan OCR, chất lượng chữ kém). Điều 2 của QĐ ghi hiệu lực từ ngày ký, áp dụng cho các khóa tuyển sinh từ tháng 9/2022, thay thế QĐ 789/QĐ-ĐHKTL ngày 09/8/2017. Ngày 14/10/2022 đọc được ở Phụ lục II. Điều 48 của Quy chế lại ghi hiệu lực từ 30/9/2022, khác với QĐ, có thể do lỗi OCR hoặc văn bản ghi khác nhau; effective_from tạm lấy theo QĐ. Văn bản dựa trên TT 08/2021/TT-BGDĐT và QĐ 1342/QĐ-ĐHQG ngày 30/9/2022. Khóa áp dụng suy luận: từ 2022 (K22). Đến K24 vì QĐ 2261/2025 áp dụng từ khóa 2025 (K25). Đã được sửa đổi bởi QĐ 118/QĐ-ĐHKTL ngày 18/01/2024."
+    "notes": "Đã đọc trong văn bản (bản scan OCR, chất lượng chữ kém). Điều 2 của QĐ ghi hiệu lực từ ngày ký, áp dụng cho các khóa tuyển sinh từ tháng 9/2022, thay thế QĐ 789/QĐ-ĐHKTL ngày 09/8/2017. Ngày 14/10/2022 đọc được ở Phụ lục II. Điều 48 của Quy chế lại ghi hiệu lực từ 30/9/2022, khác với QĐ, có thể do lỗi OCR hoặc văn bản ghi khác nhau; effective_from tạm lấy theo QĐ. Văn bản dựa trên TT 08/2021/TT-BGDĐT và QĐ 1342/QĐ-ĐHQG ngày 30/9/2022. Khóa áp dụng suy luận: từ 2022 (K22). Đến K24 vì QĐ 2261/2025 áp dụng từ khóa 2025 (K25). Đã được sửa đổi bởi QĐ 118/QĐ-ĐHKTL ngày 18/01/2024.",
+    "ocr_transcript": true
   },
   {
     "doc_id": "uel-qcdt-118-2024",
@@ -85,9 +87,10 @@
       "sửa đổi bổ sung"
     ],
     "source_url": "https://pdt.uel.edu.vn/van-ban-quy-che-828/quyet-dinh-118-qd-dhktl-ngay-18-01-2024-sua-doi-bo-sung-mot-so-noi-dung-cua-quy-che-dao-tao-trinh-do-dai-hoc-ban-hanh-kem-theo-quyet-dinh-so-1268-qd-dhktl-ngay-14-thang-10-nam-2022-cua-hieu-truong-truong-dai-hoc-kinh-te-luat",
-    "file": null,
+    "file": "manual/uel-qcdt-118-2024.txt",
     "verified": false,
-    "notes": "Văn bản sửa đổi, bổ sung uel-qcdt-1268-2022 (không thay thế). Số QĐ và ngày lấy từ tiêu đề trang Phòng Đào tạo. Trang không có file đính kèm công khai. Khóa áp dụng suy theo văn bản gốc 1268, chưa kiểm chứng."
+    "notes": "Bản PDF 3 trang từ Phòng Đào tạo. Trang 1 ghi 118/QĐ-ĐHKTL ngày 18/01/2024. Điều chỉnh quy chế ban hành theo QĐ 1268/2022.",
+    "ocr_transcript": true
   },
   {
     "doc_id": "uel-qcdt-789-2017",
@@ -114,7 +117,8 @@
     "source_url": "https://pdt.uel.edu.vn/Resources/Docs/SubDomain/pdt/Quy%20che%20262/Quyet%20dinh%20789%20ve%20Quy%20che%20dao%20tao%20Dai%20hoc%20UEL%202017.PDF",
     "file": "raw/uel-qcdt-789-2017.pdf",
     "verified": false,
-    "notes": "File là bản scan, không có lớp chữ (cần OCR). Số và ngày 09/8/2017 lấy từ trích dẫn trong QĐ 1268/2022 và QĐ 472/2021, khớp với trang CTSV. Văn bản dựa trên QĐ 262/QĐ-ĐHQG ngày 20/04/2017 của ĐHQG-HCM. QĐ 1268 thay thế văn bản này cho các khóa tuyển sinh từ 9/2022. Các khóa trước 2022 (K19–K21, có thể cả K17–K18) có thể vẫn áp dụng 789; đây là suy luận, chưa kiểm chứng điều khoản chuyển tiếp."
+    "notes": "File là bản scan, không có lớp chữ (cần OCR). Số và ngày 09/8/2017 lấy từ trích dẫn trong QĐ 1268/2022 và QĐ 472/2021, khớp với trang CTSV. Văn bản dựa trên QĐ 262/QĐ-ĐHQG ngày 20/04/2017 của ĐHQG-HCM. QĐ 1268 thay thế văn bản này cho các khóa tuyển sinh từ 9/2022. Các khóa trước 2022 (K19–K21, có thể cả K17–K18) có thể vẫn áp dụng 789; đây là suy luận, chưa kiểm chứng điều khoản chuyển tiếp.",
+    "ocr_transcript": true
   },
   {
     "doc_id": "uel-cnkq-494-2023",
@@ -142,7 +146,8 @@
     "source_url": "https://pdt.uel.edu.vn/Resources/Docs/SubDomain/pdt/Quy%20dinh/Quyet%20dinh%20494%20Quy%20dinh%20cong%20nhan%20ket%20qua%20hoc%20tap%20va%20chuyen%20doi%20tin%20chi.PDF",
     "file": "raw/uel-cnkq-494-2023.pdf",
     "verified": false,
-    "notes": "Bản scan, chữ OCR kém. Số QĐ trong bản OCR bị lỗi; '494' lấy từ trang Phòng Đào tạo và tên file. Phần đầu văn bản OCR đọc được ngày 28/4/2023, trong khi trang Phòng Đào tạo ghi 16/4/2023. Văn bản dẫn Tờ trình 09/TTr-ĐT ngày 28/4/2023, nên ngày 28/4 hợp lý hơn; cần đối chiếu bản gốc. Điều 16 ghi hiệu lực từ ngày ký, áp dụng cho các khóa tuyển sinh từ năm 2023 trở đi, tức K23 trở đi."
+    "notes": "Trang 1 PDF ghi 494/QĐ-ĐHKTL ngày 28/04/2023. Điều 16 ghi hiệu lực từ ngày ký và áp dụng cho các khóa tuyển sinh từ năm 2023 trở đi.",
+    "ocr_transcript": true
   },
   {
     "doc_id": "uel-hocphi-558-2023",
@@ -166,7 +171,8 @@
     "source_url": "https://pdt.uel.edu.vn/Resources/Docs/SubDomain/pdt/Quy%20dinh/Quyet%20dinh%20558%20Quy%20trinh%20quan%20ly%20hoc%20phi%20doi%20voi%20nguoi%20hoc.PDF",
     "file": "raw/uel-hocphi-558-2023.pdf",
     "verified": false,
-    "notes": "Bản scan OCR. Ngày 16/5/2023 đọc được trong văn bản. OCR đọc số QĐ là '559', còn trang Phòng Đào tạo và tên file ghi 558; cần đối chiếu. Ngày hiệu lực trong OCR bị cắt ('kể từ ngày 14/...'). Văn bản áp dụng cho tất cả người học, từ khi có quyết định trúng tuyển đến khi ra trường. Căn cứ NĐ 81/2021/NĐ-CP, nay đã được thay bằng NĐ 238/2025/NĐ-CP, nên quy trình này có thể đã được cập nhật."
+    "notes": "Trang 1 PDF ghi 558/QĐ-ĐHKTL ngày 16/05/2023. Áp dụng cho người học từ lúc có quyết định trúng tuyển đến khi ra trường. Quy trình viện dẫn NĐ 81/2021/NĐ-CP và có thể đã được cập nhật.",
+    "ocr_transcript": true
   },
   {
     "doc_id": "uel-kientap-472-2021",
@@ -189,7 +195,8 @@
     "source_url": "https://pdt.uel.edu.vn/Resources/Docs/SubDomain/pdt/Quy%20dinh/TB1/qdhocphankientap.PDF",
     "file": "raw/uel-kientap-472-2021.pdf",
     "verified": false,
-    "notes": "Bản scan OCR. Số và ngày trong OCR bị lỗi; lấy theo trang Phòng Đào tạo (04/5/2021). Năm 2021 đọc được trong văn bản. Hiệu lực từ ngày ký. Điều 13 ghi áp dụng cho các CTĐT đại học chính quy từ khóa 2019 (niên khóa 2019–2023), tức K19. Chưa rõ có áp dụng cho K20 trở đi hay không. Văn bản căn cứ QĐ 789/2017; status active chưa kiểm chứng."
+    "notes": "Bản scan OCR. Số và ngày trong OCR bị lỗi; lấy theo trang Phòng Đào tạo (04/5/2021). Năm 2021 đọc được trong văn bản. Hiệu lực từ ngày ký. Điều 13 ghi áp dụng cho các CTĐT đại học chính quy từ khóa 2019 (niên khóa 2019–2023), tức K19. Chưa rõ có áp dụng cho K20 trở đi hay không. Văn bản căn cứ QĐ 789/2017; status active chưa kiểm chứng.",
+    "ocr_transcript": true
   },
   {
     "doc_id": "uel-cdr-ngoaingu-1390-2025",
@@ -265,8 +272,8 @@
     "doc_id": "uel-thi-1622-2022",
     "title": "Quy định về tổ chức thi, kiểm tra đánh giá kết thúc học phần",
     "issuer": "Trường Đại học Kinh tế - Luật (Phòng Bảo đảm chất lượng)",
-    "decision_no": null,
-    "issued_date": null,
+    "decision_no": "1622/QĐ-ĐHKTL",
+    "issued_date": "2022-11-03",
     "effective_from": null,
     "effective_to": null,
     "status": "active",
@@ -283,7 +290,8 @@
     "source_url": "https://bdcl.uel.edu.vn/Resources/Docs/SubDomain/bdcl/Quydinh/Khaothi/Quy%E1%BA%BFt%20%C4%91%E1%BB%8Bnh%201622%20-%20Quy%20%C4%91%E1%BB%8Bnh%20T%E1%BB%95%20ch%E1%BB%A9c%20thi%20ki%E1%BB%83m%20tra%20%C4%91%C3%A1nh%20gi%C3%A1%20h%E1%BB%8Dc%20ph%E1%BA%A7n.PDF",
     "file": "raw/uel-thi-1622-2022.pdf",
     "verified": false,
-    "notes": "Bản scan 85 trang, không có lớp chữ (cần OCR). Tên file có 'Quyết định 1622', có thể là 1622/QĐ-ĐHKTL, nhưng chưa đọc được trong văn bản. Trang CTSV ghi ngày 03/11/2022. Chưa xác định phạm vi khóa áp dụng; tạm ghi 'all'."
+    "notes": "Đầu trang 1 của bản quyết định 85 trang ghi số 1622/QĐ-ĐHKTL, ngày 03/11/2022. Chưa xác định phạm vi khóa áp dụng; tạm ghi all.",
+    "ocr_transcript": true
   },
   {
     "doc_id": "uel-drl-2024",
@@ -330,7 +338,8 @@
     "source_url": "https://ctsv.uel.edu.vn/Resources/Docs/SubDomain/ctsv/CongtacVanthu/QuycheQuydinh/2021%20-%20Quy%20dinh%20Danh%20gia%20ket%20qua%20ren%20luyen%20cua%20sinh%20vien%20UEL.pdf",
     "file": "raw/uel-drl-2021.pdf",
     "verified": false,
-    "notes": "Bản scan, không có lớp chữ. Số và ngày lấy từ điều khoản thay thế trong uel-drl-2024. Trang CTSV đánh dấu 'HẾT HIỆU LỰC'. effective_to lấy theo ngày uel-drl-2024 có hiệu lực."
+    "notes": "Bản scan, không có lớp chữ. Số và ngày lấy từ điều khoản thay thế trong uel-drl-2024. Trang CTSV đánh dấu 'HẾT HIỆU LỰC'. effective_to lấy theo ngày uel-drl-2024 có hiệu lực.",
+    "ocr_transcript": true
   },
   {
     "doc_id": "uel-hocbong-2024",
@@ -405,8 +414,8 @@
     "doc_id": "uel-hocbong-nckh-2037-2023",
     "title": "Quy định cộng điểm nghiên cứu khoa học vào điểm xét học bổng khuyến khích học tập",
     "issuer": "Trường Đại học Kinh tế - Luật",
-    "decision_no": null,
-    "issued_date": null,
+    "decision_no": "2037/QĐ-ĐHKTL",
+    "issued_date": "2023-12-29",
     "effective_from": null,
     "effective_to": null,
     "status": "active",
@@ -423,7 +432,8 @@
     "source_url": "https://ctsv.uel.edu.vn/Resources/Docs/SubDomain/ctsv/Q%C4%90%202037-%202023%20C%E1%BB%99ng%20NCKH.pdf",
     "file": "raw/uel-hocbong-nckh-2037-2023.pdf",
     "verified": false,
-    "notes": "Bản scan, không có lớp chữ. Tên file có 'QĐ 2037-2023', có thể là 2037/QĐ-ĐHKTL năm 2023, chưa đọc được trong văn bản. Trang CTSV ghi ngày 29/12/2023. Còn hiệu lực sau khi có quy định học bổng 2025 hay không: chưa rõ."
+    "notes": "Đối chiếu số và ngày viết tay ở trang 1 bản PDF. Sửa đổi quy định hoạt động NCKH sinh viên ban hành theo QĐ 1209/QĐ-ĐHKTL ngày 31/12/2021. Chưa rõ còn áp dụng sau quy định học bổng 2025.",
+    "ocr_transcript": true
   },
   {
     "doc_id": "uel-ctsv-2017",
@@ -448,7 +458,8 @@
     "source_url": "https://ctsv.uel.edu.vn/Resources/Docs/SubDomain/ctsv/CongtacVanthu/QuycheQuydinh/2017%20-%20Quy%20che%20CTSV%20UEL.pdf",
     "file": "raw/uel-ctsv-2017.pdf",
     "verified": false,
-    "notes": "Bản scan OCR. Trong OCR số QĐ bị lỗi ('l6461'), ngày chỉ đọc được 'tháng 10 năm 2017'. Số 1046/QĐ-ĐHKTL ngày 03/10/2017 lấy từ phần căn cứ của uel-drl-2024 và khớp với ngày trên trang CTSV. Hiệu lực từ ngày ký. Văn bản thay thế QĐ 662/QĐ-ĐHKTL ngày 28/8/2014 và căn cứ TT 10/2016/TT-BGDĐT."
+    "notes": "Bản scan OCR. Trong OCR số QĐ bị lỗi ('l6461'), ngày chỉ đọc được 'tháng 10 năm 2017'. Số 1046/QĐ-ĐHKTL ngày 03/10/2017 lấy từ phần căn cứ của uel-drl-2024 và khớp với ngày trên trang CTSV. Hiệu lực từ ngày ký. Văn bản thay thế QĐ 662/QĐ-ĐHKTL ngày 28/8/2014 và căn cứ TT 10/2016/TT-BGDĐT.",
+    "ocr_transcript": true
   },
   {
     "doc_id": "uel-cvht-2024",
@@ -477,8 +488,8 @@
     "doc_id": "uel-ctxh-2020",
     "title": "Quy định Chuẩn tham gia hoạt động Công tác xã hội",
     "issuer": "Trường Đại học Kinh tế - Luật",
-    "decision_no": null,
-    "issued_date": null,
+    "decision_no": "22/QĐ-ĐHKTL",
+    "issued_date": "2020-01-09",
     "effective_from": null,
     "effective_to": null,
     "status": "active",
@@ -495,7 +506,8 @@
     "source_url": "https://ctsv.uel.edu.vn/Resources/Docs/SubDomain/ctsv/CongtacVanthu/QuycheQuydinh/2020%20-%20Quy%20dinh%20Ngay%20CTXH.pdf",
     "file": "raw/uel-ctxh-2020.pdf",
     "verified": false,
-    "notes": "Bản scan, không có lớp chữ. Trang CTSV ghi ngày 09/01/2020. Chưa đọc được số QĐ và khóa áp dụng. Có thể liên quan điều kiện xét tốt nghiệp; cần OCR để kiểm chứng."
+    "notes": "Trang 1 của quyết định 13 trang ghi 22/QĐ-ĐHKTL ngày 09/01/2020. Văn bản nêu sinh viên hệ chính quy tập trung.",
+    "ocr_transcript": true
   },
   {
     "doc_id": "vnu-qcdt-1342-2022",
@@ -527,7 +539,7 @@
     "doc_id": "vnu-ctsv-2019",
     "title": "Quy chế Công tác sinh viên (ĐHQG-HCM)",
     "issuer": "Giám đốc Đại học Quốc gia Thành phố Hồ Chí Minh",
-    "decision_no": null,
+    "decision_no": "953/QĐ-ĐHQG",
     "issued_date": "2019-07-15",
     "effective_from": "2019-07-15",
     "effective_to": null,
@@ -546,7 +558,8 @@
     "source_url": "https://ctsv.uel.edu.vn/Resources/Docs/SubDomain/ctsv/CongtacVanthu/QuycheQuydinh/2019%20-%20Quy%20che%20CTSV%20DHQG-HCM.pdf",
     "file": "raw/vnu-ctsv-2019.pdf",
     "verified": false,
-    "notes": "Bản scan OCR. Số QĐ không đọc rõ (OCR '55j/QĐ-ĐHQG'). Tháng 7/2019 đọc được trong văn bản; ngày 15 lấy theo trang CTSV. Hiệu lực từ ngày ký. Văn bản thay thế Quy chế công tác HSSV ban hành theo QĐ 786/QĐ-ĐHQG-CTSV ngày 24/8/2011. Còn hiệu lực hay không: chưa kiểm chứng."
+    "notes": "Đầu trang 1 của PDF ghi 953/QĐ-ĐHQG, ngày 15/07/2019. Văn bản thay thế Quy chế công tác HSSV theo QĐ 786/QĐ-ĐHQG-CTSV ngày 24/08/2011. Chưa xác nhận hiệu lực hiện tại.",
+    "ocr_transcript": true
   },
   {
     "doc_id": "vnu-drl-2019",
@@ -569,7 +582,8 @@
     "source_url": "https://ctsv.uel.edu.vn/Resources/Docs/SubDomain/ctsv/CongtacVanthu/QuycheQuydinh/2019%20-%20Quy%20che%20DGKQRL%20DHQG-HCM.pdf",
     "file": "raw/vnu-drl-2019.pdf",
     "verified": true,
-    "notes": "Đã đọc trong văn bản (OCR): số 964, ngày 19/7/2019, hiệu lực từ ngày ký. Phần căn cứ của uel-drl-2024 cũng trích số 964 nhưng ghi nhầm ký hiệu là 'QĐ-ĐHKTL'. Còn hiệu lực hay không: chưa kiểm chứng."
+    "notes": "Đã đọc trong văn bản (OCR): số 964, ngày 19/7/2019, hiệu lực từ ngày ký. Phần căn cứ của uel-drl-2024 cũng trích số 964 nhưng ghi nhầm ký hiệu là 'QĐ-ĐHKTL'. Còn hiệu lực hay không: chưa kiểm chứng.",
+    "ocr_transcript": true
   },
   {
     "doc_id": "moet-tt08-2021",
@@ -643,7 +657,8 @@
     "source_url": "https://ctsv.uel.edu.vn/Resources/Docs/SubDomain/ctsv/CongtacVanthu/QuycheQuydinh/2016%20-%20Quy%20che%20CTSV%20Bo%20GD-DT.PDF",
     "file": "raw/moet-ctsv-2016.pdf",
     "verified": false,
-    "notes": "Bản scan, không có lớp chữ, do UEL đăng lại. Số và ngày 05/4/2016 lấy từ phần căn cứ trong uel-ctsv-2017 và vnu-ctsv-2019. Trang CTSV ghi ngày 23/05/2016, có thể là ngày hiệu lực; chưa kiểm chứng nên để null. Status active chưa kiểm chứng."
+    "notes": "Bản scan, không có lớp chữ, do UEL đăng lại. Số và ngày 05/4/2016 lấy từ phần căn cứ trong uel-ctsv-2017 và vnu-ctsv-2019. Trang CTSV ghi ngày 23/05/2016, có thể là ngày hiệu lực; chưa kiểm chứng nên để null. Status active chưa kiểm chứng.",
+    "ocr_transcript": true
   },
   {
     "doc_id": "moet-drl-2015",
@@ -666,7 +681,8 @@
     "source_url": "https://ctsv.uel.edu.vn/Resources/Docs/SubDomain/ctsv/CongtacVanthu/QuycheQuydinh/2015%20-%20Quy%20che%20DGKQRL%20Bo%20GD-DT.PDF",
     "file": "raw/moet-drl-2015.pdf",
     "verified": false,
-    "notes": "Bản scan, không có lớp chữ, do UEL đăng lại. Số và ngày 12/8/2015 lấy từ phần căn cứ trong uel-drl-2024. Trang CTSV ghi ngày 28/09/2015, có thể là ngày hiệu lực; chưa kiểm chứng. Status active chưa kiểm chứng."
+    "notes": "Bản scan, không có lớp chữ, do UEL đăng lại. Số và ngày 12/8/2015 lấy từ phần căn cứ trong uel-drl-2024. Trang CTSV ghi ngày 28/09/2015, có thể là ngày hiệu lực; chưa kiểm chứng. Status active chưa kiểm chứng.",
+    "ocr_transcript": true
   },
   {
     "doc_id": "gov-hocphi-nd238-2025",
@@ -693,39 +709,319 @@
     "notes": "Số và ngày 03/9/2025 lấy từ trang tin Chính phủ (chinhphu.vn, không phải .gov.vn nên không tải). Theo trang này, Nghị định thay thế NĐ 81/2021/NĐ-CP và NĐ 97/2023/NĐ-CP; hai NĐ cũ không có mục riêng trong catalog. Ngày hiệu lực chưa đọc trong văn bản gốc."
   },
   {
-    "doc_id": "uel-sotay-sv-2025",
-    "title": "Sổ tay sinh viên UEL năm học 2025-2026 (bản 26/08/2025)",
-    "issuer": "Trường Đại học Kinh tế - Luật (Phòng Tuyển sinh và CTSV)",
-    "decision_no": null,
-    "issued_date": null,
-    "effective_from": null,
-    "effective_to": null,
+    "doc_id": "uel-sotay-sv-k24",
+    "title": "Sổ tay sinh viên UEL K24 (2024–2025)",
+    "issuer": "UEL",
+    "source_type": "handbook",
     "status": "active",
-    "superseded_by": null,
-    "supersedes": null,
     "applies_to_cohorts": [
-      "K22",
-      "K23",
-      "K24",
+      "K24"
+    ],
+    "topics": [
+      "sổ tay sinh viên",
+      "học bổng",
+      "rèn luyện",
+      "hỗ trợ sinh viên",
+      "đoàn thể"
+    ],
+    "source_url": "https://ctsv.uel.edu.vn/so-tay-12/so-tay-sinh-vien-cac-khoa",
+    "file": "manual/uel-sotay-sv-k24.txt",
+    "verified": false,
+    "notes": "Nguồn tóm tắt, không thay thế văn bản gốc."
+  },
+  {
+    "doc_id": "uel-sotay-sv-k25",
+    "title": "Sổ tay sinh viên UEL K25 (2025–2026)",
+    "issuer": "UEL",
+    "source_type": "handbook",
+    "status": "active",
+    "applies_to_cohorts": [
       "K25"
     ],
     "topics": [
-      "chương trình dạy và học bằng tiếng Anh",
-      "chuẩn đầu ra ngoại ngữ",
-      "tốt nghiệp",
-      "song bằng/song ngành",
-      "tạm dừng",
-      "thôi học",
-      "chuyển ngành",
-      "kiến tập/thực tập",
-      "CO-OP",
-      "sinh viên tài năng",
-      "biểu đồ kế hoạch"
+      "sổ tay sinh viên",
+      "học bổng",
+      "rèn luyện",
+      "hỗ trợ sinh viên",
+      "đoàn thể"
     ],
-    "source_url": "https://ctsv.uel.edu.vn/Resources/Docs/SubDomain/ctsv/so%20tay%20sinh%20vien%202025.08.26-%C4%91%C3%A3%20n%C3%A9n.pdf",
-    "file": "raw/uel-sotay-sv-2025.pdf",
-    "verified": true,
-    "notes": "Sổ tay (65 trang, có lớp chữ), không phải văn bản quy phạm nhưng tổng hợp và trích dẫn nhiều văn bản. Ngày 2025-08-26 chỉ suy từ tên file, nên issued_date=null. Đã đọc trực tiếp: (1) Mục chương trình dạy và học bằng tiếng Anh: 9 chương trình (Kế toán tích hợp ICAEW, Marketing, QTKD, Toán kinh tế, TCNH, TMĐT, Kinh doanh quốc tế, Luật kinh tế - Luật TMQT, Luật dân sự); căn cứ QĐ 642/QĐ-ĐHQG ngày 01/6/2023 và QĐ 358/QĐ-ĐHQG ngày 17/4/2024; chuẩn đầu vào IELTS Academic 5.0 hoặc tương đương, chưa có thì thi năng lực tiếng Anh đầu HK1 năm 1, không đạt phải học tiếng Anh nền tảng/học thuật; chuẩn đầu ra bậc 4 (IELTS 6.0); lớp khoảng 40 SV. (2) Phụ lục chuẩn đầu ra ngoại ngữ theo QĐ 1390/2025: K17; K18-K22; K23; từ K24 (CTĐT tiếng Việt: IELTS 5.0/B1; CTĐT tiếng Anh và cử nhân tài năng: IELTS Academic 6.0/B2, TOEIC 785 + 310 từ K24; chỉ nhận IELTS Academic cho CTĐT tiếng Anh). (3) Điều kiện công nhận tốt nghiệp, hạng tốt nghiệp bị hạ nếu học lại >5% tín chỉ hoặc bị kỷ luật từ cảnh cáo, 4 đợt xét TN/năm. (4) Song bằng nội bộ: đã xong HK1 ngành 1, TBCTL >= 7.0. (5) Quy trình tạm dừng/thôi học/chuyển ngành (nộp đơn trước HK mới; chuyển ngành trước ít nhất 01 tháng) dẫn Điều 35 và Điều 39 QĐ 1268/2022. (6) Sinh viên tài năng: GPA >= 7.5, đủ 90% tín chỉ, IELTS 5.0, ĐRL >= 80. Chưa thấy nội dung quy ước mã học phần (E/B). Bản có chỗ ghi 'Quyết định số 246/ĐHQG-ĐH' (lỗi chép, đúng là 262/QĐ-ĐHQG). Dùng làm nguồn thứ cấp để đối chiếu, không thay thế văn bản gốc."
+    "source_url": "https://ctsv.uel.edu.vn/so-tay-12/so-tay-sinh-vien-cac-khoa",
+    "file": "manual/uel-sotay-sv-k25.txt",
+    "verified": false,
+    "notes": "Nguồn tóm tắt, không thay thế văn bản gốc. Phiên bản 25/09/2025."
+  },
+  {
+    "doc_id": "uel-sotay-sv-k26",
+    "title": "Sổ tay sinh viên UEL K26 (2026–2027)",
+    "issuer": "UEL",
+    "source_type": "handbook",
+    "status": "active",
+    "applies_to_cohorts": [
+      "K26"
+    ],
+    "topics": [
+      "sổ tay sinh viên",
+      "học bổng",
+      "rèn luyện",
+      "hỗ trợ sinh viên",
+      "đoàn thể"
+    ],
+    "source_url": "https://ctsv.uel.edu.vn/so-tay-12/so-tay-sinh-vien-cac-khoa",
+    "file": "manual/uel-sotay-sv-k26.txt",
+    "verified": false,
+    "notes": "Nguồn tóm tắt, không thay thế văn bản gốc. Bản chính thức Sổ tay sinh viên K26, số liệu tính đến 30/6/2026; nguồn CTSV dẫn tới tệp Google Drive."
+  },
+  {
+    "doc_id": "molisa-tt01-2019",
+    "title": "Thông tư số 01/2019/TT-BLĐTBXH",
+    "issuer": "Bộ Lao động - Thương binh và Xã hội",
+    "decision_no": "01/2019/TT-BLĐTBXH",
+    "issued_date": "2019-01-02",
+    "effective_from": null,
+    "effective_to": null,
+    "status": "unknown",
+    "superseded_by": null,
+    "supersedes": null,
+    "applies_to_cohorts": null,
+    "topics": ["trợ cấp xã hội", "xác nhận khuyết tật"],
+    "source_url": null,
+    "file": null,
+    "verified": false,
+    "notes": "Được sổ tay K24/K25/K26 viện dẫn, chưa có bản gốc. Ngày 02/01/2019 đọc từ sổ tay K26."
+  },
+  {
+    "doc_id": "moh-tt01-2023",
+    "title": "Thông tư số 01/2023/TT-BYT",
+    "issuer": "Bộ Y tế",
+    "decision_no": "01/2023/TT-BYT",
+    "issued_date": "2023-02-01",
+    "effective_from": null,
+    "effective_to": null,
+    "status": "unknown",
+    "superseded_by": null,
+    "supersedes": null,
+    "applies_to_cohorts": null,
+    "topics": ["giám định y khoa", "trợ cấp xã hội"],
+    "source_url": null,
+    "file": null,
+    "verified": false,
+    "notes": "Được sổ tay K24/K25/K26 viện dẫn, chưa có bản gốc. Ngày 01/02/2023 đọc từ sổ tay K26."
+  },
+  {
+    "doc_id": "molisa-tt08-2023",
+    "title": "Thông tư số 08/2023/TT-BLĐTBXH",
+    "issuer": "Bộ Lao động - Thương binh và Xã hội",
+    "decision_no": "08/2023/TT-BLĐTBXH",
+    "issued_date": "2023-10-30",
+    "effective_from": null,
+    "effective_to": null,
+    "status": "unknown",
+    "superseded_by": null,
+    "supersedes": null,
+    "applies_to_cohorts": null,
+    "topics": ["trợ cấp xã hội", "xác nhận khuyết tật"],
+    "source_url": null,
+    "file": null,
+    "verified": false,
+    "notes": "Được sổ tay K24/K25/K26 viện dẫn, chưa có bản gốc. Ngày 30/10/2023 đọc từ sổ tay K26."
+  },
+  {
+    "doc_id": "moh-tt33-2021",
+    "title": "Thông tư số 33/2021/TT-BYT",
+    "issuer": "Bộ Y tế",
+    "decision_no": "33/2021/TT-BYT",
+    "issued_date": "2021-12-31",
+    "effective_from": null,
+    "effective_to": null,
+    "status": "unknown",
+    "superseded_by": null,
+    "supersedes": null,
+    "applies_to_cohorts": null,
+    "topics": ["y tế trường học"],
+    "source_url": null,
+    "file": null,
+    "verified": false,
+    "notes": "Được sổ tay K24/K25/K26 viện dẫn, chưa có bản gốc. Ngày 31/12/2021 đọc từ sổ tay K26."
+  },
+  {
+    "doc_id": "moh-tt32-2023",
+    "title": "Thông tư số 32/2023/TT-BYT",
+    "issuer": "Bộ Y tế",
+    "decision_no": "32/2023/TT-BYT",
+    "issued_date": "2023-12-31",
+    "effective_from": null,
+    "effective_to": null,
+    "status": "unknown",
+    "superseded_by": null,
+    "supersedes": null,
+    "applies_to_cohorts": null,
+    "topics": ["khám sức khỏe", "khám bệnh chữa bệnh"],
+    "source_url": null,
+    "file": null,
+    "verified": false,
+    "notes": "Được sổ tay K24/K25/K26 viện dẫn, chưa có bản gốc. Ngày 31/12/2023 đọc từ sổ tay K26."
+  },
+  {
+    "doc_id": "vnu-dorm-tb499-2025",
+    "title": "Thông báo số 499/TB-KTX&ĐTĐH",
+    "issuer": "Trung tâm Quản lý Ký túc xá và Khu đô thị ĐHQG-HCM",
+    "decision_no": "499/TB-KTX&ĐTĐH",
+    "issued_date": "2025-08-22",
+    "effective_from": null,
+    "effective_to": null,
+    "status": "unknown",
+    "superseded_by": null,
+    "supersedes": null,
+    "applies_to_cohorts": null,
+    "topics": ["ký túc xá", "mức thu", "lệ phí phòng ở"],
+    "source_url": null,
+    "file": null,
+    "verified": false,
+    "notes": "Được sổ tay K24/K25/K26 viện dẫn, chưa có bản gốc. Ngày 22/08/2025 đọc từ sổ tay K26."
+  },
+  {
+    "doc_id": "uel-drl-1911-2024",
+    "title": "Quy định đánh giá kết quả rèn luyện sinh viên",
+    "issuer": "Hiệu trưởng Trường Đại học Kinh tế - Luật",
+    "decision_no": "1911/QĐ-ĐHKTL",
+    "issued_date": "2024-08-13",
+    "effective_from": null,
+    "effective_to": null,
+    "status": "unknown",
+    "superseded_by": null,
+    "supersedes": null,
+    "applies_to_cohorts": null,
+    "topics": ["điểm rèn luyện", "ban cán sự lớp"],
+    "source_url": null,
+    "file": null,
+    "verified": false,
+    "notes": "Được sổ tay K24/K25/K26 viện dẫn, chưa có bản gốc. Ngày 13/08/2024 đọc từ sổ tay K26."
+  },
+  {
+    "doc_id": "uel-cvht-1912-2024",
+    "title": "Quy định công tác Cố vấn học tập",
+    "issuer": "Hiệu trưởng Trường Đại học Kinh tế - Luật",
+    "decision_no": "1912/QĐ-ĐHKTL",
+    "issued_date": "2024-08-13",
+    "effective_from": null,
+    "effective_to": null,
+    "status": "unknown",
+    "superseded_by": null,
+    "supersedes": null,
+    "applies_to_cohorts": null,
+    "topics": ["cố vấn học tập"],
+    "source_url": null,
+    "file": null,
+    "verified": false,
+    "notes": "Được sổ tay K24/K25/K26 viện dẫn, chưa có bản gốc. Ngày 13/08/2024 đọc từ sổ tay K26."
+  },
+  {
+    "doc_id": "vnu-svtainang-1178-2022",
+    "title": "Đề án tuyển chọn và phát triển sinh viên tài năng tại ĐHQG-HCM giai đoạn 2023-2027",
+    "issuer": "Giám đốc Đại học Quốc gia Thành phố Hồ Chí Minh",
+    "decision_no": "1178/QĐ-ĐHQG",
+    "issued_date": "2022-08-18",
+    "effective_from": null,
+    "effective_to": null,
+    "status": "unknown",
+    "superseded_by": null,
+    "supersedes": null,
+    "applies_to_cohorts": null,
+    "topics": ["sinh viên tài năng"],
+    "source_url": null,
+    "file": null,
+    "verified": false,
+    "notes": "Được sổ tay K24/K25/K26 viện dẫn, chưa có bản gốc. Ngày 18/08/2022 đọc từ sổ tay K26."
+  },
+  {
+    "doc_id": "gov-nd20-2021",
+    "title": "Nghị định số 20/2021/NĐ-CP",
+    "issuer": "Chính phủ",
+    "decision_no": "20/2021/NĐ-CP",
+    "issued_date": null,
+    "effective_from": null,
+    "effective_to": null,
+    "status": "unknown",
+    "superseded_by": null,
+    "supersedes": null,
+    "applies_to_cohorts": null,
+    "topics": ["bảo trợ xã hội", "trợ cấp xã hội", "miễn học phí"],
+    "source_url": null,
+    "file": null,
+    "verified": false,
+    "notes": "Được sổ tay K24/K25/K26 viện dẫn, chưa có bản gốc. Sổ tay K26 không nêu ngày ban hành."
+  },
+  {
+    "doc_id": "moet-mof-ttlt35-2014",
+    "title": "Thông tư liên tịch số 35/2014/TTLT-BGDĐT-BTC",
+    "issuer": "Bộ Giáo dục và Đào tạo - Bộ Tài chính",
+    "decision_no": "35/2014/TTLT-BGDĐT-BTC",
+    "issued_date": "2014-10-15",
+    "effective_from": null,
+    "effective_to": null,
+    "status": "unknown",
+    "superseded_by": null,
+    "supersedes": null,
+    "applies_to_cohorts": null,
+    "topics": ["hỗ trợ chi phí học tập", "dân tộc thiểu số"],
+    "source_url": null,
+    "file": null,
+    "verified": false,
+    "notes": "Được sổ tay K24/K25/K26 viện dẫn, chưa có bản gốc. Ngày 15/10/2014 đọc từ sổ tay K26."
+  },
+  {
+    "doc_id": "moet-mof-molisa-ttlt18-2009",
+    "title": "Thông tư liên tịch số 18/2009/TTLT/BGDĐT-BTC-BLĐTBXH",
+    "issuer": "Bộ Giáo dục và Đào tạo - Bộ Tài chính - Bộ Lao động, Thương binh và Xã hội",
+    "decision_no": "18/2009/TTLT/BGDĐT-BTC-BLĐTBXH",
+    "issued_date": "2009-08-03",
+    "effective_from": null,
+    "effective_to": null,
+    "status": "unknown",
+    "superseded_by": null,
+    "supersedes": null,
+    "applies_to_cohorts": null,
+    "topics": ["trợ cấp xã hội", "sinh viên hộ nghèo"],
+    "source_url": null,
+    "file": null,
+    "verified": false,
+    "notes": "Được sổ tay K24/K25/K26 viện dẫn, chưa có bản gốc. Ngày 03/08/2009 đọc từ sổ tay K26."
+  },
+  {
+    "doc_id": "moet-tt01-2014",
+    "title": "Thông tư số 01/2014/TT-BGDĐT ban hành Khung năng lực ngoại ngữ 6 bậc dùng cho Việt Nam",
+    "issuer": "Bộ Giáo dục và Đào tạo",
+    "decision_no": "01/2014/TT-BGDĐT",
+    "issued_date": "2014-01-24",
+    "effective_from": null,
+    "effective_to": null,
+    "status": "unknown",
+    "superseded_by": null,
+    "supersedes": null,
+    "applies_to_cohorts": null,
+    "topics": ["khung năng lực ngoại ngữ", "chương trình tiếng Anh"],
+    "source_url": null,
+    "file": null,
+    "verified": false,
+    "notes": "Được sổ tay K24/K25/K26 viện dẫn, chưa có bản gốc. Ngày 24/01/2014 đọc từ sổ tay K26."
+  },
+  {
+    "doc_id": "vpqh-vbhn01-2012",
+    "title": "Văn bản hợp nhất số 01/VBHN-VPQH về Pháp lệnh Ưu đãi người có công với cách mạng",
+    "issuer": "Văn phòng Quốc hội",
+    "decision_no": "01/VBHN-VPQH",
+    "issued_date": "2012-07-30",
+    "effective_from": null,
+    "effective_to": null,
+    "status": "unknown",
+    "superseded_by": null,
+    "supersedes": null,
+    "applies_to_cohorts": null,
+    "topics": ["người có công", "miễn học phí"],
+    "source_url": null,
+    "file": null,
+    "verified": false,
+    "notes": "Được sổ tay K24/K25/K26 viện dẫn, chưa có bản gốc. Ngày 30/07/2012 đọc từ sổ tay K26."
   },
   {
     "doc_id": "uel-giangday-tienganh-1286",
@@ -816,14 +1112,15 @@
     "source_url": "https://vanban.chinhphu.vn/?pageid=27160&docid=214876",
     "file": "raw/gov-nd222-2025.pdf",
     "verified": false,
-    "notes": "File PDF tải từ datafiles.chinhphu.vn/cpp/files/vbpq/2025/8/222-cp.signed.pdf (29 trang, bản ký số, không có lớp chữ trích được bằng pypdf). Số, ngày ban hành 08/08/2025 và hiệu lực 25/09/2025 lấy từ trang vanban.chinhphu.vn, chưa đọc trong file. Theo các trang chính phủ: CTĐT đại học đã được cấp có thẩm quyền phê duyệt được dạy một phần/toàn bộ bằng tiếng nước ngoài; giảng viên đại học cần tối thiểu bậc 5 khung 6 bậc; học phí cơ sở công lập tính đúng, đủ và có sự đồng thuận người học. Áp dụng chung (không theo khóa)."
+    "notes": "File PDF tải từ datafiles.chinhphu.vn/cpp/files/vbpq/2025/8/222-cp.signed.pdf (29 trang, bản ký số, không có lớp chữ trích được bằng pypdf). Số, ngày ban hành 08/08/2025 và hiệu lực 25/09/2025 lấy từ trang vanban.chinhphu.vn, chưa đọc trong file. Theo các trang chính phủ: CTĐT đại học đã được cấp có thẩm quyền phê duyệt được dạy một phần/toàn bộ bằng tiếng nước ngoài; giảng viên đại học cần tối thiểu bậc 5 khung 6 bậc; học phí cơ sở công lập tính đúng, đủ và có sự đồng thuận người học. Áp dụng chung (không theo khóa).",
+    "ocr_transcript": true
   },
   {
     "doc_id": "uel-clc-857-2021",
     "title": "Quy định đào tạo cử nhân chất lượng cao hệ đại học chính quy (áp dụng từ K21)",
     "issuer": "Hiệu trưởng Trường Đại học Kinh tế - Luật",
     "decision_no": "857/QĐ-ĐHKTL",
-    "issued_date": null,
+    "issued_date": "2021-08-25",
     "effective_from": null,
     "effective_to": null,
     "status": "unknown",
@@ -843,16 +1140,17 @@
       "học phí/học bổng CLC"
     ],
     "source_url": "https://pdt.uel.edu.vn/van-ban-quy-che-828/qd-so-857-qd-dhktl-quy-dinh-dao-tao-cu-nhan-chat-luong-cao-he-dai-hoc-chinh-quy-ap-dung-tu-k21",
-    "file": null,
+    "file": "manual/uel-clc-857-2021.txt",
     "verified": false,
-    "notes": "Trang PĐT liệt kê file QD857 - Quy dinh dao tao cu nhan CLC năm 2021 - web.PDF dưới /Resources/Docs/SubDomain/pdt/Quy trinh PDT/, nhưng máy chủ trả về trang HTML lỗi (4 KB) khi tải, đã xóa. Số 857 và 'áp dụng từ K21' lấy từ tiêu đề trang; ngày ban hành suy năm 2021 từ tên file (chưa xác nhận). Cohort suy từ tiêu đề: K21 trở đi (còn hiệu lực với K22-K26 hay bị thay thế bởi QĐ 2261/2025 thì chưa biết). Cần file."
+    "notes": "Bản PDF từ Phòng Đào tạo ghi 857/QĐ-ĐHKTL ngày 25/08/2021 ở trang 1. Phạm vi từ K21 ghi nhận theo tiêu đề trang nguồn. Chưa đối chiếu quan hệ với QĐ 2261/2025.",
+    "ocr_transcript": true
   },
   {
     "doc_id": "uel-clc-790-2017",
     "title": "Quy định đào tạo cử nhân chất lượng cao hệ đại học chính quy (QĐ 790)",
     "issuer": "Hiệu trưởng Trường Đại học Kinh tế - Luật",
     "decision_no": "790/QĐ-ĐHKTL",
-    "issued_date": null,
+    "issued_date": "2017-08-10",
     "effective_from": null,
     "effective_to": null,
     "status": "superseded",
@@ -866,7 +1164,8 @@
     "source_url": "https://pdt.uel.edu.vn/van-ban-quy-che-828/qd-so-790-qd-dhktl-quy-dinh-dao-tao-cu-nhan-chat-luong-cao-he-dai-hoc-chinh-quy",
     "file": "raw/uel-clc-790-2017.pdf",
     "verified": false,
-    "notes": "File 10 trang, scan không có lớp chữ (cần OCR), chưa đọc nội dung. Số 790 lấy từ tiêu đề trang PĐT; ngày không có trên trang. Suy luận (chưa kiểm chứng): ban hành gần QĐ 789 (2017-08-09) và bị QĐ 857 (áp dụng từ K21) thay cho các khóa mới, nên áp dụng cho khóa CLC trước K21 (khoảng K17-K20). Không điền applies_to_cohorts vì chưa đọc điều khoản."
+    "notes": "Đầu trang 1 ghi 790/QĐ-ĐHKTL ngày 10/08/2017. Phạm vi khóa CLC trước K21 là suy luận theo mốc áp dụng được ghi nhận của QĐ 857/2021.",
+    "ocr_transcript": true
   },
   {
     "doc_id": "uel-cntai-621-2018",
@@ -893,7 +1192,8 @@
     "source_url": "https://pdt.uel.edu.vn/van-ban-quy-che-828/qd-so-621-qd-dhktl-quy-dinh-dao-tao-cu-nhan-tai-nang-he-dai-hoc-chinh-quy-giai-doan-2018-2022",
     "file": "raw/uel-cntai-621-2018.pdf",
     "verified": false,
-    "notes": "File 9 trang, scan không có lớp chữ. Số 621 và giai đoạn 2018-2022 từ tiêu đề trang PĐT; ngày không rõ. Cohort suy từ 'giai đoạn 2018-2022': khoảng K18-K22 (suy luận). Sổ tay 2025 cho biết chương trình sinh viên tài năng hiện hành theo Đề án giai đoạn 2023-2027 (QĐ 780/QĐ-ĐHKTL)."
+    "notes": "Bản PDF 9 trang ghi số 621/QĐ-ĐHKTL và giai đoạn 2018–2022. Ngày viết tay ở trang 1 và 2 chưa chốt. Phạm vi K18–K22 là suy từ giai đoạn ghi ở tiêu đề.",
+    "ocr_transcript": true
   },
   {
     "doc_id": "uel-cntai-780-2024",
@@ -1044,7 +1344,8 @@
     "source_url": "https://pdt.uel.edu.vn/van-ban-quy-che-828/qd-so-262-qd-dhqg-quy-che-dao-tao-dai-hoc-cua-dhqg-hcm",
     "file": "raw/vnu-qcdt-262-2017.pdf",
     "verified": false,
-    "notes": "File 43 trang, OCR rất lỗi nhưng có lớp chữ (tên file: QD262_170420). Số 262/QĐ-ĐHQG và ngày 20/04/2017 khớp với trích dẫn trong QĐ 142 (trợ giảng) và trong catalog mục 789/2017; dòng ngày trong chính văn bản OCR bị hỏng nên verified=false. Bị thay bằng QĐ 1342/QĐ-ĐHQG (2022) (suy luận: UEL 1268/2022 và QĐ 1007/2025 căn cứ QĐ 1342). Hiệu lực khóa: khóa vào trước 2022 (liên quan 789/2017)."
+    "notes": "File 43 trang, OCR rất lỗi nhưng có lớp chữ (tên file: QD262_170420). Số 262/QĐ-ĐHQG và ngày 20/04/2017 khớp với trích dẫn trong QĐ 142 (trợ giảng) và trong catalog mục 789/2017; dòng ngày trong chính văn bản OCR bị hỏng nên verified=false. Bị thay bằng QĐ 1342/QĐ-ĐHQG (2022) (suy luận: UEL 1268/2022 và QĐ 1007/2025 căn cứ QĐ 1342). Hiệu lực khóa: khóa vào trước 2022 (liên quan 789/2017).",
+    "ocr_transcript": true
   },
   {
     "doc_id": "vnu-songnganh-1195-2019",
@@ -1073,8 +1374,8 @@
     "title": "Quy chế quản lý văn bằng, chứng chỉ",
     "issuer": "Hiệu trưởng Trường Đại học Kinh tế - Luật",
     "decision_no": "370/QĐ-ĐHKTL",
-    "issued_date": "2025-04-04",
-    "effective_from": null,
+    "issued_date": "2023-04-04",
+    "effective_from": "2023-04-04",
     "effective_to": null,
     "status": "active",
     "superseded_by": null,
@@ -1092,16 +1393,17 @@
       "tốt nghiệp"
     ],
     "source_url": "https://pdt.uel.edu.vn/van-ban-quy-che-828/quyet-dinh-so-370-qd-dhktl-ngay-04-thang-04-nam-2025-cua-hieu-truong-truong-dai-hoc-kinh-te-luat-ve-viec-ban-hanh-quy-che-quan-ly-van-bang-chung-chi",
-    "file": null,
+    "file": "manual/uel-vanbang-370-2025.txt",
     "verified": false,
-    "notes": "Từ tiêu đề trang PĐT (ngày trang hiển thị 23/01/2024 không khớp ngày trong tiêu đề, chưa rõ). Trang chỉ gắn link Google Drive nên không tải. Áp dụng chung cho người học (không theo khóa)."
+    "ocr_transcript": true,
+    "notes": "Chép lại từ ảnh chụp màn hình bản xem Google Drive, chưa đối chiếu bản gốc. Ảnh ghi ngày 04/04/2023; Quyết định có hiệu lực kể từ ngày ký và thay thế QĐ 339/QĐ-ĐHKTL ngày 31/12/2019. Áp dụng chung cho người học, không theo khóa. URL Phòng Đào tạo ghi nhầm năm 2025 trong slug/tiêu đề."
   },
   {
     "doc_id": "uel-trogiang-142-2019",
     "title": "Quy định trợ giảng (QĐ 142)",
     "issuer": "Hiệu trưởng Trường Đại học Kinh tế - Luật",
     "decision_no": "142/QĐ-ĐHKTL",
-    "issued_date": null,
+    "issued_date": "2019-01-25",
     "effective_from": null,
     "effective_to": null,
     "status": "unknown",
@@ -1114,14 +1416,15 @@
     "source_url": "https://pdt.uel.edu.vn/van-ban-quy-che-828/qd-so-142-qd-dhktl-quy-dinh-tro-giang",
     "file": "raw/uel-trogiang-142-2019.pdf",
     "verified": false,
-    "notes": "File 9 trang, OCR lỗi. Số 142 từ tiêu đề trang; tên file ghi '250119' (có thể 25/01/2019, suy luận, chưa xác nhận vì dòng ngày OCR hỏng). Văn bản căn cứ QĐ 262/QĐ-ĐHQG ngày 20/04/2017 và QĐ 789/2017. Ít liên quan đến quy tắc học vụ của sinh viên."
+    "notes": "Đối chiếu bản quyết định 9 trang của Phòng Đào tạo. Đầu trang 1 ghi 142/QĐ-ĐHKTL ngày 25/01/2019.",
+    "ocr_transcript": true
   },
   {
     "doc_id": "uel-daotaomang-786",
     "title": "Quy định ứng dụng công nghệ thông tin trong quản lý, tổ chức đào tạo qua mạng tại UEL (QĐ 786)",
     "issuer": "Hiệu trưởng Trường Đại học Kinh tế - Luật",
     "decision_no": "786/QĐ-ĐHKTL",
-    "issued_date": null,
+    "issued_date": "2020-09-11",
     "effective_from": null,
     "effective_to": null,
     "status": "unknown",
@@ -1136,13 +1439,14 @@
     "source_url": "https://pdt.uel.edu.vn/van-ban-quy-che-828/qd786-qd-dhktl-quy-dinh-ung-dung-cong-nghe-thong-tin-trong-quan-ly-to-chuc-dao-tao-qua-mang-tai-uel",
     "file": "raw/uel-daotaomang-786.pdf",
     "verified": false,
-    "notes": "File 14 trang, scan không có lớp chữ. Số 786 từ tiêu đề trang, không có ngày. Liên quan học online/E-learning (Biểu đồ 2025-2026 có tuần 'Onl')."
+    "notes": "Đối chiếu đầu trang 1 của bản quyết định 14 trang. Số 786/QĐ-ĐHKTL, ngày 11/09/2020.",
+    "ocr_transcript": true
   },
   {
     "doc_id": "uel-tb-diemtongket-vb2vlvh",
     "title": "Thông báo cách thức tính điểm tổng kết môn học sau các lần thi kết thúc môn học của hình thức đào tạo VB2, VLVH",
     "issuer": "Trường Đại học Kinh tế - Luật (Phòng Đào tạo)",
-    "decision_no": null,
+    "decision_no": "88/TB-ĐHKTL-ĐT",
     "issued_date": null,
     "effective_from": null,
     "effective_to": null,
@@ -1159,14 +1463,15 @@
     "source_url": "https://pdt.uel.edu.vn/van-ban-quy-che-828/thong-bao-v-v-cach-thuc-tinh-diem-tong-ket-mon-hoc-sau-cac-lan-thi-ket-thuc-mon-hoc-cua-hinh-thuc-dao-tao-vb2-vlvh",
     "file": "raw/uel-diemtongket-vb2vlvh-tb.pdf",
     "verified": false,
-    "notes": "Thông báo 1 trang, OCR lỗi. Căn cứ QĐ 789/2017 và QĐ 1310/QĐ-ĐHKTL ngày 30/11/2017 (OCR đọc được) nên là văn bản khoảng 2017-2018. Chỉ áp dụng hình thức VB2/VLVH, không phải chính quy."
+    "notes": "Trang 1 ghi 88/TB-ĐHKTL-ĐT, tháng 08 năm 2018, phần ngày để trống. Phạm vi tính điểm tổng kết cho hình thức Văn bằng 2 và Vừa làm vừa học.",
+    "ocr_transcript": true
   },
   {
     "doc_id": "uel-hocbong-sdbs-1225-2023",
     "title": "Sửa đổi, bổ sung một số điều của Quy định xét cấp học bổng khuyến khích học tập (QĐ 1225, 2023)",
     "issuer": "Hiệu trưởng Trường Đại học Kinh tế - Luật",
     "decision_no": "1225/QĐ-ĐHKTL",
-    "issued_date": null,
+    "issued_date": "2023-08-18",
     "effective_from": null,
     "effective_to": null,
     "status": "superseded",
@@ -1180,7 +1485,8 @@
     "source_url": "https://ctsv.uel.edu.vn/quy-che-quy-dinh-4/quy-che-quy-dinh-7",
     "file": "raw/uel-hocbong-sdbs-1225-2023.pdf",
     "verified": false,
-    "notes": "File 3 trang, scan không có lớp chữ. Số 1225 và năm 2023 chỉ từ tên file 'QĐ 1225_2023_sua doi bo sung HB KKHT'; trang CTSV ghi 'hết hiệu lực', không có ngày. Phần học bổng bản 2024/2025 (3 mục đã có trong catalog) vẫn chưa tải được: link PDF trên trang CTSV trả HTML lỗi."
+    "notes": "Đầu trang 1 bản PDF ghi 1225/QĐ-ĐHKTL ngày 18/08/2023. Trang CTSV ghi đã hết hiệu lực. Các bản học bổng 2024/2025 trong catalog còn thiếu PDF.",
+    "ocr_transcript": true
   },
   {
     "doc_id": "uel-nckh-sv-2018",

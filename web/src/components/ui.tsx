@@ -1,22 +1,48 @@
 import type { ReactNode } from "react";
 import type { EffectiveBadge } from "@/lib/regulations";
 import { useT } from "@/i18n";
+import { formatModuleType } from "@/lib/moduleFormat";
+import { BackButton } from "./BackButton";
 
-export function PageHeader({ title, subtitle, actions }: { title: string; subtitle?: ReactNode; actions?: ReactNode }) {
+export function PageHeader({
+  title,
+  subtitle,
+  actions,
+  backHref,
+  backLabel,
+}: {
+  title: ReactNode;
+  subtitle?: ReactNode;
+  actions?: ReactNode;
+  backHref?: string;
+  backLabel?: string;
+}) {
   return (
-    <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-      <div>
-        <h1 className="page-title">{title}</h1>
-        {subtitle && <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{subtitle}</p>}
+    <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+      <div className="flex items-start gap-3 min-w-0">
+        {backHref && <BackButton href={backHref} label={backLabel} />}
+        <div className="min-w-0">
+          <h1 className="page-title">{title}</h1>
+          {subtitle && <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{subtitle}</p>}
+        </div>
       </div>
       {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
     </div>
   );
 }
 
-export function Loading({ text }: { text?: string }) {
+export function BouncingChick() {
+  return <span className="inline-block shrink-0 text-4xl leading-none motion-safe:animate-bounce" aria-hidden="true">🐣</span>;
+}
+
+export function Loading({ compact = false, className = "" }: { compact?: boolean; className?: string }) {
   const { t } = useT();
-  return <p className="py-8 text-center text-sm text-slate-500" role="status">{text ?? t("common.loading")}</p>;
+  return (
+    <span className={`${compact ? "inline-flex" : "flex min-h-40 justify-center py-8"} items-center gap-2 font-sans text-[1.75rem] leading-tight font-medium text-slate-600 dark:text-slate-400 ${className}`} role="status">
+      <BouncingChick />
+      <span>{t("common.loading")}</span>
+    </span>
+  );
 }
 
 export function Empty({ children }: { children: ReactNode }) {
@@ -44,7 +70,7 @@ export function EffectiveBadgeChip({ badge }: { badge: EffectiveBadge }) {
 export function EnBadge() {
   const { t } = useT();
   return (
-    <span className="chip bg-sky-100 font-bold text-sky-800 dark:bg-sky-900/40 dark:text-sky-200" title={t("badge.enTitle")}>
+    <span className="chip info-chip font-bold" title={t("badge.enTitle")}>
       {t("badge.en")}
     </span>
   );
@@ -61,5 +87,9 @@ export function CntnBadge() {
 }
 
 export function TypeChip({ type }: { type: string }) {
-  return <span className="chip bg-brand-50 text-brand-700 dark:bg-brand-900/40 dark:text-brand-200">{type}</span>;
+  const { lang } = useT();
+  return <span className="chip bg-brand-50 text-brand-700 dark:bg-brand-900/40 dark:text-brand-200">{formatModuleType(type, lang)}</span>;
 }
+
+export { BackButton } from "./BackButton";
+export { RequiredBadge, NoScheduleBadge, ModuleTitleLine } from "./ModuleTitleLine";

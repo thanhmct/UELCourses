@@ -6,9 +6,10 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.models import Module, Review, User
+from app.models import Review, User
 from app.routers.auth import require_user
 from app.services.moderation import GUIDELINES_VI, moderate
+from app.services.catalog_visibility import public_module
 
 router = APIRouter(tags=["reviews"])
 
@@ -57,9 +58,7 @@ def guidelines():
 
 @router.get("/modules/{code}/reviews", response_model=ReviewList, summary="Đánh giá đã duyệt của học phần (công khai)")
 def list_reviews(code: str, page: int = Query(1, ge=1), size: int = Query(20, ge=1, le=100), db: Session = Depends(get_db)):
-    mcode = code.strip()
-    if db.get(Module, mcode) is None:
-        raise HTTPException(404, f"Không tìm thấy học phần {mcode}.")
+    mcode = public_module(db, code).code
     base = select(Review).where(Review.module_code == mcode, Review.status == "approved")
     total = db.scalar(select(func.count()).select_from(base.subquery())) or 0
     rows = list(db.scalars(base.order_by(Review.created_at.desc()).offset((page - 1) * size).limit(size)))
@@ -80,9 +79,7 @@ def list_reviews(code: str, page: int = Query(1, ge=1), size: int = Query(20, ge
 
 @router.post("/modules/{code}/reviews", status_code=201, summary="Viết đánh giá học phần (cần đăng nhập)")
 def create_review(code: str, body: ReviewIn, user: User = Depends(require_user), db: Session = Depends(get_db)):
-    mcode = code.strip()
-    if db.get(Module, mcode) is None:
-        raise HTTPException(404, f"Không tìm thấy học phần {mcode}.")
+    mcode = public_module(db, code).code
     if db.scalar(select(Review.id).where(Review.module_code == mcode, Review.user_id == user.id).limit(1)):
         raise HTTPException(409, "Bạn đã đánh giá học phần này. Liên hệ quản trị viên nếu cần sửa.")
     res = moderate(body.content + " " + (body.professor or ""))

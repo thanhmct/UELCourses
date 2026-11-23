@@ -22,7 +22,7 @@ function fmt(totalMin: number): string {
 }
 
 function startMin(period: number): number {
-  const p = Math.min(Math.max(1, period), PERIOD_COUNT);
+  const p = Math.min(Math.max(1, Math.ceil(period)), PERIOD_COUNT);
   return toMin(PERIOD_START_TIMES[p - 1]);
 }
 
@@ -31,7 +31,9 @@ export function periodStartTime(period: number): string {
 }
 
 export function periodEndTime(period: number): string {
-  return fmt(startMin(period) + PERIOD_MINUTES);
+  // A half period uses the first 25 minutes of the following period.
+  const duration = period % 1 === 0.5 && period < PERIOD_COUNT ? PERIOD_MINUTES / 2 : PERIOD_MINUTES;
+  return fmt(startMin(period) + duration);
 }
 
 export function sessionOfPeriod(period: number): "Sáng" | "Chiều" | "Tối" {

@@ -26,7 +26,7 @@ def download(url, folder):
     dest = folder / (hashlib.sha256(url.encode()).hexdigest()[:24] + '.pdf')
     if dest.exists() and dest.read_bytes()[:5] == b'%PDF-':
         return {'status':'cached','file':str(dest)}
-    request = urllib.request.Request(url,headers={'User-Agent':'UELCourse-outline-downloader/1.0'})
+    request = urllib.request.Request(url,headers={'User-Agent':'UELPATH-outline-downloader/1.0'})
     temp = dest.with_suffix('.part')
     try:
         with urllib.request.urlopen(request,timeout=45) as response:

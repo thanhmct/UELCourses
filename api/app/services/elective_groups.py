@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from app.models import Module, Program, ProgramCatalogEntry, ProgramModule
 from app.schemas import ElectiveGroup, ProgramModuleOut
+from app.services.catalog_visibility import visible_program_modules
 from app.services.program_tracks import build_program_track_mapping, make_code_resolver, remap_tree
 
 # Regex trích xuất số tín chỉ tự chọn từ văn bản
@@ -73,7 +74,8 @@ def get_elective_groups(db: Session, program: Program, is_english: bool = False)
 
     # Thu thập các module tự chọn (required == False) theo từng block
     groups_dict: dict[str, list[ProgramModule]] = {}
-    for pm in program.modules:
+    visible_modules = visible_program_modules(program)
+    for pm in visible_modules:
         if not pm.required:
             block_name = pm.block or "Khối kiến thức tự chọn"
             groups_dict.setdefault(block_name, []).append(pm)
@@ -85,7 +87,7 @@ def get_elective_groups(db: Session, program: Program, is_english: bool = False)
     catalog_notes: dict[str, str] = {}
     for entry in db.scalars(
         select(ProgramCatalogEntry).where(
-            ProgramCatalogEntry.module_code.in_([pm.module_code for pm in program.modules])
+            ProgramCatalogEntry.module_code.in_([pm.module_code for pm in visible_modules])
         )
     ).all():
         if entry.module_code:

@@ -7,6 +7,10 @@ from datetime import date
 from pathlib import Path
 from typing import Any, Callable
 
+from sqlalchemy.exc import SQLAlchemyError
+
+from app.config import get_settings
+
 from . import answer as answer_mod
 from . import compare as compare_mod
 from .graph import build_graph
@@ -63,9 +67,10 @@ class RegulationService:
         data["warnings"] = validity_warnings(d, today, docs_by_id=self.index.docs_by_id)
         return data
 
-    def ask(self, question: str, cohort: str | None = None, mode: str | None = None, top_k: int = 3) -> dict[str, Any]:
+    def ask(self, question: str, cohort: str | None = None, mode: str | None = None, top_k: int = 3, *,
+            reserve: Callable[[], bool] | None = None) -> dict[str, Any]:
         today = self._refresh()
-        return answer_mod.ask(self.index, question, cohort, mode, today, self.provider, top_k)
+        return answer_mod.ask(self.index, question, cohort, mode, today, self.provider, top_k, reserve=reserve)
 
     def compare(self, topic: str, cohorts: list[str]) -> dict[str, Any]:
         today = self._refresh()
@@ -82,7 +87,7 @@ class RegulationService:
     def vault(self) -> Vault:
         if self._vault is None:
             self._refresh()
-            self._vault = build_vault(self.index.docs, self.index.articles)
+            self._vault = build_vault(self.index.docs, self.index.articles, self.index.chunks)
         return self._vault
 
     def markdown(self, doc_id: str) -> dict[str, Any] | None:
@@ -105,6 +110,7 @@ class RegulationService:
 
 
 _service: RegulationService | None = None
+_db_service: RegulationService | None = None
 _lock = threading.Lock()
 
 
@@ -138,15 +144,34 @@ def load_or_build() -> RagIndex:
 
 
 def get_service() -> RegulationService:
-    global _service
-    if _service is None:
-        with _lock:
-            if _service is None:
-                _service = RegulationService(load_or_build())
-    return _service
+    from app.db import engine
+
+    from .storage import load_db_index
+
+    global _db_service
+    if _service is not None:
+        return _service
+    with _lock:
+        if _service is not None:
+            return _service
+        if engine.dialect.name == "postgresql":
+            try:
+                index = load_db_index(engine, _db_service.index if _db_service else None)
+            except SQLAlchemyError:
+                index = None
+            if index is not None:
+                if _db_service is None or _db_service.index is not index:
+                    _db_service = RegulationService(index)
+                return _db_service
+        if get_settings().env not in {"development", "test"}:
+            raise RagUnavailable("Chưa có dữ liệu quy chế trong cơ sở dữ liệu.")
+        if _db_service is None or _db_service.index.candidates is not None:
+            _db_service = RegulationService(load_or_build())
+        return _db_service
 
 
 def set_service(service: RegulationService | None) -> None:
     """Override (tests) or reset (None -> reload lazily on next request)."""
-    global _service
+    global _service, _db_service
     _service = service
+    _db_service = None

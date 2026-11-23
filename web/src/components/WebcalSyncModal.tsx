@@ -20,7 +20,7 @@ export function WebcalSyncModal({ open, onClose, sharedData, semName }: Props) {
     const query = encodeTimetable(sharedData);
     const host = window.location.host;
     const protocol = window.location.protocol;
-    const path = `/api/webcal?${query}&name=${encodeURIComponent(`UELCourses ${semName}`)}`;
+    const path = `/api/webcal?${query}&name=${encodeURIComponent(`UELPATH ${semName}`)}`;
 
     const https = `${protocol}//${host}${path}`;
     const webcal = `webcal://${host}${path}`;

@@ -1,4 +1,4 @@
-# Thiết kế cơ sở dữ liệu UELCourses
+# Thiết kế cơ sở dữ liệu UELPATH
 
 > Trạng thái: **PostgreSQL 17 (Docker) đã tạo bằng Alembic migration `0001` và đã nạp dữ liệu thật** (kiểm chứng 2026-11-21). Code: `api/app/models.py`, `api/migrations/`.
 > Nguồn dữ liệu và thư mục `data/`: xem `data/README.md`. Quyết định đã chốt: `docs/DECISIONS.md` (D4).

@@ -3,39 +3,49 @@ import Link from "next/link";
 import { Search } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, type ModuleFilter } from "@/lib/api";
-import { useMyProgramId } from "@/lib/myProgram";
+import { useProgramProfile } from "@/lib/myProgram";
 import { useApi } from "@/lib/useApi";
+import { isConnectionError } from "@/lib/dataSource";
 import { useSemesters } from "@/lib/semesters";
 import { useDebounced } from "@/lib/useDebounced";
-import { EnBadge, ErrorBox } from "@/components/ui";
+import { EnBadge, ErrorBox, Loading, RequiredBadge } from "@/components/ui";
 import { ModuleActions } from "@/components/ModuleActions";
+import { EquivalentsHover } from "@/components/EquivalentsHover";
 import { CheckFacet, FacetFilter } from "@/components/FacetFilter";
+import { SemesterFilterSquares } from "@/components/SemesterPicker";
 import { openClassesByTerm, parseSemesterId } from "@/lib/modules";
-import type { ModuleSummary } from "@/lib/types";
+import type { FacetCount, ModuleFacets, ModuleSummary } from "@/lib/types";
 import { useT } from "@/i18n";
-import { departmentName, facultyName, moduleDescription, moduleName } from "@/i18n/names";
+import { creditsLine, departmentName, facultyName, moduleDescription, moduleName, semesterShort } from "@/i18n/names";
+import { finalAssessmentKind, getCachedFinalAssessmentKind, setCachedFinalAssessmentKind } from "@/lib/finalAssessment";
+import { formatModuleType } from "@/lib/moduleFormat";
+import { ProgramFilterBar } from "@/components/ProgramFilterBar";
+import { hasVerifiedUndergraduateTrack } from "@/lib/programLookup";
+import { track } from "@/lib/analytics";
+
 
 const PAGE = 30;
 const TERMS = [1, 2, 3];
 
 /** HK1 / HK2 / HK3 tabs for the academic year; a term with open classes is filled and shows the class count. */
 function TermTabs({ m, year }: { m: ModuleSummary; year?: string }) {
-  const { t } = useT();
+  const { t, lang } = useT();
   const open = openClassesByTerm(m, year);
   return (
     <div className="grid grid-cols-3 gap-px overflow-hidden rounded-md border border-slate-200 bg-slate-200 dark:border-slate-700 dark:bg-slate-700" role="group" aria-label={t("mod.termsTitle")}>
       {TERMS.map((term) => {
         const n = open.get(term);
+        const countLabel = n === 1 ? t("mod.termClassCountOne") : t("mod.termClassCount", { n: n ?? 0 });
         return (
           <span
             key={term}
-            className={`flex flex-col items-center px-2 py-1.5 text-center text-xs font-semibold ${
+            className={`flex min-h-12 flex-col items-center justify-center whitespace-nowrap px-1.5 py-1.5 text-center text-xs font-semibold ${
               n ? "bg-brand-600 text-white" : "bg-white text-slate-400 dark:bg-slate-900 dark:text-slate-500"
             }`}
-            title={n ? t("mod.termClassCount", { n }) : t("mod.termNoClass")}
+            title={n ? countLabel : t("mod.termNoClass")}
           >
-            HK{term}
-            {n ? <span className="font-normal opacity-90">{t("mod.termClassCount", { n })}</span> : null}
+            {lang === "en" ? semesterShort({ term }, lang) : `HK${term}`}
+            {n ? <span className="font-normal opacity-90">{countLabel}</span> : null}
           </span>
         );
       })}
@@ -47,49 +57,267 @@ export default function ModulesPage() {
   const { t, lang } = useT();
   const [q, setQ] = useState("");
   const [language, setLanguage] = useState(""); // "" | "vi" | "en"
-  const [credits, setCredits] = useState("");
-  const [faculty, setFaculty] = useState(""); // Khoa / Bộ môn (gộp một bộ lọc)
-  const [type, setType] = useState("");
-  // CTĐT được chọn ở trang /start (?program=K23406 = khóa 23, ngành 406)
-  // Mặc định lọc theo CTĐT của người dùng (đặt trong Cài đặt); bấm "Bỏ lọc CTĐT" để xem toàn bộ.
-  const myProgramId = useMyProgramId();
-  const [programId, setProgramId] = useState("");
+  const [credits, setCredits] = useState<string[]>([]);
+  const [faculties, setFaculties] = useState<string[]>([]);
+  const [departments, setDepartments] = useState<string[]>([]);
+  const [types, setTypes] = useState<string[]>([]);
+  const [facultySearch, setFacultySearch] = useState("");
+  const [departmentSearch, setDepartmentSearch] = useState("");
+
+  // CTĐT được chọn ở trang /start hoặc từ hồ sơ sinh viên (ngành chính + ngành 2 nếu có)
+  // Lọc theo union các CTĐT của sinh viên; bấm "Bỏ lọc CTĐT" để xem toàn bộ trường.
+  const profile = useProgramProfile();
+  const myProgramIds = profile.programIds;
+  const [customProgram, setCustomProgram] = useState<string | null>(null);
+  const [disableProgramFilter, setDisableProgramFilter] = useState(false);
+
   useEffect(() => {
     const p = new URLSearchParams(window.location.search).get("program");
-    setProgramId(p ? p.trim().toUpperCase() : myProgramId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (p) setCustomProgram(p.trim().toUpperCase());
   }, []);
-  const programs = useApi(() => api.programs(), []);
-  const program = programs.data?.find((p) => p.program_id === programId);
-  const [semester, setSemester] = useState("");
-  const [outline, setOutline] = useState(false);
-  const dq = useDebounced(q, 300);
 
-  const sems = useSemesters();
-  const year = sems.data?.find((s) => s.is_current)?.year;
-  const yearStr = year !== undefined ? String(year).replace("–", "-") : undefined;
-  const facets = useApi(() => api.moduleFacets(), []);
+  // Khi hồ sơ CTĐT của sinh viên thay đổi (nhập/đổi/xóa ngành ở hộp thoại hay Cài đặt):
+  // Xóa override từ URL (?program=), kích hoạt lại lọc CTĐT, đặt lại trang 1 để tự lọc lại ngay.
+  const prevCodesRef = useRef({
+    primary: profile.primaryCode,
+    secondary: profile.secondaryCode,
+  });
+
+  useEffect(() => {
+    if (
+      prevCodesRef.current.primary !== profile.primaryCode ||
+      prevCodesRef.current.secondary !== profile.secondaryCode
+    ) {
+      prevCodesRef.current = {
+        primary: profile.primaryCode,
+        secondary: profile.secondaryCode,
+      };
+      setCustomProgram(null);
+      setDisableProgramFilter(false);
+      setPage(1);
+      if (typeof window !== "undefined" && window.location.search.includes("program=")) {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("program");
+        window.history.replaceState(null, "", url.pathname + (url.search ? url.search : ""));
+      }
+    }
+  }, [profile.primaryCode, profile.secondaryCode]);
+
+  const effectivePrimaryProgId = customProgram || profile.primaryProgramId;
+  const primaryProgramReq = useApi(
+    () => (effectivePrimaryProgId ? api.program(effectivePrimaryProgId) : Promise.resolve({ data: null, mock: false })),
+    [effectivePrimaryProgId],
+  );
+  const basePrimaryReq = useApi(
+    () =>
+      !customProgram && profile.basePrimaryProgramId && profile.basePrimaryProgramId !== profile.primaryProgramId
+        ? api.program(profile.basePrimaryProgramId)
+        : Promise.resolve({ data: null, mock: false }),
+    [customProgram, profile.basePrimaryProgramId, profile.primaryProgramId],
+  );
+  const secondaryProgramReq = useApi(
+    () => (!customProgram && profile.secondaryProgramId ? api.program(profile.secondaryProgramId) : Promise.resolve({ data: null, mock: false })),
+    [customProgram, profile.secondaryProgramId],
+  );
+  const baseSecondaryReq = useApi(
+    () =>
+      !customProgram && profile.baseSecondaryProgramId && profile.baseSecondaryProgramId !== profile.secondaryProgramId
+        ? api.program(profile.baseSecondaryProgramId)
+        : Promise.resolve({ data: null, mock: false }),
+    [customProgram, profile.baseSecondaryProgramId, profile.secondaryProgramId],
+  );
+
+  const primaryProgram = primaryProgramReq.data ?? basePrimaryReq.data;
+  const secondaryProgram = secondaryProgramReq.data ?? baseSecondaryReq.data;
+
+  const graduateDegree = !customProgram && !disableProgramFilter
+    ? [profile.primaryParsed, profile.secondaryParsed].find((program) => program && program.degree !== "dai_hoc")?.degree
+    : undefined;
+  const missingPrimary = !!graduateDegree && !!profile.primaryParsed && profile.primaryParsed.degree !== "dai_hoc"
+    && (primaryProgram?.program.program_id !== profile.primaryProgramId || !primaryProgram.blocks.some((block) => block.modules.length > 0));
+  const missingSecondary = !!graduateDegree && !!profile.secondaryParsed && profile.secondaryParsed.degree !== "dai_hoc"
+    && (secondaryProgram?.program.program_id !== profile.secondaryProgramId || !secondaryProgram.blocks.some((block) => block.modules.length > 0));
+  const missingVerifiedPrimary = !disableProgramFilter && !customProgram && !primaryProgramReq.loading
+    && !primaryProgramReq.data && hasVerifiedUndergraduateTrack(profile.primaryProgramId);
+  const missingVerifiedSecondary = !disableProgramFilter && !customProgram && !secondaryProgramReq.loading
+    && !secondaryProgramReq.data && hasVerifiedUndergraduateTrack(profile.secondaryProgramId);
+  const codeSearch = missingPrimary || missingSecondary || missingVerifiedPrimary || missingVerifiedSecondary;
+  const dq = useDebounced(q, 300);
+  const activeProgramIds = useMemo(() => {
+    if (disableProgramFilter || (codeSearch && dq)) return [];
+    if (customProgram) return [customProgram];
+    return myProgramIds.filter((id) =>
+      (!(missingPrimary || missingVerifiedPrimary) || id !== profile.primaryProgramId)
+      && (!(missingSecondary || missingVerifiedSecondary) || id !== profile.secondaryProgramId));
+  }, [disableProgramFilter, codeSearch, dq, customProgram, myProgramIds, missingPrimary, missingSecondary, missingVerifiedPrimary, missingVerifiedSecondary,
+    profile.primaryProgramId, profile.secondaryProgramId]);
+  const moduleDegree = graduateDegree ? (!activeProgramIds.length && !dq ? graduateDegree : "all") : undefined;
+
+  const primaryElectivesReq = useApi(
+    () => (effectivePrimaryProgId ? api.electiveGroups(effectivePrimaryProgId) : Promise.resolve({ data: [], mock: false })),
+    [effectivePrimaryProgId],
+  );
+  const secondaryElectivesReq = useApi(
+    () => (!customProgram && profile.secondaryProgramId ? api.electiveGroups(profile.secondaryProgramId) : Promise.resolve({ data: [], mock: false })),
+    [customProgram, profile.secondaryProgramId],
+  );
+
+  const moduleProgramStatus = useMemo(() => {
+    const map = new Map<string, { required: boolean; electiveRequirement?: string }>();
+    const p1 = primaryProgram;
+    const p2 = secondaryProgram;
+    const allElectiveGroups = [...(primaryElectivesReq.data ?? []), ...(secondaryElectivesReq.data ?? [])];
+
+    const addProg = (prog: typeof p1) => {
+      if (!prog) return;
+      for (const block of prog.blocks) {
+        for (const pm of block.modules) {
+          if (!map.has(pm.code)) {
+            const grp = allElectiveGroups.find((g) => g.modules.some((x) => x.code === pm.code));
+            const reqText =
+              grp && grp.required_credits > 0
+                ? t("mod.electiveReq", { n: grp.required_credits, block: grp.block })
+                : undefined;
+            map.set(pm.code, {
+              required: pm.required,
+              electiveRequirement: reqText,
+            });
+          }
+        }
+      }
+    };
+    addProg(p1);
+    addProg(p2);
+    return map;
+  }, [primaryProgram, secondaryProgram, primaryElectivesReq.data, secondaryElectivesReq.data, t]);
+
+  const [semesters, setSemesters] = useState<string[]>([]);
+  const [outline, setOutline] = useState(false);
+
+  const { academicYear, globalCurrent, currentYearSecondTerm } = useSemesters();
+  const yearStr = academicYear ? academicYear.replace("–", "-") : undefined;
+  const currentSlot = globalCurrent && parseSemesterId(globalCurrent.id);
+  const currentSlotOrder = currentSlot ? Number(currentSlot.year.slice(0, 4)) * 3 + currentSlot.term : null;
+  const isCatalogSemester = useCallback((id: string) => {
+    const slot = parseSemesterId(id);
+    return currentSlotOrder === null || !slot || Number(slot.year.slice(0, 4)) * 3 + slot.term >= currentSlotOrder;
+  }, [currentSlotOrder]);
+  const visibleSemesters = useMemo(() => semesters.filter(isCatalogSemester), [semesters, isCatalogSemester]);
+  const semester = visibleSemesters[0] ?? "";
+
+  const [facetsData, setFacetsData] = useState<ModuleFacets | null>(null);
+  const [facetsLoading, setFacetsLoading] = useState(false);
+  const facetsReqId = useRef(0);
 
   const [items, setItems] = useState<ModuleSummary[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ offline: true } | { message: string } | null>(null);
   const reqId = useRef(0);
+
+  const facetFilterParams: ModuleFilter = useMemo(
+    () => ({
+      q: dq || undefined,
+      language: language || undefined,
+      credits_in: credits.length > 0 ? credits : undefined,
+      faculty_in: faculties.length > 0 ? faculties : undefined,
+      department_in: departments.length > 0 ? departments : undefined,
+      type_in: types.length > 0 ? types : undefined,
+      semester: semester || undefined,
+      degree: moduleDegree,
+      program_ids: activeProgramIds.length > 0 ? activeProgramIds : undefined,
+      has_outline: outline ? "true" : undefined,
+    }),
+    [dq, language, credits, faculties, departments, types, semester, moduleDegree, activeProgramIds, outline],
+  );
+  const facetParamsKey = JSON.stringify(facetFilterParams);
+
+  useEffect(() => {
+    let alive = true;
+    const id = ++facetsReqId.current;
+    setFacetsLoading(true);
+    api
+      .moduleFacets(facetFilterParams)
+      .then((res) => {
+        if (!alive || id !== facetsReqId.current) return;
+        const data = res.data;
+        setFacetsData(data);
+        if (data) {
+          // Requirement 7: tự bỏ chọn các lựa chọn đang chọn mà không còn hợp lệ (đếm 0)
+          if (credits.length > 0) {
+            const valid = new Set(data.credits.filter((c) => c.count > 0).map((c) => c.value));
+            setCredits((prev) => {
+              const next = prev.filter((c) => valid.has(c));
+              return next.length !== prev.length ? next : prev;
+            });
+          }
+          if (faculties.length > 0) {
+            const valid = new Set(data.faculty.filter((f) => f.count > 0).map((f) => f.value));
+            setFaculties((prev) => {
+              const next = prev.filter((f) => valid.has(f));
+              return next.length !== prev.length ? next : prev;
+            });
+          }
+          if (departments.length > 0) {
+            const valid = new Set(data.department.filter((d) => d.count > 0).map((d) => d.value));
+            setDepartments((prev) => {
+              const next = prev.filter((d) => valid.has(d));
+              return next.length !== prev.length ? next : prev;
+            });
+          }
+          if (types.length > 0) {
+            const valid = new Set(data.type.filter((t) => t.count > 0).map((t) => t.value));
+            setTypes((prev) => {
+              const next = prev.filter((t) => valid.has(t));
+              return next.length !== prev.length ? next : prev;
+            });
+          }
+          if (language) {
+            const valid = new Set(data.language.filter((l) => l.count > 0).map((l) => l.value));
+            if (!valid.has(language)) setLanguage("");
+          }
+          if (semesters.length > 0) {
+            const valid = new Set(data.semester.filter((s) => s.count > 0).map((s) => s.value));
+            setSemesters((prev) => {
+              const next = prev.filter((s) => valid.has(s));
+              return next.length !== prev.length ? next : prev;
+            });
+          }
+          if (outline) {
+            const hasOutlineTrue = (data.has_outline || []).some((o) => o.value === "true" && o.count > 0);
+            if (!hasOutlineTrue) setOutline(false);
+          }
+        }
+      })
+      .catch(() => {
+        // Giữ dữ liệu cũ mờ đi trong lúc lỗi hoặc timeout
+      })
+      .finally(() => {
+        if (alive && id === facetsReqId.current) {
+          setFacetsLoading(false);
+        }
+      });
+    return () => {
+      alive = false;
+    };
+  }, [facetParamsKey]);
 
   const filter: ModuleFilter = useMemo(
     () => ({
       q: dq,
       language: language || undefined,
-      credits: credits || undefined,
-      faculty: faculty || undefined,
-      type: type || undefined,
+      credits_in: credits.length > 0 ? credits : undefined,
+      faculty_in: faculties.length > 0 ? faculties : undefined,
+      department_in: departments.length > 0 ? departments : undefined,
+      type_in: types.length > 0 ? types : undefined,
       semester: semester || undefined,
-      program_id: programId || undefined,
+      degree: moduleDegree,
+      program_ids: activeProgramIds.length > 0 ? activeProgramIds : undefined,
       has_outline: outline ? "true" : undefined,
       size: PAGE,
     }),
-    [dq, language, credits, faculty, type, semester, programId, outline],
+    [dq, language, credits, faculties, departments, types, semester, moduleDegree, activeProgramIds, outline],
   );
   const filterKey = JSON.stringify(filter);
 
@@ -97,6 +325,7 @@ export default function ModulesPage() {
     async (p: number) => {
       const id = ++reqId.current;
       setLoading(true);
+      setError(null);
       try {
         const r = await api.modules({ ...filter, page: p });
         if (id !== reqId.current) return;
@@ -104,8 +333,20 @@ export default function ModulesPage() {
         setTotal(r.data.total);
         setPage(p);
         setError(null);
+        if (p === 1) {
+          if (dq) {
+            if (r.data.total === 0) {
+              track("search_no_result", { query: dq });
+            } else {
+              track("search", { query: dq });
+            }
+          }
+          if (credits.length || faculties.length || departments.length || types.length || semester || outline) {
+            track("filter_use", { filters: filter });
+          }
+        }
       } catch (e) {
-        if (id === reqId.current) setError(e instanceof Error ? e.message : String(e));
+        if (id === reqId.current) setError(isConnectionError(e) ? { offline: true } : { message: e instanceof Error ? e.message : String(e) });
       } finally {
         if (id === reqId.current) setLoading(false);
       }
@@ -117,6 +358,43 @@ export default function ModulesPage() {
     load(1);
   }, [load]);
 
+  const [finalAssessmentMap, setFinalAssessmentMap] = useState<Record<string, string | null>>({});
+
+  useEffect(() => {
+    if (!items.length) return;
+    let alive = true;
+    items.forEach(async (m) => {
+      if (m.final_assessment) return;
+      const cached = getCachedFinalAssessmentKind(m.code);
+      if (cached !== undefined) {
+        if (cached !== null) {
+          setFinalAssessmentMap((prev) => (prev[m.code] === cached ? prev : { ...prev, [m.code]: cached }));
+        }
+        return;
+      }
+      if (!m.has_outline) {
+        setCachedFinalAssessmentKind(m.code, null);
+        return;
+      }
+      try {
+        const outline = await api.outline(m.code);
+        if (!alive) return;
+        const kind = finalAssessmentKind(outline?.assessments);
+        setCachedFinalAssessmentKind(m.code, kind);
+        if (kind) {
+          setFinalAssessmentMap((prev) => ({ ...prev, [m.code]: kind }));
+        }
+      } catch {
+        if (!alive) return;
+        setCachedFinalAssessmentKind(m.code, null);
+      }
+    });
+    return () => {
+      alive = false;
+    };
+  }, [items]);
+
+
   const hasMore = items.length < total;
   const sentinel = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -127,33 +405,70 @@ export default function ModulesPage() {
     return () => io.disconnect();
   }, [hasMore, loading, page, load]);
 
+  const activeCount =
+    (language ? 1 : 0) +
+    credits.length +
+    faculties.length +
+    departments.length +
+    types.length +
+    visibleSemesters.length +
+    (outline ? 1 : 0);
+
   const reset = () => {
     setLanguage("");
-    setCredits("");
-    setFaculty("");
-    setType("");
-    setSemester("");
+    setCredits([]);
+    setFaculties([]);
+    setDepartments([]);
+    setTypes([]);
+    setSemesters([]);
     setOutline(false);
+    setFacultySearch("");
+    setDepartmentSearch("");
   };
 
-  const f = facets.data;
-  // Khoa + Bộ môn gộp thành một danh sách; cùng tên thì cộng số lượng.
-  const orgItems = useMemo(() => {
+  const countNote = useMemo(() => {
+    if (activeProgramIds.length === 0) {
+      return t("mod.filterCountsGlobal");
+    }
+    if (activeProgramIds.length === 1) {
+      return t("mod.filterCountsProgram");
+    }
+    return t("mod.filterCountsPrograms");
+  }, [activeProgramIds.length, t]);
+
+  const facultyItems = useMemo(() => {
+    const raw = facetsData?.faculty ?? [];
     const counts = new Map<string, number>();
-    for (const x of [...(f?.faculty ?? []), ...(f?.department ?? [])]) counts.set(x.value, (counts.get(x.value) ?? 0) + x.count);
-    return [...counts].map(([value, count]) => ({ value, count })).sort((a, b) => b.count - a.count);
-  }, [f]);
-  const semLabel = useCallback(
-    (id: string) => {
-      const p = parseSemesterId(id);
-      return p ? t("semester.short", { term: p.term, year: p.year }) : id;
-    },
-    [t],
-  );
+    for (const item of raw) {
+      if (!item.value || !item.value.trim()) continue;
+      const val = item.value.trim();
+      const isEnd =
+        /^(trường đại học kinh tế - luật|chưa rõ|khác)/i.test(val);
+      const canon = isEnd
+        ? "Khác / Chưa rõ khoa"
+        : val.startsWith("Khoa ") || val.startsWith("Phòng ")
+        ? val
+        : `Khoa ${val}`;
+      counts.set(canon, (counts.get(canon) ?? 0) + item.count);
+    }
+    return [...counts.entries()]
+      .map(([value, count]) => ({ value, count }))
+      .sort((a, b) => {
+        const isEndA = /^(trường đại học|chưa rõ|khác)/i.test(a.value) ? 1 : 0;
+        const isEndB = /^(trường đại học|chưa rõ|khác)/i.test(b.value) ? 1 : 0;
+        if (isEndA !== isEndB) return isEndA - isEndB;
+        return b.count - a.count || a.value.localeCompare(b.value);
+      });
+  }, [facetsData?.faculty]);
+
+  const departmentItems = useMemo(() => {
+    return (facetsData?.department ?? []).filter((i: FacetCount) => i.value && i.value.trim() && i.count > 0);
+  }, [facetsData?.department]);
+
   const creditLabel = useCallback((v: string) => t("common.credits", { n: v }), [t]);
   const langLabel = useCallback((v: string) => (v === "en" ? t("mod.filterLangEn") : t("mod.filterLangVi")), [t]);
-  // Bộ lọc "Khoa / Bộ môn" trộn cả hai loại giá trị: departmentName tra bảng bộ môn rồi bảng khoa/đơn vị.
-  const facultyLabel = useCallback((v: string) => departmentName(v, lang), [lang]);
+  const facultyLabel = useCallback((v: string) => facultyName(v, lang), [lang]);
+  const departmentLabel = useCallback((v: string) => departmentName(v, lang), [lang]);
   const count = (list: { value: string; count: number }[] | undefined, value: string) => list?.find((x) => x.value === value)?.count;
 
   return (
@@ -171,65 +486,95 @@ export default function ModulesPage() {
           autoFocus
         />
       </div>
-      {programId ? (
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-brand-200 bg-brand-50 px-3 py-2 text-sm dark:border-brand-800 dark:bg-brand-900/30">
-          <span>
-            Đang lọc theo CTĐT <strong className="font-mono">{programId}</strong>
-            {program?.name ? ` · ${program.name}` : ""}
-          </span>
-          <span className="flex gap-3">
-            <Link href="/start" className="text-brand-700 hover:underline dark:text-brand-300">Đổi</Link>
-            <button type="button" className="text-brand-700 hover:underline dark:text-brand-300" onClick={() => setProgramId("")}>Bỏ lọc CTĐT</button>
-          </span>
-        </div>
-      ) : (
-        <Link href="/start" className="text-sm text-brand-700 hover:underline dark:text-brand-300">Chọn khóa và ngành để lọc theo chương trình →</Link>
+      <ProgramFilterBar
+        showCard={false}
+        customProgram={customProgram}
+        onClearFilter={() => setDisableProgramFilter((v) => !v)}
+        isFilterActive={activeProgramIds.length > 0 || !!graduateDegree}
+        primaryProgram={primaryProgram}
+        secondaryProgram={secondaryProgram}
+      />
+      {codeSearch && !primaryProgramReq.loading && !secondaryProgramReq.loading && (
+        <p className="text-sm text-slate-600 dark:text-slate-400">{t("profile.lookupByModuleHelp")}</p>
       )}
-      <p className="border-b border-slate-200 pb-2 text-right text-sm text-slate-500 dark:border-slate-800" role="status" aria-live="polite">
-        {loading && items.length === 0 ? t("mod.foundLoading") : t("mod.found", { n: total.toLocaleString(localeTag(lang)) })}
-      </p>
-      {error && <ErrorBox>{t("common.error", { message: error })}</ErrorBox>}
+      {error && <ErrorBox>{"offline" in error ? t("api.connectionError") : t("common.error", { message: error.message })}</ErrorBox>}
 
       <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_260px]">
-        <div className="min-w-0">
-          {!loading && items.length === 0 ? (
+        <div className="min-w-0 min-h-[500px]">
+          {loading && items.length === 0 ? <Loading /> : !error && items.length === 0 ? (
             <p className="rounded-md border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500 dark:border-slate-700">{t("mod.empty")}</p>
           ) : (
             <ul>
               {items.map((m) => {
                 const descInfo = moduleDescription(m, lang); // VI → description, EN → description_en (thiếu thì dùng bản còn lại)
-                const desc = excerpt(descInfo.text);
+                const desc = descInfo.text;
                 return (
                   <li key={m.code} className="flex flex-col gap-4 border-b border-slate-200 py-5 sm:flex-row sm:justify-between sm:gap-8 dark:border-slate-800">
                     <div className="min-w-0 flex-1 space-y-2">
-                      <Link href={`/modules/${encodeURIComponent(m.code)}`} className="text-lg font-semibold leading-snug text-brand-600 hover:underline dark:text-brand-300">
-                        <span className="font-mono">{m.code}</span> {moduleName(m, lang)}
-                      </Link>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Link href={`/modules/${encodeURIComponent(m.code)}`} className="text-lg font-semibold leading-snug text-brand-600 hover:underline dark:text-brand-300">
+                          <span className="font-mono">{m.code}</span> {moduleName(m, lang)}
+                        </Link>
+                        {(() => {
+                          const progStatus = moduleProgramStatus.get(m.code);
+                          if (!progStatus) return null;
+                          return <RequiredBadge required={progStatus.required} lang={lang} />;
+                        })()}
+                      </div>
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-500">
-                        <span>{facultyName(m.faculty, lang) || t("common.unknownFaculty")} • {t("common.credits", { n: m.credits })} • {m.type}</span>
+                        <span>
+                          {creditsLine({
+                            credits: m.credits,
+                            finalAssessment: m.final_assessment || finalAssessmentMap[m.code] || getCachedFinalAssessmentKind(m.code),
+                            faculty: facultyName(m, lang) || t("common.unknownFaculty"),
+                            type: m.type,
+                          }, lang)}
+                        </span>
+                        {(() => {
+                          const progStatus = moduleProgramStatus.get(m.code);
+                          if (!progStatus?.electiveRequirement) return null;
+                          return (
+                            <span className="text-xs text-amber-700 dark:text-amber-300">
+                              ({progStatus.electiveRequirement})
+                            </span>
+                          );
+                        })()}
                         {(m.language_track === "en" || (!m.language_track && m.is_english)) && <EnBadge />}
-                        {m.outline_url ? (
-                          <a href={m.outline_url} target="_blank" rel="noopener noreferrer" className="chip bg-emerald-100 text-emerald-800 hover:underline dark:bg-emerald-900/40 dark:text-emerald-200">
-                            {t("badge.outline")} (PDF) ↗
-                          </a>
-                        ) : (
-                          m.has_outline && <span className="chip bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">{t("badge.outline")}</span>
-                        )}
-                        {m.has_equivalents && <span className="chip bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-200">{t("mod.card.hasEquiv")}</span>}
+                        {(() => {
+                          const targetOutlineUrl = lang === "en" ? (m.outline_url_en || m.outline_url) : (m.outline_url || m.outline_url_en);
+                          if (targetOutlineUrl) {
+                            return (
+                              <a
+                                href={targetOutlineUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="chip gap-1 bg-emerald-100 text-emerald-800 hover:underline dark:bg-emerald-900/40 dark:text-emerald-200"
+                                aria-label={t("badge.outlinePdf")}
+                                title={t("badge.outlinePdf")}
+                              >
+                                {t("badge.outlineLink")}
+                                <span aria-hidden="true">↗</span>
+                              </a>
+                            );
+                          }
+                          return m.has_outline ? (
+                            <span className="chip bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">{t("badge.outline")}</span>
+                          ) : null;
+                        })()}
+                        {m.has_equivalents && <EquivalentsHover code={m.code} />}
                       </div>
                       {desc ? (
-                        <p lang={descInfo.fallback ? (lang === "en" ? "vi" : "en") : lang} className="line-clamp-3 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+                        <p lang={descInfo.fallback ? (lang === "en" ? "vi" : "en") : lang} className="whitespace-pre-line wrap-anywhere text-sm leading-relaxed text-slate-600 dark:text-slate-300">
                           {desc}
                           {descInfo.fallback && <span className="ml-1 text-xs italic text-slate-400" title={t("det.descFallback")}>({lang === "en" ? "VI" : "EN"})</span>}
                         </p>
                       ) : (
                         <p className="text-xs italic text-slate-400">{t("det.noDescription")}</p>
                       )}
-                      <ModuleActions module={m} compact />
+                      <ModuleActions module={m} timetableSemester={currentYearSecondTerm} compact />
                     </div>
-                    <div className="w-full shrink-0 space-y-1.5 sm:w-52">
+                    <div className="w-full shrink-0 space-y-1.5 sm:w-60">
                       <TermTabs m={m} year={yearStr} />
-                      <p className="text-xs text-slate-500">{yearStr ? t("mod.card.yearOf", { year: yearStr }) : ""}</p>
                     </div>
                   </li>
                 );
@@ -237,54 +582,136 @@ export default function ModulesPage() {
             </ul>
           )}
           <div ref={sentinel} className="py-6 text-center text-sm text-slate-500">
-            {loading && items.length > 0 && t("common.loadingMore")}
+            {loading && items.length > 0 && <Loading compact />}
             {!loading && hasMore && (
               <button className="btn-outline" onClick={() => load(page + 1)}>{t("common.loadMore", { loaded: items.length, total })}</button>
             )}
           </div>
         </div>
 
-        <aside className="space-y-6 lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto lg:pr-1" aria-label={t("mod.filterTitle")}>
-          <div className="flex items-baseline justify-between">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{t("mod.filterTitle")}</h2>
-            <button className="text-sm font-medium text-brand-600 hover:underline dark:text-brand-300" onClick={reset}>{t("common.clear")}</button>
+        <aside
+          className={`space-y-6 lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto lg:pr-1 ${
+            facetsLoading ? "opacity-60 transition-opacity" : "transition-opacity"
+          }`}
+          aria-label={t("mod.filterTitle")}
+        >
+          <div className="space-y-2">
+            <div className="flex items-baseline justify-between">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{t("mod.filterTitle")}</h2>
+              {activeCount > 0 && (
+                <button
+                  type="button"
+                  className="text-sm font-medium text-brand-600 hover:underline dark:text-brand-300"
+                  onClick={reset}
+                >
+                  {t("common.clear")}
+                </button>
+              )}
+            </div>
+            <button
+              type="button"
+              disabled={activeCount === 0 && !facultySearch && !departmentSearch}
+              onClick={reset}
+              className="w-full rounded border border-slate-300 bg-white py-1.5 text-center text-sm font-medium transition hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-slate-300 disabled:hover:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-700 dark:disabled:hover:bg-slate-800"
+            >
+              {activeCount > 0 ? t("mod.filterResetCount", { n: activeCount }) : t("mod.filterReset")}
+            </button>
           </div>
-          <FacetFilter title={t("mod.filterLang")} items={f?.language ?? []} value={language} onChange={setLanguage} labelOf={langLabel} sort="none" total={f?.total} />
-          <FacetFilter title={t("mod.filterCredits")} items={f?.credits ?? []} value={credits} onChange={setCredits} labelOf={creditLabel} sort="none" total={f?.total} />
+
           <FacetFilter
-            title="Khoa / Bộ môn"
-            items={orgItems}
-            value={faculty}
-            onChange={setFaculty}
+            title={t("mod.filterLang")}
+            items={facetsData?.language ?? []}
+            value={language}
+            onChange={setLanguage}
+            labelOf={langLabel}
+            sort="none"
+            total={facetsData?.total}
+            countNote={countNote}
+          />
+          <FacetFilter
+            title={t("mod.filterCredits")}
+            items={facetsData?.credits ?? []}
+            multiple
+            values={credits}
+            onValuesChange={setCredits}
+            labelOf={creditLabel}
+            sort="none"
+            total={facetsData?.total}
+            countNote={countNote}
+          />
+          <FacetFilter
+            title={t("mod.filterFaculty")}
+            items={facultyItems}
+            multiple
+            values={faculties}
+            onValuesChange={setFaculties}
             labelOf={facultyLabel}
             searchable
-            searchPlaceholder="Tìm khoa hoặc bộ môn…"
-            total={f?.total}
+            searchPlaceholder={t("mod.filterFacultySearch")}
+            searchQuery={facultySearch}
+            onSearchQueryChange={setFacultySearch}
+            sort="none"
+            total={facetsData?.total}
+            countNote={countNote}
           />
-          <FacetFilter title={t("mod.filterType")} items={f?.type ?? []} value={type} onChange={setType} sort="none" total={f?.total} />
-          <FacetFilter title={t("mod.filterSemester")} items={f?.semester ?? []} value={semester} onChange={setSemester} labelOf={semLabel} sort="none" total={f?.total} />
+          <FacetFilter
+            title={t("mod.filterDepartment")}
+            items={departmentItems}
+            multiple
+            values={departments}
+            onValuesChange={setDepartments}
+            labelOf={departmentLabel}
+            searchable
+            searchPlaceholder={t("mod.filterDepartmentSearch")}
+            searchQuery={departmentSearch}
+            onSearchQueryChange={setDepartmentSearch}
+            sort="count"
+            total={facetsData?.total}
+            countNote={countNote}
+          />
+          <FacetFilter
+            title={t("mod.filterType")}
+            items={facetsData?.type ?? []}
+            multiple
+            values={types}
+            onValuesChange={setTypes}
+            labelOf={(value) => formatModuleType(value, lang)}
+            sort="none"
+            total={facetsData?.total}
+            countNote={countNote}
+          />
+          <SemesterFilterSquares
+            title={t("mod.filterSemester")}
+            items={facetsData?.semester.filter((item) => isCatalogSemester(item.value)) ?? []}
+            values={visibleSemesters}
+            onValuesChange={setSemesters}
+            countNote={countNote}
+          />
           <fieldset>
             <legend className="label mb-1">{t("mod.filterOutline")}</legend>
-            <CheckFacet label={t("badge.outline")} count={count(f?.has_outline, "true")} checked={outline} onChange={setOutline} />
+            <CheckFacet
+              label={t("badge.outline")}
+              count={count(facetsData?.has_outline, "true")}
+              checked={outline}
+              onChange={setOutline}
+            />
           </fieldset>
+
+          {/* Final assessment: chỉ hiện khi có dữ liệu thật (Requirement 5) */}
+          {facetsData?.final_assessment && facetsData.final_assessment.some((x: FacetCount) => x.count > 0) && (
+            <FacetFilter
+              title={t("mod.filterFinalAssessment")}
+              items={facetsData.final_assessment}
+              multiple
+              values={types}
+              onValuesChange={() => {}}
+              sort="count"
+              total={facetsData.total}
+              countNote={countNote}
+            />
+          )}
         </aside>
       </div>
     </div>
   );
-}
-
-/** Đoạn trích ngắn của mô tả: cắt ở hết câu nếu được, không quá `max` ký tự. */
-function excerpt(text: string | null | undefined, max = 260): string | null {
-  const t = (text ?? "").replace(/\s+/g, " ").trim();
-  if (!t) return null;
-  if (t.length <= max) return t;
-  const window = t.slice(0, max);
-  const sentence = Math.max(window.lastIndexOf(". "), window.lastIndexOf("; "));
-  if (sentence > max * 0.5) return window.slice(0, sentence + 1);
-  const space = window.lastIndexOf(" ");
-  return `${window.slice(0, space > 0 ? space : max)}…`;
-}
-
-function localeTag(lang: "vi" | "en") {
-  return lang === "vi" ? "vi-VN" : "en-GB";
 }

@@ -1,4 +1,4 @@
-# Chạy UELCourses bằng Docker
+# Chạy UELPATH bằng Docker
 
 ## 1. Cài đặt (một lần)
 

@@ -1,204 +1,97 @@
-# Hướng dẫn Triển khai UELCourses Miễn phí
+# Triển khai UELPATH trên gói miễn phí
 
-Tài liệu này hướng dẫn từng bước đưa **UELCourses** lên môi trường công khai bằng các dịch vụ **hoàn toàn miễn phí**:
-- **Frontend (Web Next.js):** [Vercel](https://vercel.com) (Gói Hobby Miễn phí)
-- **Backend (API FastAPI + Docker):** [Render](https://render.com) (Gói Free Web Service)
-- **Cơ sở dữ liệu (PostgreSQL):** [Neon](https://neon.tech) (Gói Free Serverless Postgres)
-
-> [!NOTE]
-> **Vì sao chọn Neon thay vì PostgreSQL trên Render?**
-> Render cung cấp cơ sở dữ liệu PostgreSQL miễn phí nhưng **tự động xóa sau 30 ngày**. Neon cung cấp gói Serverless Postgres miễn phí duy trì lâu dài, lưu trữ dữ liệu bền vững và hỗ trợ đầy đủ các tiện ích mở rộng cần thiết (`pg_trgm`, `unaccent`).
-
----
-
-## Kiến trúc Tổng quan
-
-```
-                      +-----------------------------+
-                      |       Người dùng web        |
-                      +--------------+--------------+
-                                     |
-                                     v HTTPS
-                      +-----------------------------+
-                      |   Frontend (Next.js 15)     |
-                      |   Vercel Hobby (Miễn phí)   |
-                      +--------------+--------------+
-                                     |
-                                     | REST API (HTTPS)
-                                     v
-                      +-----------------------------+
-                      |    Backend (FastAPI)        |
-                      |  Render Web Service (Free)  |
-                      |    (Docker container)       |
-                      +--------------+--------------+
-                                     |
-                                     | postgresql+psycopg
-                                     v
-                      +-----------------------------+
-                      |   Cơ sở dữ liệu Postgres    |
-                      |     Neon Serverless Free    |
-                      |    (pg_trgm + unaccent)     |
-                      +-----------------------------+
-```
-
----
-
-## Bước 1: Khởi tạo Cơ sở dữ liệu PostgreSQL trên Neon
-
-1. **Đăng ký tài khoản:** Truy cập [neon.tech](https://neon.tech) và đăng ký bằng tài khoản GitHub hoặc Google.
-2. **Tạo Project mới:**
-   - Đặt tên Project: `uelcourses` (hoặc tên tùy chọn).
-   - Chọn **Region**: `ap-southeast-1` (Singapore) để có độ trễ thấp nhất đến sinh viên tại Việt Nam.
-   - Nhấn **Create Project**.
-3. **Lấy chuỗi kết nối (Connection String):**
-   - Tại trang tổng quan (Dashboard) của Neon, sao chép chuỗi kết nối dạng `postgresql://...`.
-   - Lưu ý: Thư viện backend sử dụng driver `psycopg 3`, do đó tiền tố chuỗi kết nối khi dán vào Render nên là `postgresql+psycopg://` (hoặc `postgresql://`, backend sẽ tự động chuẩn hóa).
-   - Chuỗi kết nối có dạng mẫu:
-     ```
-     postgresql+psycopg://uelplan_owner:<password>@ep-cool-fog-123456.ap-southeast-1.aws.neon.tech/neondb?sslmode=require
-     ```
-4. **Kích hoạt các extension tìm kiếm tiếng Việt:**
-   - Trên bảng điều khiển Neon, vào mục **SQL Editor**.
-   - Chạy hai câu lệnh SQL sau để kích hoạt chỉ mục trigram và loại bỏ dấu tiếng Việt:
-     ```sql
-     CREATE EXTENSION IF NOT EXISTS pg_trgm;
-     CREATE EXTENSION IF NOT EXISTS unaccent;
-     ```
-   - Nhấn **Run** và kiểm tra kết quả thông báo thành công.
-
----
-
-## Bước 2: Nạp dữ liệu và kiểm tra cấu trúc bảng (Migrations)
-
-Dữ liệu học phần, CTĐT và thời khóa biểu của UEL cần được khôi phục lên database Neon.
-
-### 2.1. (Tùy chọn) Tạo bản sao lưu mới nhất từ máy cục bộ
-Nếu bạn muốn tạo file sao lưu dữ liệu mới nhất từ container PostgreSQL đang chạy trên máy:
-```bash
-pg_dump -Fc -U uelplan -h localhost -p 5432 -d uelplan -f data/db/backups/uelcourses_latest.dump
-```
-*(Nếu dùng script Docker tiện ích: `docker compose exec -T db pg_dump -Fc -U uelplan uelplan > data/db/backups/uelcourses_latest.dump`)*
-
-### 2.2. Khôi phục dữ liệu lên Neon
-Sử dụng công cụ `pg_restore` (có sẵn khi cài PostgreSQL hoặc trong container `workspace`):
-```bash
-pg_restore --no-owner --no-acl -d "<chuỗi kết nối Neon>" data/db/backups/uelplan_before_consolidate_20261121.dump
-```
-*(Thay `<chuỗi kết nối Neon>` bằng chuỗi lấy ở Bước 1, bao gồm cả tham số `?sslmode=require`).*
-
-### 2.3. Chạy cập nhật Schema (Alembic)
-Sau khi khôi phục dữ liệu, chạy lệnh sau từ thư mục `api/` để đảm bảo toàn bộ migration mới nhất đã được áp dụng:
-```bash
-# Trên terminal máy có cài Python và thư viện
-DATABASE_URL="<chuỗi kết nối Neon>" alembic upgrade head
-```
-
----
-
-## Bước 3: Triển khai Backend API lên Render
-
-Render hỗ trợ triển khai trực tiếp từ tệp [render.yaml](file:///D:/UELCourse/render.yaml) (Blueprint) ở gốc repository.
-
-1. **Đăng ký / Đăng nhập:** Truy cập [render.com](https://render.com) và đăng nhập bằng tài khoản GitHub.
-2. **Tạo Blueprint:**
-   - Trên giao diện Render Dashboard, nhấn nút **New +** ở góc phải trên -> Chọn **Blueprint**.
-   - Kết nối với kho lưu trữ GitHub của dự án `UELCourse`.
-   - Render sẽ tự động quét và nhận diện tệp [render.yaml](file:///D:/UELCourse/render.yaml).
-3. **Cấu hình biến môi trường trên Render:**
-   Render sẽ yêu cầu nhập các biến chưa đồng bộ (`sync: false`):
-   - `DATABASE_URL`: Dán chuỗi kết nối Neon (dạng `postgresql+psycopg://...`).
-   - `CORS_ORIGINS`: Tạm thời điền URL dự kiến của Vercel (ví dụ: `https://uelcourses.vercel.app`), ta sẽ cập nhật chính xác ở Bước 5.
-   - `FRONTEND_BASE_URL`: Điền URL dự kiến của Vercel (ví dụ: `https://uelcourses.vercel.app`).
-   - `OAUTH_REDIRECT_BASE`: Điền URL Render của bạn sau khi tạo (ví dụ: `https://uelcourses-api.onrender.com`).
-   - `SESSION_SECRET`: Render sẽ tự động tạo một chuỗi ngẫu nhiên bảo mật (nhờ cấu hình `generateValue: true`).
-4. **Nhấn Apply:**
-   - Render sẽ xây dựng Docker image theo [docker/api.Dockerfile](file:///D:/UELCourse/docker/api.Dockerfile) với context thư mục `api`.
-   - Khi khởi động, lệnh khởi động trong Blueprint (`alembic upgrade head && uvicorn ...`) sẽ tự động chạy migration rồi lắng nghe cổng do Render cấp.
-5. **Đặc điểm cần lưu ý của gói Render Free:**
-   > [!WARNING]
-   > Dịch vụ web miễn phí của Render sẽ **tự động ngủ (spin down)** nếu không nhận được truy cập nào sau khoảng **15 phút**.
-   > Khi có người dùng truy cập lại, dịch vụ sẽ cần khoảng **30 - 50 giây** để khởi động lại container (hiện tượng "cold start"). Lần gọi đầu tiên sẽ phản hồi chậm; các yêu cầu sau đó sẽ nhanh bình thường.
-
-Sau khi Render báo **Live**, hãy sao chép URL dịch vụ (ví dụ: `https://uelcourses-api.onrender.com`).
-
----
-
-## Bước 4: Triển khai Frontend Web lên Vercel
-
-1. **Đăng nhập Vercel:** Truy cập [vercel.com](https://vercel.com) và đăng nhập bằng tài khoản GitHub.
-2. **Nhập dự án (Import Project):**
-   - Nhấn **Add New...** -> Chọn **Project**.
-   - Chọn repository GitHub `UELCourse`.
-3. **Cấu hình Project Settings:**
-   - **Framework Preset:** Next.js (hệ thống sẽ tự nhận diện theo [web/vercel.json](file:///D:/UELCourse/web/vercel.json)).
-   - **Root Directory:** Nhấn nút **Edit** và chọn thư mục `web`.
-   - **Build and Output Settings:** Giữ mặc định (`npm run build`).
-4. **Cài đặt Biến Môi Trường (Environment Variables):**
-   Mở rộng mục **Environment Variables** và thêm:
-   - `NEXT_PUBLIC_API_URL`: Dán URL backend Render đã lấy ở Bước 3 (ví dụ: `https://uelcourses-api.onrender.com` — *lưu ý: không có dấu gạch chéo `/` ở cuối*).
-   - `NEXT_PUBLIC_USE_MOCKS`: **KHÔNG đặt** biến này (hoặc đặt giá trị `false`). Khi không đặt, frontend sẽ luôn gọi API thật từ Render và không tự ý bật dữ liệu giả ngầm.
-5. **Nhấn Deploy:**
-   - Vercel sẽ tiến hành cài đặt thư viện và build dự án Next.js.
-   - Khi hoàn tất, bạn sẽ nhận được tên miền Vercel (ví dụ: `https://uelcourses.vercel.app` hoặc `https://uelcourses-<user>.vercel.app`).
-
----
-
-## Bước 5: Cập nhật CORS và Tên miền Frontend
-
-Để trình duyệt của người dùng có thể gửi yêu cầu từ tên miền Vercel sang API Render mà không bị chặn lỗi CORS:
-
-1. Mở lại [Render Dashboard](https://dashboard.render.com).
-2. Chọn dịch vụ `uelcourses-api` -> Chuyển vào tab **Environment**.
-3. Cập nhật các biến sau với URL Vercel chính xác vừa tạo:
-   - `CORS_ORIGINS`: `https://uelcourses.vercel.app` (hoặc tên miền thật của bạn).
-   - `FRONTEND_BASE_URL`: `https://uelcourses.vercel.app`.
-4. Nhấn **Save Changes**. Render sẽ tự động khởi động lại dịch vụ với cấu hình mới.
-
-> [!IMPORTANT]
-> **Chốt chặn an toàn Production (Production Guard):**
-> Backend UELCourses có cơ chế kiểm tra an toàn tự động: khi `ENV=production`, nếu `CORS_ORIGINS` vẫn chứa `localhost` hoặc `SESSION_SECRET` dùng chuỗi mặc định, server sẽ từ chối khởi động (`RuntimeError`) để bảo vệ dữ liệu. Luôn đảm bảo biến môi trường `CORS_ORIGINS` trên Render trỏ về đúng domain công khai của Vercel.
-
----
-
-## Bước 6: Kiểm tra và Nghiệm thu Hệ thống
-
-Thực hiện các bước kiểm tra sau để xác nhận hệ thống vận hành trơn tru:
-
-1. **Kiểm tra trạng thái API:**
-   - Mở trình duyệt và truy cập: `https://<url-render-cua-ban>/api/health`
-   - Kết quả hiển thị: `{"status": "ok"}`
-2. **Kiểm tra Frontend:**
-   - Mở trình duyệt truy cập vào URL Vercel: `https://<url-vercel-cua-ban>/`
-   - Quan sát góc giao diện: Xác nhận **KHÔNG** xuất hiện nhãn đỏ `"Mất kết nối"` hoặc nhãn `"Dữ liệu mẫu"`.
-3. **Thử nghiệm các tính năng chính:**
-   - Vào mục **Tra cứu học phần**: Nhập tìm một môn (ví dụ: `Kinh tế vi mô`, `BIM5022`).
-   - Xem trang **Chi tiết học phần**: Kiểm tra cây môn học tiên quyết/học trước và thông tin đề cương.
-   - Vào mục **Chương trình đào tạo**: Chọn khóa K24, ngành Tài chính - Ngân hàng.
-   - Vào mục **Thời khóa biểu**: Kiểm tra lịch học và bố trí phòng học.
-
----
-
-## Bước 7: Bảng Chi phí & Định mức Gói Miễn phí
-
-Hệ thống được thiết kế tối ưu để có thể chạy thử nghiệm nghiệm thu khóa luận mà không phát sinh chi phí:
-
-| Thành phần | Nhà cung cấp & Gói | Định mức miễn phí tiêu biểu | Khi nào cần trả tiền? |
+| Dịch vụ | Vai trò | Gói | Địa chỉ |
 |---|---|---|---|
-| **Frontend** | Vercel (Hobby) | Băng thông 100 GB/tháng, build không giới hạn phi thương mại. | Khi vượt quá 100 GB băng thông/tháng hoặc nâng cấp tính năng tổ chức thương mại (Pro). |
-| **Backend API** | Render (Free Web Service) | 750 giờ CPU chia sẻ/tháng, RAM 512 MB, tự ngủ sau 15 phút rảnh. | Khi muốn chạy 24/7 không có cold start (gói Starter $7/tháng) hoặc cần RAM lớn hơn (> 512 MB). |
-| **Cơ sở dữ liệu** | Neon (Free Tier) | 0.5 GiB lưu trữ, tự động tính toán serverless, hỗ trợ pg_trgm/unaccent lâu dài. | Khi dung lượng dữ liệu vượt 0.5 GB hoặc cần thêm dung lượng lưu trữ chuyên sâu. |
+| Vercel | Web Next.js, thư mục gốc `web` | Hobby | `https://uelcourses.id.vn` |
+| Render | API FastAPI chạy Docker tại Singapore | Free Web Service | `https://api.uelcourses.id.vn` |
+| Supabase | PostgreSQL cho project `UELCourses` tại Tokyo (`ap-northeast-1`) | Free | `aws-1-ap-northeast-1.pooler.supabase.com:6543`, database `postgres` |
 
-> [!NOTE]
-> *Để biết chi tiết thông số định mức và bảng giá mới nhất, vui lòng xem trang biểu phí chính thức của từng nhà cung cấp: [Vercel Pricing](https://vercel.com/pricing), [Render Pricing](https://render.com/pricing), [Neon Pricing](https://neon.tech/pricing).*
+## 1. Tạo project Supabase
 
----
+1. Tạo project `UELCourses` tại Tokyo (`ap-northeast-1`). Đặt mật khẩu database dài, ngẫu nhiên và chỉ gồm chữ và số. Các ký tự `@ : / ? # & %` ở dạng thô có thể làm hỏng cách phân tích URL.
+2. Trong bảng điều khiển project, mở **Connect** và sao chép URL **Transaction pooler**. Project này dùng cổng **6543** và host bắt đầu bằng **`aws-1-`**. Những lần thử Session pooler cổng 5432 và Direct của project này đều bị từ chối kết nối.
+3. Lưu URL dạng `postgresql://` vào biến `SUPABASE_DB_URL` trong tệp `.env.deploy` ở máy cục bộ. Với `DATABASE_URL` trên Render, đổi tiền tố thành `postgresql+psycopg://` và thêm `?sslmode=require`.
 
-## Bước 8: Các Tính năng Bổ sung (Đăng nhập Google / Facebook)
+Ví dụ `DATABASE_URL` đã che mật khẩu và mã project:
 
-- Tính năng đánh giá học phần có hỗ trợ đăng nhập OAuth (Google/Facebook).
-- Để bật tính năng này trên bản chạy công khai, chủ dự án cần đăng ký:
-  - **Google OAuth Client ID & Secret** từ [Google Cloud Console](https://console.cloud.google.com).
-  - **Facebook App ID & Secret** từ [Meta for Developers](https://developers.facebook.com).
-  - Thêm URL callback vào cấu hình OAuth: `https://<url-render-cua-ban>/api/auth/google/callback`
-  - Điền các biến `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `FACEBOOK_APP_ID`, `FACEBOOK_APP_SECRET` vào Render.
-- **Hiện tại:** Khi chưa điền các biến này, các tính năng tra cứu học phần, xem CTĐT, xếp thời khóa biểu và RAG quy chế vẫn hoạt động hoàn toàn bình thường mà không cần đăng nhập.
+```text
+postgresql+psycopg://postgres.xxxxxxxx:<MAT_KHAU_DA_CHE>@aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres?sslmode=require
+```
+
+## 2. Nạp dữ liệu và cập nhật về sau
+
+Chuẩn bị Postgres Docker cục bộ với dữ liệu và migration cần đưa lên. Ảnh chụp dữ liệu đã nạp theo X1 có **1.486 học phần**, **5.879 lớp học phần**, **76 chương trình** và Alembic **`0019`**. Đối chiếu lần nạp mới với số liệu của nguồn cục bộ tại thời điểm chạy.
+
+Từ thư mục gốc trên Windows:
+
+```powershell
+.\scripts\deploy\push_to_supabase.ps1 -DryRun
+.\scripts\deploy\push_to_supabase.ps1
+```
+
+Script xuất SQL thuần bằng `pg_dump --no-owner --no-acl` và hỏi xác nhận trước khi thay toàn bộ schema `public`. Sau khi tạo lại schema, script nạp bằng `psql -f`, chạy `ALTER DATABASE postgres SET search_path TO public;` rồi in số dòng và phiên bản Alembic. Lần thử dùng archive `-Fc` và `pg_restore` qua pooler đã gặp lỗi `relation already exists`. Cách chuẩn bị công cụ và chạy chi tiết nằm trong [README của script deploy](../scripts/deploy/README.md).
+
+Với mỗi lần cập nhật bằng bản dump đầy đủ, cập nhật dữ liệu cục bộ và sao lưu các thay đổi phát sinh trực tiếp trên production trước khi chạy. Khôi phục schema sẽ thay cả các bảng chứa dữ liệu ghi trên production. Kiểm tra phiên bản vừa nạp, rồi khởi động lại hoặc triển khai lại API để chạy migration còn thiếu và tạo lại kết nối. Nếu các kết nối cũ của pooler còn dùng giá trị `search_path` trước đó, chờ chúng được thay mới và kiểm tra lại trước khi phục vụ người dùng.
+
+## 3. Triển khai API trên Render
+
+Tạo Blueprint từ [render.yaml](../render.yaml) trong repository để dựng dịch vụ Docker `uelcourses-api` ở Singapore. Điền các biến nhập tay trước khi triển khai.
+
+| Biến | Giá trị | Nguồn |
+|---|---|---|
+| `DATABASE_URL` | URL Transaction pooler cổng 6543 với driver `postgresql+psycopg` và `sslmode=require` | Nhập tay, dạng bí mật |
+| `CORS_ORIGINS` | `https://uelcourses.id.vn` | Nhập tay |
+| `FRONTEND_BASE_URL` | `https://uelcourses.id.vn` | Nhập tay |
+| `OAUTH_REDIRECT_BASE` | `https://api.uelcourses.id.vn` | Nhập tay |
+| `SESSION_SECRET` | Chuỗi ngẫu nhiên | Blueprint tạo tự động |
+| `ENV` | `production` | Blueprint |
+| `AUTO_SEED` | `false` | Blueprint |
+| `PORT` | `8000` | Blueprint |
+| `DB_POOL_SIZE` | `5` | Blueprint |
+| `DB_MAX_OVERFLOW` | `5` | Blueprint |
+
+Lệnh `sh /app/start.sh` chạy Alembic rồi khởi động Uvicorn. Render kiểm tra `/api/health`. Engine dùng `pool_pre_ping` và tắt tự động chuẩn bị câu lệnh của psycopg3 để tương thích với Transaction pooler.
+
+## 4. Triển khai web trên Vercel
+
+Nhập repository vào Vercel, chọn **Next.js**, đặt **Root Directory** là `web` và đặt biến Production `NEXT_PUBLIC_API_URL=https://api.uelcourses.id.vn`.
+
+`NEXT_PUBLIC_API_URL` được **nhúng lúc build**. Sau khi đổi giá trị, triển khai lại web để trình duyệt nhận URL mới. Xem [web/next.config.ts](../web/next.config.ts).
+
+## 5. Gắn tên miền và bật HTTPS
+
+1. Thêm `uelcourses.id.vn` vào project Vercel và `api.uelcourses.id.vn` vào dịch vụ Render. Tạo các bản ghi DNS mà từng bảng điều khiển yêu cầu.
+2. Nếu dùng Cloudflare, để các bản ghi ở **DNS only** (đám mây xám) tới khi cả Vercel và Render báo đã cấp SSL cho tên miền riêng.
+3. Đặt SSL/TLS của Cloudflare thành **Full (strict)** rồi bật proxy cho các bản ghi cần bảo vệ. Kiểm tra lại cả hai URL HTTPS. [Cloudflare Full (strict)](https://developers.cloudflare.com/ssl/origin-configuration/ssl-modes/full-strict/)
+
+## 6. Kiểm tra triển khai
+
+```powershell
+.\scripts\deploy\check_deploy.ps1 -WebUrl https://uelcourses.id.vn -ApiUrl https://api.uelcourses.id.vn
+```
+
+Cả bốn GET phải trả HTTP 2xx và `Access-Control-Allow-Origin: https://uelcourses.id.vn`. Mở thêm web để thử tra cứu học phần, xem chương trình đào tạo và xếp thời khóa biểu. [Checklist triển khai](DEPLOY_CHECKLIST.md)
+
+## 7. Hạn chế gói miễn phí
+
+- Render Free ngủ sau khoảng **15 phút** không có truy cập. Yêu cầu đầu tiên sau khi ngủ có thể mất **30–60 giây**.
+- Supabase Free có thể tạm dừng project sau **7 ngày** không truy cập. Dung lượng gói là **500 MB**. Database ở mốc X1 khoảng **127 MB**.
+- Đường truyền từ Render Singapore tới Supabase Tokyo làm tăng độ trễ khoảng **70 ms** theo mốc X1.
+
+## 8. Lỗi thường gặp
+
+| Lỗi | Cách xử lý |
+|---|---|
+| Render dừng với `exit 127` | Kiểm tra Blueprint dùng đúng `dockerCommand: sh /app/start.sh`. Đặt thứ tự chạy migration và Uvicorn trong [api/start.sh](../api/start.sh). Chuỗi nhiều lệnh nối bằng `&&` trong `dockerCommand` từng gây lỗi này. |
+| `Connection refused` ở cổng 5432 | Lấy lại URL Transaction pooler cổng 6543, kiểm tra đúng host `aws-1-ap-northeast-1`. |
+| `relation "modules" does not exist` hoặc `relation does not exist` | Kiểm tra bảng trong `public`. Sau khi nạp, chạy `ALTER DATABASE postgres SET search_path TO public;` và kiểm tra lại với kết nối mới. |
+| `could not translate host` khi dùng Direct | Kiểm tra mã project và DNS. Direct của project dùng IPv6, có thể gặp lỗi phân giải hoặc kết nối tùy mạng của máy khách. Dùng host Transaction pooler đã chỉ định cho X1. |
+| URL hỏng khi mật khẩu chứa ký tự đặc biệt | Đặt lại mật khẩu chỉ gồm chữ và số. Cập nhật `.env.deploy` cục bộ và `DATABASE_URL` trên Render rồi khởi động lại API. |
+| `prepared statement ... does not exist` hoặc `already exists` | Kiểm tra API đã dùng bản có `prepare_threshold=None` cho psycopg3. |
+
+## 9. Giảm cào dữ liệu qua Cloudflare
+
+- Cân nhắc bật **Bot Fight Mode** cho domain đã qua proxy, rồi chạy lại kiểm tra HTTP và CORS. Bot Fight Mode có thể trả thử thách cho cả các máy khách API hợp lệ. [Cloudflare Bot Fight Mode](https://developers.cloudflare.com/bots/get-started/bot-fight-mode/)
+- Tạo một **Rate Limiting Rule** khớp đường dẫn bắt đầu bằng `/api/`, đếm theo IP. Mục tiêu là vượt **240 request trong 60 giây** thì **Block trong 10 phút**. Cấu hình chính xác cần gói Cloudflare hỗ trợ cửa sổ 60 giây và thời gian chặn 600 giây. Trên Cloudflare Free, có thể dùng một rule **40 request/10 giây, chặn 10 giây** để áp dụng mức trung bình 240 request/phút với cửa sổ ngắn hơn. [Giới hạn Rate Limiting Rules theo gói](https://developers.cloudflare.com/waf/rate-limiting-rules/)
+- Dùng **Cache Rules** với TTL ngắn cho GET công khai như `/api/semesters`, `/api/programs` và `/api/modules`. Giữ query string trong cache key và kiểm tra phản hồi CORS sau khi bật cache. Bỏ qua cache cho yêu cầu có cookie hoặc Authorization và các đường dẫn xác thực, quản trị hoặc dữ liệu cá nhân. [Cloudflare Cache Rules](https://developers.cloudflare.com/cache/how-to/cache-rules/)
+- Khi bật proxy Cloudflare, chỉ công bố `https://api.uelcourses.id.vn` trong cấu hình web và tài liệu công khai. Không để lộ URL gốc `*.onrender.com`.

@@ -1,5 +1,11 @@
 from app.models import Module, OutlineCourse, OutlineDocument, OutlineModuleLink
-from app.services.descriptions import clean_description, detect_lang, fill_descriptions
+from app.services.descriptions import (
+    clean_description,
+    detect_lang,
+    fill_descriptions,
+    strip_description_artifacts,
+    strip_material_sections,
+)
 
 VI = "Môn học cung cấp cho sinh viên kiến thức nền tảng về kinh tế vi mô, hành vi người tiêu dùng và cấu trúc thị trường."
 EN = "This course introduces the foundations of microeconomics, consumer behaviour and market structures for first-year students."
@@ -17,6 +23,52 @@ def test_detect_and_clean():
     assert clean_description(None) is None and clean_description("ngắn") is None   # quá ngắn
     assert clean_description("x" * 3000) is None                                   # quá dài (phân tích nuốt mục khác)
     assert clean_description("  " + EN.replace(" ", "   ") + "\n\n\n\n") == EN  # gọn khoảng trắng và dòng trống thừa
+
+
+def test_clean_description_removes_material_sections_only():
+    vi = VI + " 2 Tài liệu học tập Giáo trình: [1] Sách kinh tế."
+    en = EN + " 3. Study materials Text books: [1] Economics. References: [2] Handbook."
+    assert clean_description(vi) == VI
+    assert clean_description(en) == EN
+    assert clean_description(EN + " 3. Study document Textbook: [1] Economics.") == EN
+    assert clean_description(EN + " 3. Study documents Textbook: [1] Economics.") == EN
+    assert clean_description(EN + " 3. Materials Textbook [1] Economics.") == EN
+    assert clean_description(EN + " Course books, Reference books and softwares Main materials: [1] Economics.") == EN
+    assert strip_material_sections("Giáo trình [1] Sách kinh tế.") is None
+
+    # Từ "giáo trình" nằm trong một câu mô tả không phải là tiêu đề mục.
+    valid = VI + " Học phần được tổ chức dựa trên giáo trình kinh tế học hiện đại."
+    assert clean_description(valid) == valid
+
+
+def test_clean_description_rejoins_words_split_by_pdf_extraction():
+    assert clean_description("\r\n\r\n".join(EN.split())) == EN
+
+    paragraphs = f"{EN}\n\n{VI}\n• Phân tích thị trường.\n• Dự báo nhu cầu."
+    assert clean_description(paragraphs) == paragraphs
+
+
+def test_clean_description_removes_pdf_instructions_and_page_markers():
+    vi = (
+        "(vị trí của học phần đối với chương trình đào tạo (CTĐT), những mục đích và nội dung chính yếu của học phần) "
+        "Học phần dành cho sinh viên năm nhất, là học phần bắt Trang 1/18 buộc trong chương trình đào tạo. Trang 1/18"
+    )
+    assert strip_description_artifacts(vi) == (
+        "Học phần dành cho sinh viên năm nhất, là học phần bắt buộc trong chương trình đào tạo."
+    )
+
+    en = "(Course Position within the Training Program, The Objectives and Key Contents of the Course) 2 This course develops analytical skills."
+    assert strip_description_artifacts(en) == "This course develops analytical skills."
+
+    embedded = "Môn học giới thiệu cách thiết kế và quản lý Đề cương môn học Quản trị Đa văn hoá Trang 1/11 các doanh nghiệp mới."
+    assert strip_description_artifacts(embedded) == "Môn học giới thiệu cách thiết kế và quản lý các doanh nghiệp mới."
+
+    pdf_page = "The course provides foundational knowledge.\nMẫu 7: Đề cương chi tiết học phần\n2\nIt develops research skills."
+    assert strip_description_artifacts(pdf_page) == "The course provides foundational knowledge.\n\nIt develops research skills."
+
+    # Ngoặc mở đầu có nội dung thật không bị coi là câu hướng dẫn mẫu.
+    valid = "(CRM) là một nội dung quan trọng trong quản trị quan hệ khách hàng."
+    assert strip_description_artifacts(valid) == valid
 
 
 def test_fill_routes_by_language_and_copies_from_counterpart(db):
@@ -53,7 +105,7 @@ def test_fill_routes_by_language_and_copies_from_counterpart(db):
 
 
 def test_api_returns_both_descriptions(client, db):
-    db.add(Module(code="D1", name="Môn D1", description=VI, description_source="outline", description_en=EN,
+    db.add(Module(code="D1", name="Môn D1", description=VI, description_source="outline", description_en="\n\n".join(EN.split()),
                   description_en_source="outline", search_text="d1 mon d1"))
     db.commit()
     item = [i for i in client.get("/api/modules", params={"q": "d1"}).json()["items"] if i["code"] == "D1"][0]

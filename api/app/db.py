@@ -24,15 +24,24 @@ def normalize_db_url(url: str) -> str:
 
 
 def _make_engine(url: str):
+    from os import environ
+
     url = normalize_db_url(url)
     parsed = make_url(url)
+    backend = parsed.get_backend_name()
     kwargs: dict = {"pool_pre_ping": True}
-    if parsed.get_backend_name() == "sqlite":
+    if backend == "sqlite":
         kwargs["connect_args"] = {"check_same_thread": False}
         if parsed.database and parsed.database != ":memory:":
             Path(parsed.database).parent.mkdir(parents=True, exist_ok=True)
+    elif backend == "postgresql":
+        kwargs["pool_size"] = int(environ.get("DB_POOL_SIZE", "5"))
+        kwargs["max_overflow"] = int(environ.get("DB_MAX_OVERFLOW", "5"))
+        if parsed.get_driver_name() == "psycopg":
+            # Transaction pooling can switch server connections between transactions.
+            kwargs["connect_args"] = {"prepare_threshold": None}
     eng = create_engine(url, **kwargs)
-    if parsed.get_backend_name() == "sqlite":
+    if backend == "sqlite":
 
         @event.listens_for(eng, "connect")
         def _fk_on(dbapi_conn, _record):  # bật ràng buộc khóa ngoại cho SQLite

@@ -270,7 +270,9 @@ def parse_general(text: str, front: str) -> dict:
         d["level"] = d["level"] or prog
         prog = None
     d["major"] = _kv(text, (r"Ngành học|Ngành đào tạo|Chuyên ngành|Program/Major|Majors?|Field of study", None)) or prog
-    d["cohort_range"] = _kv(text, (r"Khóa học|Cohort", None), cont=False)
+    cohort = _kv(text, (r"Khóa học|Cohort", None), cont=False)
+    # 'Khóa học này cung cấp cho sinh viên…' là câu mô tả, không phải khóa áp dụng (cột chỉ 128 ký tự)
+    d["cohort_range"] = cohort if cohort and len(cohort) <= 60 and re.search(r"\d", cohort) else None
     d["academic_year"] = _kv(text, (r"Năm học|Academic year|School year", None), cont=False)
     d["term"] = _kv(text, (r"Học kỳ|Semester", None), cont=False)
     m = re.search(r"(\d{1,2})\s*(?:tín chỉ|credits?)", text, re.I)
@@ -900,11 +902,25 @@ def _worker(args: tuple[int, str, str]) -> tuple[int, dict | None, str | None]:
 PARSER_VERSION = "rules-7"  # tăng khi đổi logic phân tích; parse_outlines bỏ qua tài liệu đã phân tích bằng đúng phiên bản này
 
 
+_MISPARSE_PRONE = {"faculty", "department", "level", "major", "cohort_range", "academic_year", "term", "knowledge_block", "teaching_language"}
+
+
+def _fit_columns(course: dict) -> dict:
+    """Giá trị chuỗi dài hơn cột DB: trường hay bị đọc nhầm sang câu mô tả thì bỏ (None), trường khác thì cắt cho vừa."""
+    out = dict(course)
+    for col in OutlineCourse.__table__.columns:
+        limit = getattr(col.type, "length", None)
+        value = out.get(col.name)
+        if limit and isinstance(value, str) and len(value) > limit:
+            out[col.name] = None if col.name in _MISPARSE_PRONE else value[:limit]
+    return out
+
+
 def save_parsed(db: Session, doc_id: int, p: dict, *, method: str = PARSER_VERSION) -> None:
     for model in (OutlineSection, OutlineMaterial, OutlineObjective, OutlineClo, OutlineAssessment, OutlineScheduleItem):
         db.execute(delete(model).where(model.document_id == doc_id))
     db.execute(delete(OutlineCourse).where(OutlineCourse.document_id == doc_id))
-    c = p["course"]
+    c = _fit_columns(p["course"])
     db.add(OutlineCourse(
         document_id=doc_id, doc_type=p["doc_type"], parse_status=p["status"], parse_detail=p["detail"], parse_method=method,
         parsed_at=datetime.now(timezone.utc),

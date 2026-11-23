@@ -69,6 +69,8 @@ class RegulationDoc:
     applies_until_cohort: str | None = None  # computed cap for the open-ended range
     amends: list[str] = field(default_factory=list)  # doc_ids this document amends (catalog)
     guides: list[str] = field(default_factory=list)  # doc_ids this document guides/implements (catalog)
+    source_type: str = "regulation"  # regulation | handbook
+    ocr_transcript: bool = False
 
     @property
     def metadata_unverified(self) -> bool:
@@ -96,6 +98,7 @@ class RegulationDoc:
             "metadata_unverified": self.metadata_unverified,
             "indexed": self.indexed,
             "notes": self.notes,
+            "source_type": self.source_type,
         }
 
     def to_dict(self) -> dict[str, Any]:
@@ -193,13 +196,19 @@ class Chunk:
     page: int | None = None
     points: list[dict[str, str]] = field(default_factory=list)  # [{point, text}] inside clause
     part: int = 0
+    source_type: str = "regulation"
+    source_anchor: str | None = None
+    chunk_type: str = "clause"  # clause | appendix
+    window_part: int = 1  # 1-based retrieval window inside the source clause/appendix
+    appendix_label: str | None = None
 
     def anchor(self, point: str | None = None) -> str | None:
-        return anchor_for(self.article, self.clause, point, self.part)
+        return self.source_anchor or anchor_for(self.article, self.clause, point, self.part)
 
     def index_text(self) -> str:
         """Text used for retrieval: heading (article title) + body."""
-        return f"{self.article_title}\n{self.text}"
+        heading = self.heading if self.source_type == "handbook" else self.article_title
+        return f"{heading}\n{self.text}"
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

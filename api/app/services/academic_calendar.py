@@ -5,13 +5,43 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import and_, delete, or_, select
+from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.orm import Session
 
-from app.models import AcademicEvent
+from app.models import AcademicEvent, AuditLog
 from app.schemas import AcademicEventOut
 
 VN_TZ = timezone(timedelta(hours=7))
+
+VALID_EVENT_KINDS = {
+    "teaching",
+    "online_study",
+    "defense_training",
+    "midterm_exam",
+    "final_exam",
+    "makeup_day",
+    "holiday",
+    "reserve_week",
+    "break",
+    "defense_week_internship",
+    "thesis",
+    "language_cert",
+    "graduation_review",
+    "ceremony",
+    "academic_review",
+    "second_program",
+    "registration",
+    "registration_adjust",
+    "other",
+}
+
+# Cache lịch đào tạo trong bộ nhớ
+_CALENDAR_CACHE: dict[str, Any] = {}
+
+
+def clear_calendar_cache() -> None:
+    """Xóa bộ nhớ đệm lịch năm học khi có bất kỳ thay đổi nào từ phía quản trị viên."""
+    _CALENDAR_CACHE.clear()
 
 
 def load_seed(path: Path | None = None) -> list[dict[str, Any]]:
@@ -21,11 +51,20 @@ def load_seed(path: Path | None = None) -> list[dict[str, Any]]:
         return json.load(f)
 
 
-def import_academic_calendar(db: Session, path: Path | None = None) -> dict[str, Any]:
-    raw_events = load_seed(path)
+def import_academic_calendar(
+    db: Session,
+    path: Path | None = None,
+    raw_events: list[dict[str, Any]] | None = None,
+    dry_run: bool = False,
+    actor: str = "dev",
+) -> dict[str, Any]:
+    if raw_events is None:
+        raw_events = load_seed(path)
     if not raw_events:
         return {
             "status": "ok",
+            "dry_run": dry_run,
+            "success": True,
             "imported": 0,
             "rows_in": 0,
             "rows_ok": 0,
@@ -36,15 +75,45 @@ def import_academic_calendar(db: Session, path: Path | None = None) -> dict[str,
         }
 
     # Gom các cặp (academic_year, source) để xóa cũ ghi mới (idempotent)
-    pairs = set((item.get("academic_year"), item.get("source", "TB 223/TB-ĐHKTL-ĐT")) for item in raw_events)
-    for yr, src in pairs:
-        db.execute(
-            delete(AcademicEvent).where(
-                AcademicEvent.academic_year == yr,
-                AcademicEvent.source == src,
-            )
-        )
+    pairs = list(set((item.get("academic_year"), item.get("source", "TB 223/TB-ĐHKTL-ĐT")) for item in raw_events))
+    where_clauses = [
+        and_(AcademicEvent.academic_year == yr, AcademicEvent.source == src)
+        for yr, src in pairs
+        if yr
+    ]
 
+    existing_cnt = 0
+    if where_clauses:
+        existing_cnt = db.scalar(select(func.count(AcademicEvent.id)).where(or_(*where_clauses))) or 0
+
+    if dry_run:
+        sample_incoming = raw_events[:5]
+        return {
+            "status": "ok",
+            "dry_run": True,
+            "success": True,
+            "total_incoming": len(raw_events),
+            "to_add": len(raw_events),
+            "to_update": 0,
+            "to_delete": existing_cnt,
+            "sample_incoming": sample_incoming,
+            "diff_summary": {
+                "years": sorted(list(set(item.get("academic_year") for item in raw_events if item.get("academic_year")))),
+                "sources": sorted(list(set(item.get("source", "TB 223/TB-ĐHKTL-ĐT") for item in raw_events))),
+                "existing_events_replaced": existing_cnt,
+            },
+        }
+
+    for yr, src in pairs:
+        if yr:
+            db.execute(
+                delete(AcademicEvent).where(
+                    AcademicEvent.academic_year == yr,
+                    AcademicEvent.source == src,
+                )
+            )
+
+    now = datetime.now(timezone.utc)
     added = 0
     for item in raw_events:
         s_date = item["start_date"]
@@ -65,21 +134,40 @@ def import_academic_calendar(db: Session, path: Path | None = None) -> dict[str,
             note=item.get("note"),
             verified=item.get("verified", True),
             source=item.get("source", "TB 223/TB-ĐHKTL-ĐT"),
+            updated_by=actor,
+            updated_at=now,
         )
         db.add(evt)
         added += 1
 
+    # Ghi nhật ký quản trị AuditLog
+    db.add(
+        AuditLog(
+            actor_type="dev" if actor == "dev" else "admin",
+            actor_id=actor,
+            action="import_academic_calendar",
+            entity_type="academic_calendar",
+            entity_id=str(pairs[0][0]) if pairs else None,
+            before={"count": existing_cnt},
+            after={"count": added, "years": [p[0] for p in pairs]},
+            created_at=now,
+        )
+    )
+
     db.commit()
+    clear_calendar_cache()
 
     return {
         "status": "ok",
+        "dry_run": False,
+        "success": True,
         "imported": added,
         "rows_in": len(raw_events),
         "rows_ok": added,
         "rows_skipped": 0,
         "rows_error": 0,
-        "academic_year": list(pairs)[0][0] if pairs else None,
-        "source": list(pairs)[0][1] if pairs else None,
+        "academic_year": pairs[0][0] if pairs else None,
+        "source": pairs[0][1] if pairs else None,
     }
 
 

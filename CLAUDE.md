@@ -1,8 +1,7 @@
-# UELCourses — Claude Code
+# UELPATH — Claude Code
 
-@AGENTS.md
+Claude là **đầu não**: giao việc thực thi cho Codex CLI (`codex exec --sandbox workspace-write --cd D:\UELCourse "<yêu cầu>"`), rồi kiểm lại bằng kết quả thật (`tsc`, `vitest`, `pytest`, gọi endpoint, xem trang). Không đọc file md hay gọi agent phụ nếu việc không cần.
 
-## Riêng cho Claude
-- Brief các agent con nằm ở `.claude/agents/` (`api-backend`, `web-frontend`, `regulations-rag`, `regulations-collector`, `ux-research`). Chúng vẫn dùng được như đề bài cho AI khác.
-- Trình duyệt thật (Claude in Chrome) đang là kênh duy nhất để gọi API đã đăng nhập của trường (`dkhp.uel.edu.vn`, `portal.uel.edu.vn`) mà không phải lộ token vào shell. Chạy chậm theo mục "Quy tắc cứng" của AGENTS.md.
-- Khi hết giới hạn sử dụng: cập nhật `docs/HANDOFF.md` trước, rồi mới dừng.
+Quy tắc cứng: `data/` không commit · token/mật khẩu/khóa API không vào git, log, commit · cấm gọi API đăng ký/hủy học phần của trường, chỉ API đọc và gọi chậm · không dùng cờ bỏ qua quyền · commit `[claude|codex] loại: …` không có dòng đồng tác giả · giao diện tiếng Việt, code tiếng Anh · sao lưu trước khi ghi DB (`.\scripts\db_backup.ps1 -Tag <lý-do>`).
+
+Chạy: `.\scripts\dev.ps1 up | test | run <lệnh>`. Trạng thái việc đang dở: `docs/HANDOFF.md`.

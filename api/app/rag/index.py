@@ -11,20 +11,24 @@ BM25 statistics are rebuilt from chunks.json on load (fast, deterministic).
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 import os
+import re
 from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Iterable
+from functools import cached_property
+from typing import Any, Callable, Iterable
 
 from .models import Chunk, RegulationDoc
 from .textnorm import content_terms, features
 
 INDEX_VERSION = 1
 DEFAULT_EMBED_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+_APPENDIX = re.compile(r"(?<=\./\.)\s*(?:\d+\s+)?Phụ lục\b", re.IGNORECASE)
 
 
 class BM25:
@@ -137,17 +141,63 @@ class RagIndex:
             if c.points:
                 texts.append(f"{c.article_title}\n{c.text.split(chr(10), 1)[0]}")
                 self._owner.append(i)
+            elif c.source_type == "regulation" and (appendix := _APPENDIX.search(c.text)):
+                # Keep annexes searchable while scoring the actual closing clause on its own as well.
+                texts.append(f"{c.article_title}\n{c.text[:appendix.start()]}")
+                self._owner.append(i)
         self._scorer = BM25(texts)
         self.embedder = embedder
         self.vectors = vectors
         self.stats = stats or {}
+        self.candidates: Callable[[str, set[str] | None], set[str] | None] | None = None
+
+    @cached_property
+    def version(self) -> str:
+        data = ([d.to_dict() for d in self.docs], [c.to_dict() for c in self.chunks], self.articles)
+        return hashlib.sha256(json.dumps(data, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+
+    def evidence_group(self, doc_id: str) -> str:
+        doc = self.docs_by_id[doc_id]
+        if doc.source_type == "handbook":
+            return "handbook"
+        return "ocr" if doc.ocr_transcript else "regulation"
+
+    @cached_property
+    def evidence_indexes(self) -> dict[str, RagIndex]:
+        """Compute relevance against comparable sources so adding OCR or summaries does not shift BM25 statistics."""
+        rows: dict[str, list[int]] = {}
+        for i, chunk in enumerate(self.chunks):
+            rows.setdefault(self.evidence_group(chunk.doc_id), []).append(i)
+        if len(rows) == 1:
+            return dict.fromkeys(rows, self)
+        indexes = {}
+        for group, positions in rows.items():
+            chunks = [self.chunks[i] for i in positions]
+            ids = {chunk.doc_id for chunk in chunks}
+            docs = [doc for doc in self.docs if doc.doc_id in ids]
+            vectors = None if self.vectors is None else self.vectors[positions]
+            subindex = RagIndex(docs, chunks, embedder=self.embedder, vectors=vectors)
+            subindex.candidates = self.candidates
+            indexes[group] = subindex
+        return indexes
+
+    def comparable_relevance(self, query: str, hits: list[Hit]) -> dict[str, float]:
+        """Use one corpus to compare the keyword support offered by candidate sources."""
+        candidate_ids = {hit.chunk.chunk_id for hit in hits}
+        allowed = {i for i, chunk in enumerate(self.chunks) if chunk.chunk_id in candidate_ids}
+        if not allowed:
+            return {}
+        return {self.chunks[i].chunk_id: score * self.bm25.coverage(query, i) ** 2
+                for i, score in self.bm25.scores(query, allowed).items()}
 
     # ------------------------------------------------------------ search --
     def search(self, query: str, top_k: int = 5, doc_ids: Iterable[str] | None = None) -> list[Hit]:
         allowed = None
-        if doc_ids is not None:
-            ids = set(doc_ids)
-            allowed = {i for i, c in enumerate(self.chunks) if c.doc_id in ids}
+        ids = set(doc_ids) if doc_ids is not None else None
+        matches = self.candidates(query, ids) if self.candidates is not None else None
+        if ids is not None or matches is not None:
+            allowed = {i for i, c in enumerate(self.chunks)
+                       if (ids is None or c.doc_id in ids) and (matches is None or c.chunk_id in matches)}
             if not allowed:
                 return []
         allowed_rows = None if allowed is None else {r for r, i in enumerate(self._owner) if i in allowed}

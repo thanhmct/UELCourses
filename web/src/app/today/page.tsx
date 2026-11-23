@@ -5,11 +5,28 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import { useMounted } from "@/lib/useMounted";
 import { useTimetable } from "@/lib/store";
-import { WEEKDAYS } from "@/lib/periods";
 import type { ClassSection, Lesson } from "@/lib/types";
+import { getOccurrencesByDate, getTimetableOccurrences } from "@/lib/occurrences";
 import { Loading, PageHeader } from "@/components/ui";
-import { useT, weekdayName } from "@/i18n";
+import { useT } from "@/i18n";
 import { moduleName } from "@/i18n/names";
+import { formatLecturerName } from "@/lib/lecturers";
+import { CampusMap } from "@/components/CampusMap";
+import {
+  TOUR_AREAS,
+  placeForLesson,
+  placeForRoom,
+  sceneForPlace,
+  sceneForRoom,
+  tourUrl,
+  type CampusPlace,
+} from "@/lib/campusTour";
+import {
+  getNextWeekDays,
+  getTodayAndTomorrowDays,
+  getWeekdayNumber,
+} from "./todayDates";
+import { getTodayDemoLessons } from "./todayDemo";
 
 interface TodayLessonItem {
   code: string;
@@ -17,41 +34,83 @@ interface TodayLessonItem {
   class_code: string;
   lecturer?: string;
   lesson: Lesson;
-  color: string;
 }
 
-/** yyyy-mm-dd in local time */
-function isoDay(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+interface MapSelection {
+  room: string | null;
+  code: string | null;
+  name: string | null;
+  place: CampusPlace | null;
+}
+
+function selectionForLesson(item: TodayLessonItem): MapSelection {
+  const room = item.lesson.room?.trim() || null;
+  return {
+    room,
+    code: item.code,
+    name: item.name,
+    place: placeForLesson(item.code, item.name, room ?? ""),
+  };
+}
+
+function placeLabelKey(place: CampusPlace | null): string {
+  switch (place) {
+    case "A":
+      return "campus.buildingA";
+    case "B1":
+      return "campus.buildingB1";
+    case "B2":
+      return "campus.buildingB2";
+    case "sports":
+      return "campus.sports";
+    case "parking":
+      return "campus.parking";
+    case "gate":
+      return "campus.gate";
+    default:
+      return "campus.overview";
+  }
+}
+
+function getNowTimeStrings() {
+  const d = new Date();
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  const ss = String(d.getSeconds()).padStart(2, "0");
+  return { current: `${hh}:${mm}`, live: `${hh}:${mm}:${ss}` };
 }
 
 export default function TodayPage() {
   const { t, lang } = useT();
   const mounted = useMounted();
+  const demoMode =
+    mounted &&
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("demo") === "1";
   const tt = useTimetable();
   const semester = tt.semester;
   const entries = useMemo(() => tt.bySemester[semester] ?? [], [tt.bySemester, semester]);
   const [sections, setSections] = useState<Record<string, ClassSection[]>>({});
 
-  // Determine current day of week (JS: 0=Sun, 1=Mon, ..., 6=Sat -> UEL: 2=Mon...8=Sun)
-  const now = new Date();
-  const jsDay = now.getDay();
-  const todayWeekday = jsDay === 0 ? 8 : jsDay + 1;
-
-  const [selectedDay, setSelectedDay] = useState<number>(todayWeekday);
+  const [activeTab, setActiveTab] = useState<"today" | "next_week">("today");
   const [currentTime, setCurrentTime] = useState<string>("");
+  const [liveClock, setLiveClock] = useState<string>("");
+  const [mapSelection, setMapSelection] = useState<MapSelection | null>(null);
+  const [pickedPlace, setPickedPlace] = useState<CampusPlace | null>(null);
 
+  // Live second-by-second clock in local time, safely cleaned up on unmount
   useEffect(() => {
-    const updateTime = () => {
-      const d = new Date();
-      setCurrentTime(`${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`);
+    const updateClock = () => {
+      const { current, live } = getNowTimeStrings();
+      setCurrentTime(current);
+      setLiveClock(live);
     };
-    updateTime();
-    const interval = setInterval(updateTime, 30000);
+    updateClock();
+    const interval = setInterval(updateClock, 1000);
     return () => clearInterval(interval);
   }, []);
 
-  // Fetch sections
+  // Fetch sections for modules in current timetable
   useEffect(() => {
     if (!semester || !entries.length) return;
     const codes = entries.map((e) => e.code);
@@ -60,202 +119,379 @@ export default function TodayPage() {
     });
   }, [semester, entries]);
 
-  // Calendar date of the selected weekday in the current week (for one-off / dated sessions)
-  const selectedDate = useMemo(() => {
-    const d = new Date();
-    d.setDate(d.getDate() + (selectedDay - todayWeekday));
-    return isoDay(d);
-  }, [selectedDay, todayWeekday]);
+  const isSunday = useMemo(() => getWeekdayNumber(new Date()) === 8, []);
 
-  // Lessons for selected day
-  const lessonsForDay: TodayLessonItem[] = useMemo(() => {
-    const list: TodayLessonItem[] = [];
-    for (const e of entries) {
-      if (e.hidden || !e.class_code) continue;
-      const sec = sections[e.code]?.find((s) => s.class_code === e.class_code);
-      if (!sec) continue;
-      const modName = tt.info[e.code] ? moduleName(tt.info[e.code], lang) : e.code;
+  const todayTomorrowDays = useMemo(() => {
+    return getTodayAndTomorrowDays(new Date(), lang);
+  }, [lang]);
 
-      for (const l of sec.lessons) {
-        if (l.weekday !== selectedDay) continue;
-        // dated sessions only show on their dates
-        if (l.date_start && l.date_end && (selectedDate < l.date_start || selectedDate > l.date_end)) continue;
-        list.push({ code: e.code, name: modName, class_code: e.class_code, lecturer: sec.lecturer, lesson: l, color: "#0b4f9c" });
-      }
-    }
-    return list.sort((a, b) => a.lesson.start_period - b.lesson.start_period);
-  }, [entries, sections, selectedDay, selectedDate, tt.info, lang]);
+  const nextWeekDays = useMemo(() => {
+    return getNextWeekDays(new Date(), lang);
+  }, [lang]);
+
+  const displayedDays = activeTab === "today" ? todayTomorrowDays : nextWeekDays;
 
   // Status helper: past, ongoing, upcoming
   const getLessonStatus = useCallback(
-    (l: Lesson) => {
-      if (selectedDay !== todayWeekday || !currentTime) return "upcoming";
+    (l: Lesson, isTargetToday: boolean = true) => {
+      if (!isTargetToday || !currentTime) return "upcoming";
       if (currentTime < l.start_time) return "upcoming";
       if (currentTime >= l.start_time && currentTime <= l.end_time) return "ongoing";
       return "past";
     },
-    [selectedDay, todayWeekday, currentTime],
+    [currentTime],
   );
 
+  const selectedSections = useMemo(
+    () =>
+      entries
+        .filter((e) => !e.hidden && e.class_code)
+        .map((e) => sections[e.code]?.find((s) => s.class_code === e.class_code))
+        .filter((s): s is ClassSection => !!s),
+    [entries, sections],
+  );
+
+  const timetableOccurrences = useMemo(
+    () => getTimetableOccurrences(selectedSections),
+    [selectedSections],
+  );
+
+  const occurrencesByDate = useMemo(
+    () => getOccurrencesByDate(timetableOccurrences),
+    [timetableOccurrences],
+  );
+
+  // Group lessons by displayed days
+  const daysWithLessons = useMemo(() => {
+    return displayedDays.map((dayItem, dayIndex) => {
+      if (demoMode) {
+        return {
+          ...dayItem,
+          lessons: getTodayDemoLessons(dayItem, dayIndex, activeTab, lang),
+        };
+      }
+
+      const occs = occurrencesByDate.get(dayItem.isoDate) ?? [];
+      const list: TodayLessonItem[] = occs.map((occ) => ({
+        code: occ.module_code,
+        name: tt.info[occ.module_code] ? moduleName(tt.info[occ.module_code], lang) : occ.module_code,
+        class_code: occ.class_code,
+        lecturer: occ.section.lecturer,
+        lesson: occ.lesson,
+      }));
+      return {
+        ...dayItem,
+        lessons: list,
+      };
+    });
+  }, [activeTab, demoMode, displayedDays, occurrencesByDate, tt.info, lang]);
+
+  // Lessons strictly for today (for Next Class banner)
+  const todayDayItem = useMemo(() => {
+    return todayTomorrowDays.find((d) => d.isToday) ?? todayTomorrowDays[0];
+  }, [todayTomorrowDays]);
+
+  const todayLessons = useMemo(() => {
+    if (!todayDayItem) return [];
+    if (demoMode) return getTodayDemoLessons(todayDayItem, 0, "today", lang);
+    const occs = occurrencesByDate.get(todayDayItem.isoDate) ?? [];
+    return occs.map((occ) => ({
+      code: occ.module_code,
+      name: tt.info[occ.module_code] ? moduleName(tt.info[occ.module_code], lang) : occ.module_code,
+      class_code: occ.class_code,
+      lecturer: occ.section.lecturer,
+      lesson: occ.lesson,
+    }));
+  }, [demoMode, todayDayItem, occurrencesByDate, tt.info, lang]);
+
   const nextLesson = useMemo(() => {
-    if (selectedDay !== todayWeekday) return null;
-    return lessonsForDay.find((item) => getLessonStatus(item.lesson) !== "past") ?? null;
-  }, [lessonsForDay, selectedDay, todayWeekday, getLessonStatus]);
+    return todayLessons.find((item) => getLessonStatus(item.lesson, true) !== "past") ?? null;
+  }, [todayLessons, getLessonStatus]);
+
+  const defaultMapSelection = useMemo<MapSelection>(() => {
+    const visibleLesson = daysWithLessons
+      .flatMap((day) => day.lessons)
+      .find((item) => Boolean(item.lesson.room?.trim()));
+    const initialLesson = nextLesson?.lesson.room?.trim() ? nextLesson : visibleLesson;
+    return initialLesson
+      ? selectionForLesson(initialLesson)
+      : { room: null, code: null, name: null, place: null };
+  }, [daysWithLessons, nextLesson]);
+
+  const activeSelection = mapSelection ?? defaultMapSelection;
+  const activePlace = pickedPlace ?? activeSelection.place;
+  const activeScene = useMemo(() => {
+    if (pickedPlace) return sceneForPlace(pickedPlace);
+    if (activeSelection.place && activeSelection.room) {
+      return activeSelection.place === placeForRoom(activeSelection.room)
+        ? sceneForRoom(activeSelection.room).scene
+        : sceneForPlace(activeSelection.place);
+    }
+    if (activeSelection.place) return sceneForPlace(activeSelection.place);
+    if (activeSelection.room) return sceneForRoom(activeSelection.room).scene;
+    return TOUR_AREAS[0].scenes[0];
+  }, [activeSelection, pickedPlace]);
+  const activeTourUrl = tourUrl(activeScene);
+
+  const selectLesson = (item: TodayLessonItem) => {
+    setMapSelection(selectionForLesson(item));
+    setPickedPlace(null);
+  };
 
   if (!mounted) return <Loading />;
 
-  const isToday = selectedDay === todayWeekday;
-  const dayName = weekdayName(t, selectedDay);
-
   return (
     <div className="space-y-4">
+      {/* Top title bar without subtitle */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <PageHeader title={t("today.title")} subtitle={t("today.subtitle")} />
-        <Link href="/timetable" className="btn-outline text-xs">{t("today.toWeek")}</Link>
-      </div>
-
-      {/* Weekday switcher */}
-      <div className="flex gap-1 overflow-x-auto rounded-md border border-slate-200 bg-slate-100 p-1 dark:border-slate-800 dark:bg-slate-900" role="tablist">
-        {WEEKDAYS.map((d) => {
-          const isCurrentRealDay = d === todayWeekday;
-          const isSelected = d === selectedDay;
-          return (
-            <button
-              key={d}
-              role="tab"
-              aria-selected={isSelected}
-              onClick={() => setSelectedDay(d)}
-              className={`min-w-[64px] flex-1 rounded py-1.5 text-center text-xs font-semibold transition ${
-                isSelected ? "bg-brand-600 text-white" : "text-slate-600 hover:bg-white/80 dark:text-slate-400 dark:hover:bg-slate-800"
-              }`}
-            >
-              <div>{weekdayName(t, d)}</div>
-              {isCurrentRealDay && (
-                <span className={`block text-[10px] font-normal ${isSelected ? "text-brand-100" : "text-brand-600 dark:text-brand-400"}`}>{t("today.todayTag")}</span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Next class card */}
-      {isToday && (
-        <div className="rounded-md bg-brand-600 p-4 text-white">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <span className="text-xs font-bold uppercase tracking-widest text-brand-200">
-                {currentTime ? t("today.nowAt", { t: currentTime }) : t("today.today")}
-              </span>
-              <h2 className="mt-1 text-xl font-bold">
-                {nextLesson
-                  ? getLessonStatus(nextLesson.lesson) === "ongoing"
-                    ? t("today.ongoingTitle")
-                    : t("today.nextTitle")
-                  : t("today.doneTitle")}
-              </h2>
+        <PageHeader title={t("today.title")} />
+        <div className="flex flex-wrap items-center gap-2">
+          {demoMode && (
+            <div className="inline-flex items-center gap-2 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+              <span>{t("today.demoLabel")}</span>
+              <Link href="/today" className="underline underline-offset-2">
+                {t("today.demoExit")}
+              </Link>
             </div>
-            {nextLesson && (
-              <span
-                className={`rounded-full px-3 py-1 text-xs font-bold ${
-                  getLessonStatus(nextLesson.lesson) === "ongoing" ? "bg-emerald-400 text-emerald-950 animate-pulse" : "bg-white/20 text-white"
-                }`}
-              >
-                {getLessonStatus(nextLesson.lesson) === "ongoing" ? t("today.ongoing") : t("today.upcoming")}
-              </span>
+          )}
+          <Link href="/timetable" className="btn-outline text-xs">
+            {t("today.toWeek")}
+          </Link>
+        </div>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
+        <section className="min-w-0 space-y-4">
+          {/* Current or next class. */}
+          <div className="rounded-md bg-brand-700 p-4 text-white shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-sm font-medium text-brand-200">{t("today.subject")}</span>
+              {liveClock && (
+                <span
+                  className="rounded bg-brand-800 px-2.5 py-1 font-mono text-sm font-semibold tabular-nums text-white shadow-sm"
+                  aria-label="live-clock"
+                >
+                  {liveClock}
+                </span>
+              )}
+            </div>
+            {nextLesson ? (
+              <div className="min-w-0">
+                <p className="mt-2 line-clamp-2 text-lg font-bold leading-snug">
+                  {nextLesson.name}
+                </p>
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                  <span className="whitespace-nowrap font-mono text-xl font-bold">
+                    {nextLesson.lesson.start_time} – {nextLesson.lesson.end_time}
+                  </span>
+                  {nextLesson.lesson.room ? (
+                    <button
+                      type="button"
+                      aria-pressed={activeSelection.room === nextLesson.lesson.room}
+                      onClick={() => selectLesson(nextLesson)}
+                      className="rounded px-1 text-xl font-bold text-amber-300 transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
+                    >
+                      {t("today.room", { room: nextLesson.lesson.room })}
+                    </button>
+                  ) : (
+                    <span className="text-xl font-bold text-amber-300">{t("today.noRoom")}</span>
+                  )}
+                </div>
+                <p className="mt-2 truncate text-xs text-brand-100">
+                  <span className="font-mono">{nextLesson.code}</span>
+                  <span aria-hidden="true"> · </span>
+                  {formatLecturerName(nextLesson.lecturer, lang) || t("today.unknownLecturer")}
+                </p>
+              </div>
+            ) : (
+              <p className="mt-3 text-base font-semibold text-brand-100">
+                {todayLessons.length === 0 ? t("today.dayOff") : t("today.freeMsg")}
+              </p>
             )}
           </div>
 
-          {nextLesson ? (
-            <div className="mt-3 grid gap-3 border-t border-white/20 pt-3 sm:grid-cols-3">
-              <div>
-                <span className="text-xs text-brand-200">{t("today.subject")}</span>
-                <p className="text-lg font-bold">{nextLesson.name}</p>
-                <p className="font-mono text-xs text-brand-200">{nextLesson.code} · {t("today.classLabel", { c: nextLesson.class_code })}</p>
-              </div>
-              <div>
-                <span className="text-xs text-brand-200">{t("today.timePeriod")}</span>
-                <p className="text-lg font-bold">{nextLesson.lesson.start_time} – {nextLesson.lesson.end_time}</p>
-                <p className="text-xs text-brand-200">{t("today.periodTo", { a: nextLesson.lesson.start_period, b: nextLesson.lesson.end_period })}</p>
-              </div>
-              <div>
-                <span className="text-xs text-brand-200">{t("today.roomLecturer")}</span>
-                <p className="text-lg font-bold text-amber-300">{nextLesson.lesson.room ? t("today.room", { room: nextLesson.lesson.room }) : t("today.noRoom")}</p>
-                <p className="text-xs text-brand-200">{nextLesson.lecturer || t("today.unknownLecturer")}</p>
-              </div>
-            </div>
-          ) : (
-            <p className="mt-2 text-sm text-brand-100">{t("today.freeMsg")}</p>
-          )}
+      {/* Tabs: "Hôm nay & mai" | "Tuần sau" with right-aligned arrows */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div
+          className="flex gap-1 rounded-md border border-slate-200 bg-slate-100 p-1 dark:border-slate-800 dark:bg-slate-900"
+          role="tablist"
+        >
+          <button
+            role="tab"
+            id="tab-today-tomorrow"
+            aria-selected={activeTab === "today"}
+            aria-controls="panel-schedule"
+            onClick={() => setActiveTab("today")}
+            className={`rounded px-3 py-1.5 text-xs font-semibold transition ${
+              activeTab === "today"
+                ? "brand-fill shadow-sm"
+                : "text-slate-600 hover:bg-white/80 dark:text-slate-400 dark:hover:bg-slate-800"
+            }`}
+          >
+            {isSunday ? t("today.tabTodayOnly") : t("today.tabTodayTomorrow")}
+          </button>
+          <button
+            role="tab"
+            id="tab-next-week"
+            aria-selected={activeTab === "next_week"}
+            aria-controls="panel-schedule"
+            onClick={() => setActiveTab("next_week")}
+            className={`rounded px-3 py-1.5 text-xs font-semibold transition ${
+              activeTab === "next_week"
+                ? "brand-fill shadow-sm"
+                : "text-slate-600 hover:bg-white/80 dark:text-slate-400 dark:hover:bg-slate-800"
+            }`}
+          >
+            {t("today.tabNextWeek")}
+          </button>
         </div>
-      )}
 
-      {/* Schedule list for the selected day */}
-      <div className="space-y-3">
-        <h3 className="flex items-center justify-between text-base font-bold text-slate-900 dark:text-white">
-          <span>{t("today.listTitle", { day: dayName })}</span>
-          <span className="text-xs font-normal text-slate-500">{t("today.count", { n: lessonsForDay.length })}</span>
-        </h3>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setActiveTab("today")}
+            disabled={activeTab === "today"}
+            aria-label={t("today.prevTab")}
+            title={isSunday ? t("today.tabTodayOnly") : t("today.tabTodayTomorrow")}
+            className="rounded border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800"
+          >
+            ←
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("next_week")}
+            disabled={activeTab === "next_week"}
+            aria-label={t("today.nextTab")}
+            title={t("today.tabNextWeek")}
+            className="rounded border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800"
+          >
+            →
+          </button>
+        </div>
+      </div>
 
-        {lessonsForDay.length === 0 ? (
-          <div className="card space-y-2 p-8 text-center text-slate-500">
-            <p className="font-semibold text-slate-700 dark:text-slate-200">{t("today.noneDay", { day: dayName })}</p>
-            <p className="text-xs text-slate-400">
-              {t("today.hintA")}
-              <Link href="/modules" className="text-brand-600 underline">{t("nav.modules")}</Link>
-              {t("today.hintB")}
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {lessonsForDay.map((item, idx) => {
-              const status = getLessonStatus(item.lesson);
-              return (
-                <div
-                  key={`${item.code}-${idx}`}
-                  className={`card border-l-4 ${
-                    status === "ongoing"
-                      ? "border-l-emerald-500 bg-emerald-50/40 dark:bg-emerald-950/20"
-                      : status === "past"
-                      ? "border-l-slate-300 opacity-60 dark:border-l-slate-700"
-                      : "border-l-brand-600"
-                  }`}
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs font-bold text-brand-700 dark:text-brand-300">{item.code}</span>
-                        <span className="text-xs text-slate-400">· {t("today.classLabel", { c: item.class_code })}</span>
-                        {status === "ongoing" && (
-                          <span className="rounded bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800 animate-pulse dark:bg-emerald-950 dark:text-emerald-300">
-                            {t("today.ongoingBadge")}
+      {/* Empty days stay hidden so the schedule remains compact. */}
+      <div id="panel-schedule" role="tabpanel" className="space-y-4">
+        {daysWithLessons.filter((dayItem) => dayItem.lessons.length > 0).map((dayItem) => (
+          <div key={dayItem.isoDate} className="space-y-2">
+            {/* Header: thứ + ngày/tháng (ví dụ "Thứ hai, 23/11") */}
+            <div className="flex items-center justify-between border-b border-slate-200 pb-1.5 dark:border-slate-800">
+              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <span>{dayItem.label}</span>
+                {dayItem.isToday && (
+                  <span className="rounded bg-brand-100 px-2 py-0.5 text-xs font-semibold text-brand-700 dark:bg-brand-900/50 dark:text-brand-300">
+                    {t("today.todayTag")}
+                  </span>
+                )}
+              </h3>
+              <span className="text-xs text-slate-500">
+                {t("today.count", { n: dayItem.lessons.length })}
+              </span>
+            </div>
+
+              <div className="space-y-2">
+                {dayItem.lessons.map((item, idx) => {
+                  const status = getLessonStatus(item.lesson, dayItem.isToday);
+                  const room = item.lesson.room?.trim();
+                  const selected = Boolean(
+                    room &&
+                      activeSelection.code === item.code &&
+                      activeSelection.room?.trim().toUpperCase() === room.toUpperCase(),
+                  );
+                  return (
+                    <button
+                      type="button"
+                      key={`${item.code}-${dayItem.isoDate}-${idx}`}
+                      aria-pressed={selected}
+                      onClick={() => selectLesson(item)}
+                      className={`card w-full border-l-4 p-3 text-left text-sm transition disabled:cursor-default ${
+                        status === "ongoing"
+                          ? "border-l-emerald-500 bg-emerald-50/40 dark:bg-emerald-950/20"
+                          : status === "past"
+                          ? "border-l-slate-300 opacity-60 dark:border-l-slate-700"
+                          : "border-l-brand-600"
+                      } ${selected ? "ring-2 ring-brand-500" : ""}`}
+                    >
+                      <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                        <span className="font-mono font-bold text-brand-700 dark:text-brand-300">
+                          {item.code}
+                        </span>
+                        <span aria-hidden="true" className="text-slate-400">·</span>
+                        <span className="font-mono font-semibold text-slate-700 dark:text-slate-200">
+                          {item.lesson.start_time} – {item.lesson.end_time}
+                        </span>
+                        <span aria-hidden="true" className="text-slate-400">·</span>
+                        <span className="rounded-full bg-amber-100 px-2 py-0.5 font-mono font-semibold text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+                          {room || t("today.none")}
+                        </span>
+                        {item.lesson.date_start &&
+                          item.lesson.date_end &&
+                          item.lesson.date_start === item.lesson.date_end && (
+                            <span className="rounded bg-amber-100 px-2 py-0.5 font-semibold text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                              {t("tt.oneTime")}
+                            </span>
+                          )}
+                        {status === "past" && (
+                          <span className="rounded bg-slate-100 px-2 py-0.5 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                            {t("today.past")}
                           </span>
                         )}
-                        {status === "past" && (
-                          <span className="rounded bg-slate-100 px-2 py-0.5 text-[10px] text-slate-500 dark:bg-slate-800 dark:text-slate-400">{t("today.past")}</span>
-                        )}
                       </div>
-                      <h4 className="mt-0.5 text-base font-bold text-slate-900 dark:text-white">{item.name}</h4>
-                    </div>
-                    <div className="text-right">
-                      <span className="font-mono text-sm font-bold text-slate-800 dark:text-slate-100">{item.lesson.start_time} – {item.lesson.end_time}</span>
-                      <span className="block text-xs text-slate-500">{t("today.periodRange", { a: item.lesson.start_period, b: item.lesson.end_period })}</span>
-                    </div>
-                  </div>
-                  <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-2 text-xs text-slate-600 dark:border-slate-800 dark:text-slate-400">
-                    <div>
-                      <span>{t("today.lecturer")} </span>
-                      <strong className="text-slate-800 dark:text-slate-200">{item.lecturer || t("today.unknownLecturer")}</strong>
-                    </div>
-                    <div>
-                      <span>{t("today.roomLabel")} </span>
-                      <strong className="font-mono text-sm text-brand-700 dark:text-brand-300">{item.lesson.room || t("today.none")}</strong>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+                      <span className="mt-1 block break-words font-semibold text-slate-900 dark:text-white">
+                        {item.name}
+                      </span>
+                      <span className="mt-1 block truncate text-xs text-slate-500 dark:text-slate-400">
+                        {formatLecturerName(item.lecturer, lang) || t("today.unknownLecturer")}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
           </div>
-        )}
+        ))}
+      </div>
+        </section>
+
+        <aside className="card self-start p-4 lg:sticky lg:top-4">
+          <header className="mb-3 flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                {t("today.map.title")}
+              </h2>
+              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+                {activeSelection.room && (
+                  <span className="rounded-full bg-amber-100 px-2 py-0.5 font-mono font-semibold text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+                    {t("today.room", { room: activeSelection.room })}
+                  </span>
+                )}
+                <span className="rounded-full bg-brand-50 px-2 py-0.5 font-semibold text-brand-800 dark:bg-brand-950 dark:text-brand-200">
+                  {t(placeLabelKey(activePlace))}
+                </span>
+              </div>
+            </div>
+          </header>
+
+          <CampusMap
+            target={activePlace}
+            onPick={setPickedPlace}
+            className="border border-slate-200 dark:border-slate-700"
+          />
+
+          {activeSelection.room && !activeSelection.place && (
+            <p className="mt-2 text-xs text-amber-800 dark:text-amber-300">
+              {t("campus.unknownBuilding")}
+            </p>
+          )}
+
+          <a
+            href={activeTourUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn-outline mt-3 inline-flex text-xs"
+          >
+            {t("campus.view360")}
+          </a>
+        </aside>
       </div>
     </div>
   );

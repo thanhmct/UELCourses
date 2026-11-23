@@ -1,4 +1,5 @@
 "use client";
+import { Loading } from "@/components/ui";
 import { useRef, useState, type ReactNode } from "react";
 import { getMarkdown } from "@/lib/vaultCache";
 import { anchorToLabel, extractSection } from "@/lib/vault";
@@ -50,7 +51,7 @@ export function WikiLink({ target, children, className = "" }: { target: string;
           role="tooltip"
           className="absolute left-0 top-full z-40 mt-1 block w-72 max-w-[80vw] rounded-lg border border-slate-200 bg-white p-3 text-left text-xs font-normal not-italic text-slate-700 shadow-xl dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
         >
-          <span className="mb-1 block font-semibold text-slate-900 dark:text-white">{preview?.title ?? t("wiki.loading")}</span>
+          {preview ? <span className="mb-1 block font-semibold text-slate-900 dark:text-white">{preview.title}</span> : <Loading compact />}
           <span className="block max-h-40 overflow-hidden whitespace-pre-line">{preview?.text ?? ""}</span>
         </span>
       )}

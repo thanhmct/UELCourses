@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cohortSemesterSlots, cohortStartYear, scopeSemesters } from "../semesters";
+import { cohortSemesterSlots, cohortStartYear, latestEnrollmentCohort, scopeSemesters } from "../semesters";
 import type { Semester } from "../types";
 
 const api = (id: string, year: string, term: number, cur = false): Semester => ({
@@ -23,6 +23,13 @@ describe("học kỳ theo khóa", () => {
   it("không có khóa thì giữ nguyên danh sách", () => {
     const all = [api("2025-2026-1", "2025-2026", 1)];
     expect(scopeSemesters(all, "")).toBe(all);
+  });
+
+  it("uses the current academic year for the newest cohort and rolls it over in August without calendar data", () => {
+    const current = api("2026-2027-3", "2026-2027", 3, true);
+    expect(latestEnrollmentCohort(current, "2027-08-03")).toBe("K26");
+    expect(latestEnrollmentCohort(undefined, "2027-07-31")).toBe("K26");
+    expect(latestEnrollmentCohort(undefined, "2027-08-01")).toBe("K27");
   });
 
   it("K26 không hiện năm học 2025-2026, và hiện đủ 12 học kỳ kể cả chưa có dữ liệu", () => {

@@ -7,6 +7,7 @@ from sqlalchemy import case, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.db import get_db
+from app.services.catalog_visibility import visible_module
 from app.models import Equivalent, Module, ModuleRelation, Program, ProgramModule
 from app.routers.equivalents import like_escape
 from app.schemas import (
@@ -23,6 +24,7 @@ from app.schemas import (
     ProgramModuleOut,
     ProgramSummary,
     TreeNode,
+    ValidProgramGroup,
 )
 from app.services.program_check import ReqModule, check
 from app.services.elective_groups import get_elective_groups
@@ -31,6 +33,7 @@ from app.services.program_tracks import (
     get_contextual_module_tree,
     get_contextual_program_detail,
     get_contextual_program_graph,
+    get_valid_groups,
     resolve_program_and_track,
 )
 from app.services.requirements import find_cycles
@@ -60,7 +63,9 @@ def equivalence_map(db: Session, program_id: str | None = None) -> dict[str, set
     for a, b in db.execute(select(Equivalent.code, Equivalent.equivalent_code)):
         eq[a].add(b)
         eq[b].add(a)
-    stmt = select(ModuleRelation.source, ModuleRelation.target).where(ModuleRelation.type == "equivalent")
+    stmt = select(ModuleRelation.source, ModuleRelation.target).where(
+        ModuleRelation.type == "equivalent", visible_module(ModuleRelation.source), visible_module(ModuleRelation.target),
+    )
     if program_id:
         stmt = stmt.where(or_(ModuleRelation.program_id == program_id, ModuleRelation.program_id.is_(None)))
     for a, b in db.execute(stmt):
@@ -70,12 +75,18 @@ def equivalence_map(db: Session, program_id: str | None = None) -> dict[str, set
 
 
 @router.get("/programs", response_model=list[ProgramSummary], summary="Danh sách chương trình đào tạo")
-def list_programs(cohort: str | None = Query(None, description="vd K24"), q: str | None = None,
-                  db: Session = Depends(get_db)):
+def list_programs(
+    cohort: str | None = Query(None, description="vd K24"),
+    q: str | None = None,
+    degree: str = Query("dai_hoc", description="Bậc đào tạo: 'dai_hoc' | 'thac_si' | 'tien_si' | 'all'"),
+    db: Session = Depends(get_db),
+):
     stmt = select(Program).order_by(Program.id)
+    if degree and degree.strip().lower() != "all":
+        stmt = stmt.where(Program.degree == degree.strip().lower())
     if cohort:
         stmt = stmt.where(Program.cohort == cohort.strip().upper())
-    else:
+    elif degree == "dai_hoc":
         stmt = stmt.where(Program.cohort >= "K23")
     for tok in search_tokens(q):
         stmt = stmt.where(Program.search_text.like(f"%{like_escape(tok)}%", escape="\\"))
@@ -87,13 +98,21 @@ def list_programs(cohort: str | None = Query(None, description="vd K24"), q: str
         for pid, n, total in db.execute(
             select(ProgramModule.program_id, func.count(ProgramModule.id), func.sum(required_credits))
             .outerjoin(Module, Module.code == ProgramModule.module_code)
-            .where(ProgramModule.program_id.in_([p.id for p in progs]))
+            .where(ProgramModule.program_id.in_([p.id for p in progs]), Module.is_hidden.is_not(True))
             .group_by(ProgramModule.program_id)
         )
     } if progs else {}
     return [
-        ProgramSummary(program_id=p.id, name=p.name, cohort=p.cohort, faculty=p.faculty,
-                       total_credits=agg.get(p.id, (0, 0.0))[1], module_count=agg.get(p.id, (0, 0.0))[0], is_sample=p.is_sample)
+        ProgramSummary(
+            program_id=p.id,
+            name=p.name,
+            cohort=p.cohort,
+            faculty=p.faculty,
+            degree=p.degree or "dai_hoc",
+            total_credits=agg.get(p.id, (0, 0.0))[1],
+            module_count=agg.get(p.id, (0, 0.0))[0],
+            is_sample=p.is_sample,
+        )
         for p in progs
     ]
 
@@ -108,6 +127,15 @@ def _pm_out(pm: ProgramModule, eq: dict[str, set[str]]) -> ProgramModuleOut:
         equivalents=sorted(eq.get(pm.module_code, set())), prereq_raw=pm.prereq_raw,
         previous_raw=pm.previous_raw, note=pm.note,
     )
+
+
+@router.get(
+    "/programs/valid-groups",
+    response_model=list[ValidProgramGroup],
+    summary="Danh sách các mã lớp / nhóm sinh viên hợp lệ có thật",
+)
+def list_valid_groups(db: Session = Depends(get_db)):
+    return get_valid_groups(db)
 
 
 @router.get("/programs/{program_id}", response_model=ProgramDetail, summary="Chi tiết CTĐT theo khối kiến thức")

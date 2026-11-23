@@ -1,5 +1,6 @@
 import type { ClassSection, Lesson } from "./types";
 import { parseWeekList } from "./schedule";
+import type { WeekWorkload } from "./occurrences";
 
 function datesOverlap(a: ClassSection, b: ClassSection): boolean {
   if (!a.start_date || !a.end_date || !b.start_date || !b.end_date) return true;
@@ -22,6 +23,11 @@ function weeksOverlap(a?: string, b?: string): boolean {
 export function lessonsOverlap(a: Lesson, b: Lesson): boolean {
   if (a.weekday !== b.weekday) return false;
   if (a.end_period < b.start_period || b.end_period < a.start_period) return false;
+  if (a.date_start && b.date_start) {
+    const aEnd = a.date_end ?? a.date_start;
+    const bEnd = b.date_end ?? b.date_start;
+    if (a.date_start > bEnd || b.date_start > aEnd) return false;
+  }
   return weeksOverlap(a.weeks, b.weeks);
 }
 
@@ -34,6 +40,76 @@ export function sectionsConflict(a: ClassSection, b: ClassSection): boolean {
 export interface Conflict {
   a: { module_code: string; class_code: string; lessonIndex: number };
   b: { module_code: string; class_code: string; lessonIndex: number };
+}
+
+export interface TimetableConflict extends Conflict {
+  kind: "conflict" | "adjacency";
+  weeks: number[] | null;
+}
+
+export function periodViolation(
+  a: Pick<Lesson, "start_period" | "end_period">,
+  b: Pick<Lesson, "start_period" | "end_period">,
+): TimetableConflict["kind"] | null {
+  if (a.end_period >= b.start_period && b.end_period >= a.start_period) return "conflict";
+  return ADJACENCY_BOUNDARIES.some(([end, start]) =>
+    (a.end_period === end && b.start_period === start) ||
+    (b.end_period === end && a.start_period === start)) ? "adjacency" : null;
+}
+
+export function hasLessonDates(section: ClassSection, lesson: Lesson | undefined, start?: string, end?: string) {
+  return !!(lesson?.date_start || ((section.start_date || start) &&
+    (section.end_date || end || parseWeekList(lesson?.weeks))));
+}
+
+/** Resolves overlaps and boundary warnings against actual sessions, including one-day overrides. */
+export function timetableConflicts(
+  sections: ClassSection[], weeks: WeekWorkload[], semesterStart?: string, semesterEnd?: string,
+): TimetableConflict[] {
+  const warnings = new Map<string, TimetableConflict & { weeks: number[] }>();
+  for (const week of weeks) {
+    const byDate = new Map<string, typeof week.occurrences>();
+    for (const occurrence of week.occurrences) {
+      const day = byDate.get(occurrence.date) ?? [];
+      for (const previous of day) {
+        if (previous.module_code === occurrence.module_code) continue;
+        const kind = periodViolation(previous, occurrence);
+        if (!kind) continue;
+        const [first, second] = previous.module_code < occurrence.module_code
+          ? [previous, occurrence] : [occurrence, previous];
+        const a = { module_code: first.module_code, class_code: first.class_code, lessonIndex: first.section.lessons.indexOf(first.lesson) };
+        const b = { module_code: second.module_code, class_code: second.class_code, lessonIndex: second.section.lessons.indexOf(second.lesson) };
+        const key = JSON.stringify([kind, a, b]);
+        const warning = warnings.get(key) ?? { kind, a, b, weeks: [] };
+        if (!warning.weeks.includes(week.weekNumber)) warning.weeks.push(week.weekNumber);
+        warnings.set(key, warning);
+      }
+      day.push(occurrence);
+      byDate.set(occurrence.date, day);
+    }
+  }
+
+  function hasDates(ref: Conflict["a"]) {
+    const section = sections.find((s) => s.module_code === ref.module_code && s.class_code === ref.class_code);
+    return !!section && hasLessonDates(section, section.lessons[ref.lessonIndex], semesterStart, semesterEnd);
+  }
+
+  return [
+    ...warnings.values(),
+    ...findConflicts(sections).filter(({ a, b }) => !hasDates(a) || !hasDates(b))
+      .map((pair): TimetableConflict => ({ ...pair, kind: "conflict", weeks: null })),
+    ...adjacencyViolations(sections).filter(({ a, b }) => !hasDates(a) || !hasDates(b))
+      .map((pair): TimetableConflict => ({ ...pair, kind: "adjacency", weeks: null })),
+  ];
+}
+
+export function conflictWeek(warnings: TimetableConflict[], weeks: WeekWorkload[]): number | "all" {
+  const affected = new Set(warnings.flatMap((warning) => warning.weeks ?? []));
+  if (!affected.size || affected.size === weeks.length) return "all";
+  const current = weeks.find((week) => week.isCurrent)?.weekNumber ?? 1;
+  return weeks.find((week) => week.weekNumber >= current && affected.has(week.weekNumber))?.weekNumber
+    ?? weeks.find((week) => affected.has(week.weekNumber))?.weekNumber
+    ?? "all";
 }
 
 /** All pairwise lesson conflicts among selected sections. */
@@ -60,7 +136,7 @@ export function findConflicts(sections: ClassSection[]): Conflict[] {
 }
 
 /**
- * Quy định phòng đào tạo: không được có hai lớp học cạnh nhau qua ranh giới
+ * Quy định Đào tạo: không được có hai lớp học cạnh nhau qua ranh giới
  * sáng | chiều (tiết 6 | 7) và chiều | tối (tiết 12 | 13).
  */
 export const ADJACENCY_BOUNDARIES: [number, number][] = [
@@ -73,7 +149,13 @@ export function lessonsAdjacent(a: Lesson, b: Lesson): boolean {
   const adjacent = ADJACENCY_BOUNDARIES.some(
     ([x, y]) => (a.end_period === x && b.start_period === y) || (b.end_period === x && a.start_period === y),
   );
-  return adjacent && weeksOverlap(a.weeks, b.weeks);
+  if (!adjacent) return false;
+  if (a.date_start && b.date_start) {
+    const aEnd = a.date_end ?? a.date_start;
+    const bEnd = b.date_end ?? b.date_start;
+    if (a.date_start > bEnd || b.date_start > aEnd) return false;
+  }
+  return weeksOverlap(a.weeks, b.weeks);
 }
 
 /** Các cặp lớp vi phạm quy định liền kề (cùng ngày, cùng tuần, cùng thời gian hiệu lực). */

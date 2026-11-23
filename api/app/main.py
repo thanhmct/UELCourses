@@ -2,19 +2,49 @@ from __future__ import annotations
 
 import logging
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from sqlalchemy import select
 
 from app.config import get_settings
 from app.db import SessionLocal, init_db
-from app.models import Module
+from app.models import AuditLog, Module
+from app.admin.router import router as admin_router
+from app.rate_limit import (
+    AppRateLimitMiddleware,
+    RateLimitExceeded,
+    cache_control_middleware,
+    limiter,
+    rate_limit_exceeded_handler,
+    user_agent_block_middleware,
+)
 from app.routers import auth as auth_router
-from app.routers import calendar, equivalents, feedback, imports, modules, programs, reviews, semesters, sync, venues
+from app.routers import analytics, calendar, equivalents, feedback, imports, modules, programs, reviews, semesters, sync, venues
 
 log = logging.getLogger("uelcourses")
+
+
+def _record_server_error(method: str, path: str, status_code: int, err_msg: str | None = None):
+    """Ghi lỗi 5xx vào audit_log với actor_type='system' (không lưu body, headers hay thông tin nhạy cảm)."""
+    try:
+        with SessionLocal() as db:
+            audit = AuditLog(
+                actor_type="system",
+                actor_id="system",
+                action="server_error",
+                entity_type="http_5xx",
+                entity_id=path[:128],
+                before=None,
+                after={"method": method, "path": path[:128], "status_code": status_code, "error": err_msg[:200] if err_msg else None},
+                created_at=datetime.now(timezone.utc),
+            )
+            db.add(audit)
+            db.commit()
+    except Exception:
+        pass
 
 
 @asynccontextmanager
@@ -32,11 +62,15 @@ async def lifespan(_app: FastAPI):
 
 
 app = FastAPI(
-    title="UELCourses API",
+    title="UELPATH API",
     version="0.1.0",
     description="Backend lập kế hoạch học tập cho sinh viên UEL (học phần, lớp, lịch, phòng, tương đương, phản hồi).",
     lifespan=lifespan,
 )
+
+# Gắn Limiter và Exception Handler cho Rate Limiting (Brief S1)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
 # Nén phản hồi lớn (/venues ~2 MB JSON, /equivalents ~100 KB). Phản hồi nhỏ hơn 1 KB giữ nguyên.
 app.add_middleware(GZipMiddleware, minimum_size=1024)
@@ -47,16 +81,46 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+# Rate limiting middleware cho các route /api/*
+app.add_middleware(AppRateLimitMiddleware)
+
+
+@app.middleware("http")
+async def audit_5xx_errors_middleware(request: Request, call_next):
+    """Middleware nhẹ ghi nhận lỗi 5xx vào audit_log cho trang Hệ thống (Brief A6)."""
+    try:
+        response = await call_next(request)
+        if response.status_code >= 500:
+            _record_server_error(request.method, request.url.path, response.status_code)
+        return response
+    except Exception as exc:
+        _record_server_error(request.method, request.url.path, 500, str(exc))
+        raise exc
+
+
+@app.middleware("http")
+async def user_agent_check_middleware(request: Request, call_next):
+    """Middleware chặn User-Agent rỗng khi BLOCK_EMPTY_USER_AGENT=true (Brief S1)."""
+    return await user_agent_block_middleware(request, call_next)
+
+
+@app.middleware("http")
+async def cache_control_header_middleware(request: Request, call_next):
+    """Middleware gắn Cache-Control cho Cloudflare và trình duyệt (Brief S1)."""
+    return await cache_control_middleware(request, call_next)
+
 
 
 @app.get("/api/health", tags=["health"], summary="Kiểm tra trạng thái")
-def health():
+@limiter.exempt
+def health(request: Request):
     return {"status": "ok"}
 
 
-for r in (semesters, modules, programs, equivalents, venues, imports, sync, feedback, reviews, calendar):
+for r in (semesters, modules, programs, equivalents, venues, imports, sync, feedback, reviews, calendar, analytics):
     app.include_router(r.router, prefix="/api")
 app.include_router(auth_router.router, prefix="/api")
+app.include_router(admin_router, prefix="/api")
 
 # Router RAG quy chế (do agent regulations-rag cung cấp). Không có / lỗi -> chỉ cảnh báo.
 if get_settings().enable_rag:

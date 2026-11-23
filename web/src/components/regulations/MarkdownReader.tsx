@@ -109,7 +109,7 @@ export function MarkdownReader({ docId }: { docId: string }) {
       a: ({ href, children, ...rest }: ComponentPropsWithoutRef<"a"> & { "data-wikilink"?: string }) => {
         const wl = rest["data-wikilink"];
         if (wl) return <WikiLink target={wl}>{children}</WikiLink>;
-        return <a href={href} target="_blank" rel="noreferrer" className="text-brand-600 underline">{children}</a>;
+        return <a href={href} target="_blank" rel="noreferrer" className="text-brand-ink underline">{children}</a>;
       },
       h1: ({ children }) => <h1 className="mb-1 text-xl font-bold">{children}</h1>,
       h2: ({ children, id }) => (
@@ -117,7 +117,7 @@ export function MarkdownReader({ docId }: { docId: string }) {
       ),
       h3: ({ children }) => <h3 className="mt-4 font-semibold">{children}</h3>,
       p: ({ children, id }: ComponentPropsWithoutRef<"p">) =>
-        id && id.includes("-khoan-") ? <ClauseBlock docId={docId} anchor={id}>{children}</ClauseBlock> : <p className="my-2">{children}</p>,
+        id && id.includes("-khoan-") ? <ClauseBlock docId={docId} anchor={id}>{children}</ClauseBlock> : <p id={id} className="my-2">{children}</p>,
       ul: ({ children }) => <ul className="my-2 list-disc pl-6">{children}</ul>,
       ol: ({ children }) => <ol className="my-2 list-decimal pl-6">{children}</ol>,
       table: ({ children }) => <div className="overflow-x-auto"><table className="my-2 w-full border-collapse text-xs">{children}</table></div>,
@@ -142,7 +142,7 @@ export function MarkdownReader({ docId }: { docId: string }) {
             <span>{t("md.effective", { a: formatDateVi(fm.effective_from) })}{fm.effective_to ? t("md.effectiveTo", { d: formatDateVi(fm.effective_to) }) : ""}</span>
             <span>{t("md.applies", { c: fm.applies_to_cohorts?.includes("all") ? t("md.allCohorts") : fm.applies_to_cohorts?.join(", ") })}</span>
             {fm.metadata_verified === false && <span className="chip bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-200">{t("md.unverified")}</span>}
-            {fm.source_url && <a className="text-brand-600 underline" href={fm.source_url} target="_blank" rel="noreferrer">{t("md.source")}</a>}
+            {fm.source_url && <a className="text-brand-ink underline" href={fm.source_url} target="_blank" rel="noreferrer">{t("md.source")}</a>}
           </div>
         )}
         {(badge === "expired" || badge === "superseded") && (

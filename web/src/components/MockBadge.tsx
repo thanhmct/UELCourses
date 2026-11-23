@@ -4,19 +4,7 @@ import { useT } from "@/i18n";
 
 export function MockBadge({ className = "" }: { className?: string }) {
   const mock = useDataSource((s) => s.mock);
-  const offline = useDataSource((s) => s.offline);
   const { t } = useT();
-  if (offline && !mock) {
-    return (
-      <span
-        role="status"
-        title={t("common.offlineTitle")}
-        className={`chip bg-red-100 text-red-800 ring-1 ring-red-300 dark:bg-red-900/40 dark:text-red-200 dark:ring-red-700 ${className}`}
-      >
-        {t("common.offline")}
-      </span>
-    );
-  }
   if (!mock) return null;
   return (
     <span
@@ -26,4 +14,14 @@ export function MockBadge({ className = "" }: { className?: string }) {
       {t("common.sample")}
     </span>
   );
+}
+
+export function ConnectionNotice() {
+  const offline = useDataSource((s) => s.offline && !s.mock);
+  const { t } = useT();
+  return offline ? (
+    <p role="status" className="mb-3 rounded-md border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-medium text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+      {t("api.connectionError")}
+    </p>
+  ) : null;
 }

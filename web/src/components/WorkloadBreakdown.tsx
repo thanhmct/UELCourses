@@ -35,7 +35,7 @@ function Blocks({ hours, block }: { hours: number; block: string }) {
 }
 
 export function WorkloadBreakdownView({ credits, type, showDetails = false }: Props) {
-  const { t } = useT();
+  const { t, lang } = useT();
   const w = calculateWorkload(credits, type);
 
   if (w.total_hours === 0) return null;
@@ -48,7 +48,7 @@ export function WorkloadBreakdownView({ credits, type, showDetails = false }: Pr
     { key: "prep", labelKey: "workload.prep", hours: w.self_study, block: "bg-rose-400", text: "text-rose-700 dark:text-rose-300" },
   ].filter((p) => p.hours > 0);
 
-  const summary = `${formatWorkloadString(w)}`;
+  const summary = formatWorkloadString(w, lang);
 
   return (
     <div className="space-y-2 text-xs text-slate-600 dark:text-slate-300">

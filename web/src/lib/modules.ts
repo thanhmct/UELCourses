@@ -1,3 +1,4 @@
+import { translate, type Lang } from "@/i18n";
 import type { ClassSection, ModuleSummary, OfferingPlan } from "./types";
 
 /** "Dự kiến mở: HK1, HK3 năm 2026-2027; HK2 năm 2027-2028" */
@@ -17,13 +18,13 @@ export function seatsAvailable(s: Pick<ClassSection, "available" | "quota_max" |
   return null;
 }
 
-export function capacityText(s: ClassSection): string {
+export function capacityText(s: ClassSection, lang: Lang = "vi"): string {
   const cap = s.quota_max ?? s.quota;
   const left = seatsAvailable(s);
   const parts: string[] = [];
   if (typeof s.registered === "number" && typeof cap === "number") parts.push(`${s.registered}/${cap}`);
-  else if (typeof cap === "number") parts.push(`Tối đa ${cap}`);
-  if (left !== null) parts.push(left === 0 ? "Hết chỗ" : `còn ${left} chỗ`);
+  else if (typeof cap === "number") parts.push(translate(lang, "det.seatsMaximum", { n: cap }));
+  if (left !== null) parts.push(translate(lang, left === 0 ? "det.seatsFull" : "det.seatsLeft", { n: left }));
   return parts.join(" · ") || "—";
 }
 

@@ -93,7 +93,7 @@ W = 360
 
 def build():
     cells, ids = [], {}
-    cells.append(f'<mxCell id="{nid()}" value="{html.escape("Cấu trúc bảng dữ liệu UELCourses (schema đọc từ Postgres, ngày " + datetime.now().strftime("%Y-%m-%d") + ")")}" '
+    cells.append(f'<mxCell id="{nid()}" value="{html.escape("Cấu trúc bảng dữ liệu UELPATH (schema đọc từ Postgres, ngày " + datetime.now().strftime("%Y-%m-%d") + ")")}" '
                  'style="text;html=1;fontSize=16;align=left;" vertex="1" parent="1"><mxGeometry x="40" y="16" width="1200" height="30" as="geometry"/></mxCell>')
     gx, gy, gap = 40, 60, 40
     x = gx
@@ -132,7 +132,7 @@ def build():
             cells.append(f'<mxCell id="{nid()}" value="{html.escape(c)}" style="endArrow=ERmany;startArrow=ERone;startFill=0;endFill=0;html=1;strokeColor=#44546A;fontSize=9;fontColor=#555555;rounded=1;" edge="1" parent="1" source="{ids[ch]}" target="{ids[pa]}"><mxGeometry relative="1" as="geometry"/></mxCell>')
     body = "".join(cells)
     return ('<?xml version="1.0" encoding="UTF-8"?>\n'
-            f'<mxfile host="app.diagrams.net" agent="UELCourses" version="24.0.0"><diagram id="p1" name="Cấu trúc bảng">'
+            f'<mxfile host="app.diagrams.net" agent="UELPATH" version="24.0.0"><diagram id="p1" name="Cấu trúc bảng">'
             '<mxGraphModel dx="1600" dy="1000" grid="1" gridSize="10" page="1" pageWidth="1400" pageHeight="2000">'
             f'<root><mxCell id="0"/><mxCell id="1" parent="0"/>{body}</root></mxGraphModel></diagram></mxfile>')
 

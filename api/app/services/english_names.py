@@ -21,6 +21,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import Module, OutlineCourse, OutlineModuleLink, ProgramCatalogEntry
+from app.services.text import normalize_search
 
 SEED_TSV = Path(__file__).resolve().parents[2] / "seed" / "module_names_en.tsv"
 
@@ -107,14 +108,15 @@ def fill_english_names(db: Session, seed_path: Path = SEED_TSV) -> dict:
             en, src = catalog[m.code], "catalog"
         elif normalize_vi(m.name) in seed:
             en, src = seed[normalize_vi(m.name)], "seed_table"
-        elif m.name_en and m.name_en_source == "portal":  # tên tiếng Anh lấy từ cổng: giữ nếu không có nguồn tốt hơn
-            en, src = m.name_en, "portal"
+        elif m.name_en and m.name_en_source in {"master_data", "portal"}:
+            en, src = m.name_en, m.name_en_source
         else:
             en = src = None
         if en is None:
             missing += 1
         by_source[src or "none"] += 0 if en is None else 1
         m.name_en, m.name_en_source = en, src
+        m.search_text = normalize_search(f"{m.code} {m.name} {en or ''} {m.faculty or ''} {m.department or ''}")
     db.commit()
     return {"modules_with_name_en": sum(by_source.values()), "by_source": dict(by_source),
             "without_name_en": missing, "kept_manual": kept_manual, "seed_table_size": len(seed)}

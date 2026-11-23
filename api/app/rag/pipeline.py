@@ -9,6 +9,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
+from .handbook import build_handbook_chunks
 from .index import RagIndex, embeddings_available
 from .loader import load_document
 from .models import RegulationDoc, parse_date
@@ -112,6 +113,8 @@ def catalog_entry_to_doc(entry: dict[str, Any]) -> RegulationDoc:
         applies_from_source="catalog" if entry.get("applies_from_cohort") else None,
         amends=_as_list(entry.get("amends")),
         guides=_as_list(entry.get("guides") or entry.get("implements")),
+        source_type="handbook" if entry.get("source_type") == "handbook" else "regulation",
+        ocr_transcript=entry.get("ocr_transcript") is True,
     )
 
 
@@ -132,16 +135,18 @@ def resolve_files(reg_dir: Path, doc: RegulationDoc) -> list[Path]:
 
 
 def manual_override(reg_dir: Path, doc: RegulationDoc, files: list[Path]) -> Path | None:
-    """A hand-transcribed text in regulations/manual/ (<doc_id>.* or <file stem>.*) replaces scans."""
+    """Prefer page-marked transcripts in manual/ over an original's embedded text layer."""
     mdir = reg_dir / "manual"
-    if not mdir.is_dir():
+    if not mdir.is_dir() or any(f.parent == mdir and f.suffix.lower() == ".txt" for f in files):
         return None
     stems = {doc.doc_id.lower()} | {f.stem.lower() for f in files}
-    for p in sorted(mdir.iterdir()):
-        if p.is_file() and p.suffix.lower() in SUPPORTED_EXT and p.stem.lower() in stems:
-            if all(p.resolve() != f.resolve() for f in files if f.exists()):
-                return p
-    return None
+    originals = {f.resolve() for f in files if f.exists()}
+    return min(
+        (p for p in mdir.iterdir() if p.suffix.lower() in SUPPORTED_EXT and p.stem.lower() in stems
+         and p.is_file() and p.resolve() not in originals),
+        key=lambda p: (p.suffix.lower() != ".txt", p.stem.lower() != doc.doc_id.lower(), p.name),
+        default=None,
+    )
 
 
 @dataclass
@@ -181,9 +186,14 @@ def build_index(reg_dir: Path | str | None = None, today: date | None = None,
             continue
         files = resolve_files(reg_dir, doc)
         used_files.update(f.resolve() for f in files if f.exists())
-        if not files and manual_override(reg_dir, doc, files) is None:
-            report.no_file.append(doc.doc_id)
         override = manual_override(reg_dir, doc, files)
+        if override is not None:
+            files = [override]
+            used_files.add(override.resolve())
+            report.warnings.append({"doc_id": doc.doc_id, "file": override.name,
+                                    "warning": "Dùng bản văn trong manual/ thay cho file gốc."})
+        if not files:
+            report.no_file.append(doc.doc_id)
         pages: list[tuple[int, str]] = []
         loaded_any = False
         for f in files:
@@ -193,27 +203,24 @@ def build_index(reg_dir: Path | str | None = None, today: date | None = None,
             if ld.error:
                 report.errors.append({"doc_id": doc.doc_id, "file": str(f), "error": ld.error})
                 continue
-            if ld.needs_ocr and override is None:
+            if ld.needs_ocr:
                 report.needs_ocr.append({"doc_id": doc.doc_id, "file": str(f), "reason": ld.ocr_reason or "scan"})
                 continue
-            if not ld.needs_ocr:
-                pages += ld.pages
-                loaded_any = True
-        if override is not None and not loaded_any:
-            ld = load_document(override)
-            used_files.add(override.resolve())
-            if ld.error:
-                report.errors.append({"doc_id": doc.doc_id, "file": str(override), "error": ld.error})
-            else:
-                pages += ld.pages
-                loaded_any = True
-                report.warnings.append({"doc_id": doc.doc_id, "file": override.name,
-                                        "warning": "Dùng bản chép tay trong manual/ thay cho file gốc."})
+            pages += ld.pages
+            loaded_any = True
+        if doc.source_type == "handbook":
+            chunks = build_handbook_chunks(doc, pages)
+            doc.indexed = bool(chunks)
+            docs.append(doc)
+            all_chunks.extend(chunks)
+            report.per_doc.append({"doc_id": doc.doc_id, "loaded": loaded_any, "articles": 0, "clauses": 0,
+                                   "points": 0, "chunks": len(chunks)})
+            continue
         parsed = segment(pages) if loaded_any else None
         if parsed is not None:
-            if not doc.decision_no and parsed.decision_no:
+            if not doc.ocr_transcript and not doc.decision_no and parsed.decision_no:
                 doc.decision_no = parsed.decision_no
-            if not doc.issued_date and parsed.issued_date:
+            if not doc.ocr_transcript and not doc.issued_date and parsed.issued_date:
                 doc.issued_date = parsed.issued_date
             for w in parsed.warnings:
                 report.warnings.append({"doc_id": doc.doc_id, "file": doc.file, "warning": w})
@@ -226,14 +233,15 @@ def build_index(reg_dir: Path | str | None = None, today: date | None = None,
         doc.indexed = bool(parsed and parsed.articles)
         docs.append(doc)
         counts = parsed.counts() if parsed else {"articles": 0, "clauses": 0, "points": 0}
-        report.per_doc.append({"doc_id": doc.doc_id, "loaded": loaded_any, **counts})
+        chunks = build_chunks(doc, parsed) if parsed is not None else []
+        report.per_doc.append({"doc_id": doc.doc_id, "loaded": loaded_any, **counts, "chunks": len(chunks)})
         if parsed is None:
             continue
         report.n_articles += counts["articles"]
         report.n_clauses += counts["clauses"]
         report.n_points += counts["points"]
         articles[doc.doc_id] = [a.to_api() for a in parsed.articles]
-        all_chunks.extend(build_chunks(doc, parsed))
+        all_chunks.extend(chunks)
 
     refresh_statuses(docs, today)
     status_of = {d.doc_id: d for d in docs}

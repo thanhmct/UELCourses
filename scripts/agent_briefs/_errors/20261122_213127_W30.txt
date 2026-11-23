@@ -1,0 +1,70 @@
+﻿LOI MOI do brief W30_validate_program_code gay ra (chi sua nhung loi nay):
+tsc|src/components/__tests__/ProgramProfileValidation.test.tsx|TS2322
+vitest|src/app/equivalents/__tests__/page.test.tsx > Brief W13: Trang Hß╗ìc phß║ºn t╞░╞íng ─æ╞░╞íng chß╗ë hiß╗çn c├íc m├┤n trong CT─ÉT ─æang lß╗ìc > 2. C├│ ch╞░╞íng tr├¼nh -> ß║¿n nh├│m kh├┤ng li├¬n quan v├á ß║⌐n m├┤n ngo├ái ch╞░╞íng tr├¼nh theo mß║╖c ─æß╗ïnh
+vitest|src/app/modules/__tests__/profileFilterSync.test.tsx > W6 & W11: Profile filter banner text and real-time synchronization > renders full banner sentence for Talent track (T)
+vitest|src/app/planner/__tests__/plannerHeader.test.tsx > Brief W28: Ti├¬u ─æß╗ü thß║╗ hß╗ìc kß╗│ trong Kß║┐ hoß║ích (Planner Semester Header) > 3. Thß║╗ cß╗Öt hß╗ìc kß╗│: ti├¬u ─æß╗ü c├│ hai phß║ºn tß╗¡ ri├¬ng biß╗çt (t├¬n / thß╗æng k├¬)
+vitest|src/app/planner/__tests__/plannerHeader.test.tsx > Brief W28: Ti├¬u ─æß╗ü thß║╗ hß╗ìc kß╗│ trong Kß║┐ hoß║ích (Planner Semester Header) > 4. Thß╗æng k├¬ chß╗⌐a '5 m├┤n ┬╖ 14 TC' trong mß╗Öt phß║ºn tß╗¡ duy nhß║Ñt, kh├┤ng ngß║»t d├▓ng sß╗æ v├á ─æ╞ín vß╗ï
+vitest|src/app/planner/__tests__/plannerHeader.test.tsx > Brief W28: Ti├¬u ─æß╗ü thß║╗ hß╗ìc kß╗│ trong Kß║┐ hoß║ích (Planner Semester Header) > 5. Giao diß╗çn tiß║┐ng Anh (EN): hiß╗ân thß╗ï 'Semester 1 ┬╖ 2024-2025' v├á '5 courses ┬╖ 14 credits'
+vitest|src/app/planner/__tests__/plannerHeader.test.tsx > Brief W28: Ti├¬u ─æß╗ü thß║╗ hß╗ìc kß╗│ trong Kß║┐ hoß║ích (Planner Semester Header) > 6. Xß╗¡ l├╜ thß║╗ kß╗│ 2 c├│ m├ú lß║╖p HKHK02: hiß╗ân thß╗ï chuß║⌐n 'Hß╗ìc kß╗│ 2 ┬╖ 2024-2025' v├á '1 m├┤n ┬╖ 3 TC'
+vitest|src/components/__tests__/moduleFilters.test.tsx > ModulesPage Filters and Placeholders > handles filter interactions: activating facets enables reset, and reset clears facets and faculty search while preserving module search and program context
+vitest|src/components/__tests__/ProgramFilterBar.test.tsx > Brief W16: ProgramFilterBar component tests > 4. C├│ ng├ánh 2 -> hiß╗ân thß╗ï hai chip cß║ính nhau, ng─ân bß╗ƒi dß║Ñu '+' mß╗¥, c├│ nh├ún 'Ng├ánh ch├¡nh' v├á 'Ng├ánh 2'
+vitest|src/components/__tests__/ProgramFilterBar.test.tsx > Brief W16: ProgramFilterBar component tests > 5. Bß║Ñm n├║t '─Éß╗òi' -> mß╗ƒ hß╗Öp thoß║íi pop-up (role='dialog'), URL kh├┤ng ─æß╗òi; l╞░u m├ú mß╗¢i cß║¡p nhß║¡t thanh tß╗⌐c th├¼
+vitest|src/components/__tests__/ProgramProfileValidation.test.tsx > Brief W30: Program Code Validation & Auto-Open Tests > 1. Nhß║¡p K24414E (kh├┤ng tß╗ôn tß║íi) hiß╗ân thß╗ï lß╗ùi ─æß╗Å, liß╗çt k├¬ m├ú hß╗úp lß╗ç v├á chß║╖n L╞░u
+vitest|src/components/__tests__/ProgramProfileValidation.test.tsx > Brief W30: Program Code Validation & Auto-Open Tests > 10. Bß║Ñm Hß╗ºy ─æ├│ng hß╗Öp thoß║íi v├á kh├┤ng mß╗ƒ lß║íi khi rerender trong c├╣ng phi├¬n
+vitest|src/components/__tests__/ProgramProfileValidation.test.tsx > Brief W30: Program Code Validation & Auto-Open Tests > 2. Nhß║¡p K24414 hß╗úp lß╗ç hiß╗ân thß╗ï m├┤ tß║ú ─æ├║ng v├á cho ph├⌐p L╞░u
+vitest|src/components/__tests__/ProgramProfileValidation.test.tsx > Brief W30: Program Code Validation & Auto-Open Tests > 3. Nhß║¡p K24404E hß╗úp lß╗ç (T├ái ch├¡nh - Ng├ón h├áng c├│ hß╗ç tiß║┐ng Anh) hiß╗ân thß╗ï m├┤ tß║ú tiß║┐ng Anh v├á cho ph├⌐p L╞░u
+vitest|src/components/__tests__/ProgramProfileValidation.test.tsx > Brief W30: Program Code Validation & Auto-Open Tests > 4. Nhß║¡p m├ú ng├ánh kh├┤ng c├│ trong kh├│a (K24999) b├ío lß╗ùi 'Kh├┤ng t├¼m thß║Ñy ng├ánh m├ú 999 ß╗ƒ kh├│a 24'
+vitest|src/components/__tests__/ProgramProfileValidation.test.tsx > Brief W30: Program Code Validation & Auto-Open Tests > 5. API validGroups lß╗ùi hoß║╖c rß╗ùng th├¼ kh├┤ng chß║╖n m├ú c├│ ─æß╗ïnh dß║íng hß╗úp lß╗ç
+vitest|src/components/__tests__/ProgramProfileValidation.test.tsx > Brief W30: Program Code Validation & Auto-Open Tests > 6. Thanh tr├¬n hiß╗çn chip cß║únh b├ío v├áng khi m├ú ─æ├ú l╞░u l├á K24414E, bß║Ñm mß╗ƒ dialog v├á kh├┤ng tß╗▒ x├│a m├ú
+vitest|src/components/__tests__/ProgramProfileValidation.test.tsx > Brief W30: Program Code Validation & Auto-Open Tests > 7. V├áo /modules khi bß╗Ö nhß╗¢ trß╗æng -> hß╗Öp thoß║íi tß╗▒ ─æß╗Öng mß╗ƒ ngay
+
+=== Chi tiet day du (chi de tham khao, loi khac khong thuoc brief nay thi BO QUA) ===
+### tsc (web)
+src/components/__tests__/ProgramProfileValidation.test.tsx(122,63): error TS2322: Type 'Promise<{ mock: true; data: { semester_id: string; academic_year: string; term: number; is_active: boolean; }[]; }>' is not assignable to type 'Promise<ApiResult<Semester[]>>'.
+  Type '{ mock: true; data: { semester_id: string; academic_year: string; term: number; is_active: boolean; }[]; }' is not assignable to type 'ApiResult<Semester[]>'.
+    Types of property 'data' are incompatible.
+      Type '{ semester_id: string; academic_year: string; term: number; is_active: boolean; }[]' is not assignable to type 'Semester[]'.
+        Type '{ semester_id: string; academic_year: string; term: number; is_active: boolean; }' is missing the following properties from type 'Semester': id, name, year, is_current
+
+
+### vitest (web)
+   Γ¥» Brief W30: Program Code Validation & Auto-Open Tests (10)
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ» Failed Tests 17 ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+ FAIL  src/components/__tests__/ProgramFilterBar.test.tsx > Brief W16: ProgramFilterBar component tests > 4. C├│ ng├ánh 2 -> hiß╗ân thß╗ï hai chip cß║ính nhau, ng─ân bß╗ƒi dß║Ñu '+' mß╗¥, c├│ nh├ún 'Ng├ánh ch├¡nh' v├á 'Ng├ánh 2'
+TestingLibraryElementError: Found multiple elements with the text: Ng├ánh ch├¡nh
+ FAIL  src/components/__tests__/ProgramFilterBar.test.tsx > Brief W16: ProgramFilterBar component tests > 5. Bß║Ñm n├║t '─Éß╗òi' -> mß╗ƒ hß╗Öp thoß║íi pop-up (role='dialog'), URL kh├┤ng ─æß╗òi; l╞░u m├ú mß╗¢i cß║¡p nhß║¡t thanh tß╗⌐c th├¼
+Error: expect(element).not.toBeInTheDocument()
+ FAIL  src/components/__tests__/ProgramProfileValidation.test.tsx > Brief W30: Program Code Validation & Auto-Open Tests > 1. Nhß║¡p K24414E (kh├┤ng tß╗ôn tß║íi) hiß╗ân thß╗ï lß╗ùi ─æß╗Å, liß╗çt k├¬ m├ú hß╗úp lß╗ç v├á chß║╖n L╞░u
+TestingLibraryElementError: Unable to find an accessible element with the role "button" and name "L╞░u"
+ Γ¥» Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ FAIL  src/components/__tests__/ProgramProfileValidation.test.tsx > Brief W30: Program Code Validation & Auto-Open Tests > 2. Nhß║¡p K24414 hß╗úp lß╗ç hiß╗ân thß╗ï m├┤ tß║ú ─æ├║ng v├á cho ph├⌐p L╞░u
+TestingLibraryElementError: Unable to find an accessible element with the role "button" and name "L╞░u"
+ Γ¥» Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ FAIL  src/components/__tests__/ProgramProfileValidation.test.tsx > Brief W30: Program Code Validation & Auto-Open Tests > 3. Nhß║¡p K24404E hß╗úp lß╗ç (T├ái ch├¡nh - Ng├ón h├áng c├│ hß╗ç tiß║┐ng Anh) hiß╗ân thß╗ï m├┤ tß║ú tiß║┐ng Anh v├á cho ph├⌐p L╞░u
+TestingLibraryElementError: Unable to find an accessible element with the role "button" and name "L╞░u"
+ Γ¥» Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ FAIL  src/components/__tests__/ProgramProfileValidation.test.tsx > Brief W30: Program Code Validation & Auto-Open Tests > 4. Nhß║¡p m├ú ng├ánh kh├┤ng c├│ trong kh├│a (K24999) b├ío lß╗ùi 'Kh├┤ng t├¼m thß║Ñy ng├ánh m├ú 999 ß╗ƒ kh├│a 24'
+TestingLibraryElementError: Unable to find an accessible element with the role "button" and name "L╞░u"
+ Γ¥» Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ FAIL  src/components/__tests__/ProgramProfileValidation.test.tsx > Brief W30: Program Code Validation & Auto-Open Tests > 5. API validGroups lß╗ùi hoß║╖c rß╗ùng th├¼ kh├┤ng chß║╖n m├ú c├│ ─æß╗ïnh dß║íng hß╗úp lß╗ç
+TestingLibraryElementError: Unable to find an accessible element with the role "button" and name "L╞░u"
+ Γ¥» Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ FAIL  src/components/__tests__/ProgramProfileValidation.test.tsx > Brief W30: Program Code Validation & Auto-Open Tests > 6. Thanh tr├¬n hiß╗çn chip cß║únh b├ío v├áng khi m├ú ─æ├ú l╞░u l├á K24414E, bß║Ñm mß╗ƒ dialog v├á kh├┤ng tß╗▒ x├│a m├ú
+TestingLibraryElementError: Found multiple elements with the text: M├ú K24414E kh├┤ng hß╗úp lß╗ç ΓÇö bß║Ñm ─æß╗â sß╗¡a
+ FAIL  src/components/__tests__/ProgramProfileValidation.test.tsx > Brief W30: Program Code Validation & Auto-Open Tests > 7. V├áo /modules khi bß╗Ö nhß╗¢ trß╗æng -> hß╗Öp thoß║íi tß╗▒ ─æß╗Öng mß╗ƒ ngay
+TestingLibraryElementError: Unable to find role="dialog"
+ FAIL  src/components/__tests__/ProgramProfileValidation.test.tsx > Brief W30: Program Code Validation & Auto-Open Tests > 10. Bß║Ñm Hß╗ºy ─æ├│ng hß╗Öp thoß║íi v├á kh├┤ng mß╗ƒ lß║íi khi rerender trong c├╣ng phi├¬n
+TestingLibraryElementError: Unable to find role="dialog"
+ FAIL  src/components/__tests__/moduleFilters.test.tsx > ModulesPage Filters and Placeholders > handles filter interactions: activating facets enables reset, and reset clears facets and faculty search while preserving module search and program context
+TestingLibraryElementError: Unable to find an element with the text: /Kinh doanh quß╗æc tß║┐.*kh├│a 23/i. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+ FAIL  src/app/equivalents/__tests__/page.test.tsx > Brief W13: Trang Hß╗ìc phß║ºn t╞░╞íng ─æ╞░╞íng chß╗ë hiß╗çn c├íc m├┤n trong CT─ÉT ─æang lß╗ìc > 2. C├│ ch╞░╞íng tr├¼nh -> ß║¿n nh├│m kh├┤ng li├¬n quan v├á ß║⌐n m├┤n ngo├ái ch╞░╞íng tr├¼nh theo mß║╖c ─æß╗ïnh
+TestingLibraryElementError: Unable to find an element with the text: /Ch╞░╞íng tr├¼nh ─æ├áo tß║ío ng├ánh Kinh tß║┐ hß╗ìc kh├│a 24/i. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+ FAIL  src/app/planner/__tests__/plannerHeader.test.tsx > Brief W28: Ti├¬u ─æß╗ü thß║╗ hß╗ìc kß╗│ trong Kß║┐ hoß║ích (Planner Semester Header) > 3. Thß║╗ cß╗Öt hß╗ìc kß╗│: ti├¬u ─æß╗ü c├│ hai phß║ºn tß╗¡ ri├¬ng biß╗çt (t├¬n / thß╗æng k├¬)
+ FAIL  src/app/planner/__tests__/plannerHeader.test.tsx > Brief W28: Ti├¬u ─æß╗ü thß║╗ hß╗ìc kß╗│ trong Kß║┐ hoß║ích (Planner Semester Header) > 4. Thß╗æng k├¬ chß╗⌐a '5 m├┤n ┬╖ 14 TC' trong mß╗Öt phß║ºn tß╗¡ duy nhß║Ñt, kh├┤ng ngß║»t d├▓ng sß╗æ v├á ─æ╞ín vß╗ï
+ FAIL  src/app/planner/__tests__/plannerHeader.test.tsx > Brief W28: Ti├¬u ─æß╗ü thß║╗ hß╗ìc kß╗│ trong Kß║┐ hoß║ích (Planner Semester Header) > 5. Giao diß╗çn tiß║┐ng Anh (EN): hiß╗ân thß╗ï 'Semester 1 ┬╖ 2024-2025' v├á '5 courses ┬╖ 14 credits'
+ FAIL  src/app/planner/__tests__/plannerHeader.test.tsx > Brief W28: Ti├¬u ─æß╗ü thß║╗ hß╗ìc kß╗│ trong Kß║┐ hoß║ích (Planner Semester Header) > 6. Xß╗¡ l├╜ thß║╗ kß╗│ 2 c├│ m├ú lß║╖p HKHK02: hiß╗ân thß╗ï chuß║⌐n 'Hß╗ìc kß╗│ 2 ┬╖ 2024-2025' v├á '1 m├┤n ┬╖ 3 TC'
+TypeError: api.validGroups is not a function
+ FAIL  src/app/modules/__tests__/profileFilterSync.test.tsx > W6 & W11: Profile filter banner text and real-time synchronization > renders full banner sentence for Talent track (T)
+TestingLibraryElementError: Unable to find an element with the text: /T├ái ch├¡nh - Ng├ón h├áng kh├│a 24, ch╞░╞íng tr├¼nh Cß╗¡ nh├ón t├ái n─âng/i. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+      Tests  17 failed | 507 passed (524)
+

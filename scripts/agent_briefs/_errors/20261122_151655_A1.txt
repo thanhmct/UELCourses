@@ -1,0 +1,163 @@
+﻿LOI MOI do brief A1_admin_shell gay ra (chi sua nhung loi nay):
+alembic
+tsc|src/app/modules/[code]/__tests__/page.test.tsx|TS2353
+vitest|src/app/admin/__tests__/admin.test.tsx > Brief A1 & PLAN_ADMIN Mß╗Ñc 8: Admin Shell, Login, Layout & Overview > 1. Trang ─æ─âng nhß║¡p quß║ún trß╗ï (/admin/login) > hiß╗ân thß╗ï form ─æß║ºy ─æß╗º tr╞░ß╗¥ng email, mß║¡t khß║⌐u v├á n├║t hiß╗çn/ß║⌐n mß║¡t khß║⌐u
+vitest|src/app/admin/__tests__/admin.test.tsx > Brief A1 & PLAN_ADMIN Mß╗Ñc 8: Admin Shell, Login, Layout & Overview > 1. Trang ─æ─âng nhß║¡p quß║ún trß╗ï (/admin/login) > login lß╗ùi hiß╗ân thß╗ï th├┤ng b├ío inline trong form (kh├┤ng toast lß╗¢n)
+vitest|src/app/admin/__tests__/admin.test.tsx > Brief A1 & PLAN_ADMIN Mß╗Ñc 8: Admin Shell, Login, Layout & Overview > 1. Trang ─æ─âng nhß║¡p quß║ún trß╗ï (/admin/login) > login th├ánh c├┤ng chuyß╗ân h╞░ß╗¢ng tß╗¢i trang ─æ├¡ch next hoß║╖c /admin
+vitest|src/app/admin/__tests__/admin.test.tsx > Brief A1 & PLAN_ADMIN Mß╗Ñc 8: Admin Shell, Login, Layout & Overview > 2. Sidebar & Ph├ón quyß╗ün vai tr├▓ > hiß╗ân thß╗ï ─æß║ºy ─æß╗º 9 mß╗Ñc bao gß╗ôm 'T├ái khoß║ún quß║ún trß╗ï' cho vai tr├▓ admin
+vitest|src/app/admin/__tests__/admin.test.tsx > Brief A1 & PLAN_ADMIN Mß╗Ñc 8: Admin Shell, Login, Layout & Overview > 2. Sidebar & Ph├ón quyß╗ün vai tr├▓ > ß║⌐n mß╗Ñc 'T├ái khoß║ún quß║ún trß╗ï' ─æß╗æi vß╗¢i vai tr├▓ moderator
+vitest|src/app/admin/__tests__/admin.test.tsx > Brief A1 & PLAN_ADMIN Mß╗Ñc 8: Admin Shell, Login, Layout & Overview > 3. Layout Quß║ún trß╗ï & C╞í chß║┐ Dev Mode / Bß║úo vß╗ç Route > hiß╗ân thß╗ï m├án h├¼nh 'Khu vß╗▒c quß║ún trß╗ï ch╞░a bß║¡t' khi API trß║ú vß╗ü 404 (ch╞░a bß║¡t ADMIN_DEV_OPEN)
+vitest|src/app/modules/[code]/__tests__/page.test.tsx > Brief B7: Hiß╗ân thß╗ï li├¬n kß║┐t PDF ─æß╗ü c╞░╞íng tr├¬n trang chi tiß║┐t v├á danh s├ích theo ng├┤n ngß╗» > 1. Trang chi tiß║┐t c├│ cß║ú 2 link (BKB4060) hiß╗ân thß╗ï cß║ú 2 n├║t tiß║┐ng Viß╗çt v├á English ß╗ƒ giao diß╗çn tiß║┐ng Viß╗çt
+vitest|src/app/modules/[code]/__tests__/page.test.tsx > Brief B7: Hiß╗ân thß╗ï li├¬n kß║┐t PDF ─æß╗ü c╞░╞íng tr├¬n trang chi tiß║┐t v├á danh s├ích theo ng├┤n ngß╗» > 2. Trang chi tiß║┐t c├│ cß║ú 2 link (BKB4060) hiß╗ân thß╗ï cß║ú 2 n├║t ß╗ƒ giao diß╗çn tiß║┐ng Anh
+vitest|src/app/modules/[code]/__tests__/page.test.tsx > Brief B7: Hiß╗ân thß╗ï li├¬n kß║┐t PDF ─æß╗ü c╞░╞íng tr├¬n trang chi tiß║┐t v├á danh s├ích theo ng├┤n ngß╗» > 3. Trang chi tiß║┐t chß╗ë c├│ link tiß║┐ng Viß╗çt hiß╗ân thß╗ï n├║t ─æ╞ín theo ng├┤n ngß╗»
+vitest|src/app/modules/[code]/__tests__/page.test.tsx > Brief B7: Hiß╗ân thß╗ï li├¬n kß║┐t PDF ─æß╗ü c╞░╞íng tr├¬n trang chi tiß║┐t v├á danh s├ích theo ng├┤n ngß╗» > 4. Trang chi tiß║┐t chß╗ë c├│ link tiß║┐ng Anh hiß╗ân thß╗ï n├║t ─æ╞ín d├╣ng link tiß║┐ng Anh
+vitest|src/app/modules/[code]/__tests__/page.test.tsx > Brief B7: Hiß╗ân thß╗ï li├¬n kß║┐t PDF ─æß╗ü c╞░╞íng tr├¬n trang chi tiß║┐t v├á danh s├ích theo ng├┤n ngß╗» > 5. Trang chi tiß║┐t kh├┤ng c├│ link ─æß╗ü c╞░╞íng th├¼ kh├┤ng hiß╗ân thß╗ï n├║t li├¬n kß║┐t n├áo
+vitest|src/app/modules/[code]/__tests__/page.test.tsx > Brief B7: Hiß╗ân thß╗ï li├¬n kß║┐t PDF ─æß╗ü c╞░╞íng tr├¬n trang chi tiß║┐t v├á danh s├ích theo ng├┤n ngß╗» > 7. Trang chi tiß║┐t hß╗ìc phß║ºn (/modules/[code]) c├│ n├║t BackButton quay lß║íi danh s├ích hß╗ìc phß║ºn
+vitest|src/app/modules/__tests__/profileFilterSync.test.tsx > W6 & W11: Profile filter banner text and real-time synchronization > Brief W16: n├║t ─Éß╗òi mß╗ƒ hß╗Öp thoß║íi pop-up (role=dialog) ngay tr├¬n trang, URL kh├┤ng ─æß╗òi, l╞░u xong cß║¡p nhß║¡t thanh lß╗ìc kh├┤ng reload
+vitest|src/app/programs/__tests__/page.test.tsx > Brief W25: Thiß║┐t lß║¡p lß║íi hß╗ç thß╗æng lß╗ìc trang Ch╞░╞íng tr├¼nh ─æ├áo tß║ío (CT─ÉT) > 10. ─Éß╗òi ch╞░╞íng tr├¼nh qua profile ΓåÆ danh s├ích mß║╖c ─æß╗ïnh cß║¡p nhß║¡t ngay lß║¡p tß╗⌐c
+vitest|src/app/programs/__tests__/page.test.tsx > Brief W25: Thiß║┐t lß║¡p lß║íi hß╗ç thß╗æng lß╗ìc trang Ch╞░╞íng tr├¼nh ─æ├áo tß║ío (CT─ÉT) > 2. Mß║╖c ─æß╗ïnh chß╗ë hiß╗ân thß╗ï CT─ÉT cß╗ºa ng╞░ß╗¥i d├╣ng: c├│ ch╞░╞íng tr├¼nh K24414 ΓåÆ mß║╖c ─æß╗ïnh chß╗ë duy nhß║Ñt mß╗Öt thß║╗ 'C├┤ng nghß╗ç t├ái ch├¡nh'
+vitest|src/app/programs/__tests__/page.test.tsx > Brief W25: Thiß║┐t lß║¡p lß║íi hß╗ç thß╗æng lß╗ìc trang Ch╞░╞íng tr├¼nh ─æ├áo tß║ío (CT─ÉT) > 3. N├║t 'Xem tß║Ñt cß║ú CT─ÉT' nß║▒m TRONG khß╗æi lß╗ìc (within khß╗æi form/region t├¼m ch╞░╞íng tr├¼nh); bß║Ñm ΓåÆ hiß╗çn tß║Ñt cß║ú CT─ÉT tß╗½ mock, bß╗Ö lß╗ìc vß╗ü mß║╖c ─æß╗ïnh
+vitest|src/app/programs/__tests__/page.test.tsx > Brief W25: Thiß║┐t lß║¡p lß║íi hß╗ç thß╗æng lß╗ìc trang Ch╞░╞íng tr├¼nh ─æ├áo tß║ío (CT─ÉT) > 4. Bß║Ñm 'Chß╗ë CT─ÉT cß╗ºa t├┤i' ΓåÆ quay lß║íi chß║┐ ─æß╗Ö mß║╖c ─æß╗ïnh chß╗ë hiß╗ân thß╗ï CT─ÉT cß╗ºa ng╞░ß╗¥i d├╣ng
+vitest|src/app/programs/__tests__/page.test.tsx > Brief W25: Thiß║┐t lß║¡p lß║íi hß╗ç thß╗æng lß╗ìc trang Ch╞░╞íng tr├¼nh ─æ├áo tß║ío (CT─ÉT) > 5. G├╡ t├¼m kiß║┐m khi ß╗ƒ chß║┐ ─æß╗Ö mß║╖c ─æß╗ïnh ('chß╗ë CT─ÉT cß╗ºa t├┤i') ΓåÆ tß╗▒ chuyß╗ân sang xem tß║Ñt cß║ú
+vitest|src/app/programs/__tests__/page.test.tsx > Brief W25: Thiß║┐t lß║¡p lß║íi hß╗ç thß╗æng lß╗ìc trang Ch╞░╞íng tr├¼nh ─æ├áo tß║ío (CT─ÉT) > 6. T├¼m kiß║┐m theo tß╗½ viß║┐t tß║»t (HTTQL) hoß║╖c m├ú CT─ÉT kh├┤ng ph├ón biß╗çt hoa th╞░ß╗¥ng
+vitest|src/app/programs/__tests__/page.test.tsx > Brief W25: Thiß║┐t lß║¡p lß║íi hß╗ç thß╗æng lß╗ìc trang Ch╞░╞íng tr├¼nh ─æ├áo tß║ío (CT─ÉT) > 7. Song ng├ánh: c├│ ng├ánh 2 ΓåÆ mß║╖c ─æß╗ïnh hiß╗çn 2 thß║╗ vß╗¢i nh├ún Ng├ánh ch├¡nh / Ng├ánh 2
+vitest|src/app/programs/__tests__/page.test.tsx > Brief W25: Thiß║┐t lß║¡p lß║íi hß╗ç thß╗æng lß╗ìc trang Ch╞░╞íng tr├¼nh ─æ├áo tß║ío (CT─ÉT) > 8. Ch╞░a c├│ ch╞░╞íng tr├¼nh ΓåÆ hiß╗ân thß╗ï to├án bß╗Ö CT─ÉT, k├¿m gß╗úi ├╜ chß╗ìn ch╞░╞íng tr├¼nh v├á kh├┤ng c├│ n├║t 'Chß╗ë CT─ÉT cß╗ºa t├┤i'
+vitest|src/app/programs/__tests__/page.test.tsx > Brief W25: Thiß║┐t lß║¡p lß║íi hß╗ç thß╗æng lß╗ìc trang Ch╞░╞íng tr├¼nh ─æ├áo tß║ío (CT─ÉT) > 9. Hß╗ù trß╗ú giao diß╗çn tiß║┐ng Anh (EN): nh├ún n├║t, ti├¬u ─æß╗ü v├á sß╗æ l╞░ß╗úng hiß╗ân thß╗ï tiß║┐ng Anh
+vitest|src/app/venues/__tests__/page.test.tsx > Brief W24: Kh├┤i phß╗Ñc l╞░ß╗¢i lß╗ïch th├íng ph├▓ng hß╗ìc (~30 ng├áy) v├á bß╗Å dß║íng danh s├ích dß╗ìc > 1. Hiß╗ân thß╗ï l╞░ß╗¢i 7 cß╗Öt vß╗¢i ─æß╗º sß╗æ ng├áy cß╗ºa th├íng (T2 ... CN)
+vitest|src/app/venues/__tests__/page.test.tsx > Brief W24: Kh├┤i phß╗Ñc l╞░ß╗¢i lß╗ïch th├íng ph├▓ng hß╗ìc (~30 ng├áy) v├á bß╗Å dß║íng danh s├ích dß╗ìc > 3. Bß║Ñm ├┤ mß╗ƒ popover nß╗òi vß╗¢i ─æß║ºy ─æß╗º c├íc buß╗òi, hß╗ù trß╗ú ─æ├│ng qua n├║t X v├á ph├¡m Esc
+vitest|src/app/venues/__tests__/page.test.tsx > Brief W24: Kh├┤i phß╗Ñc l╞░ß╗¢i lß╗ïch th├íng ph├▓ng hß╗ìc (~30 ng├áy) v├á bß╗Å dß║íng danh s├ích dß╗ìc > 7. Hoß║ít ─æß╗Öng ch├¡nh x├íc ß╗ƒ chß║┐ ─æß╗Ö tiß║┐ng Anh (EN)
+vitest|src/components/__tests__/moduleFilters.test.tsx > ModulesPage Filters and Placeholders > handles filter interactions: activating facets enables reset, and reset clears facets and faculty search while preserving module search and program context
+vitest|src/components/__tests__/moduleFilters.test.tsx > ModulesPage Filters and Placeholders > renders semester filter squares when facets have semester data and allows selection and reset
+vitest|src/components/__tests__/moduleFilters.test.tsx > ModulesPage Filters and Placeholders > updates count note by context: program vs dual programs (song ng├ánh)
+vitest|src/components/__tests__/SemesterPicker.test.tsx > Brief W19: SemesterFilterSquares component (Modules page facet filter) > 10. Hiß╗ân thß╗ï c├íc ├┤ vu├┤ng hß╗ìc kß╗│ c├│ lß╗¢p mß╗ƒ k├¿m sß╗æ lß╗¢p (Kß╗│ 1 ┬╖ 651), cho ph├⌐p chß╗ìn nhiß╗üu v├á x├│a lß╗ìc
+vitest|src/i18n/__tests__/names.test.ts > Brief W19: Helper t├¬n v├á nh├ún hß╗ìc kß╗│ thß╗æng nhß║Ñt (academicYearLabel, semesterTerm, semesterShort, semesterFull, semesterButtonLabel) > semesterTerm: tr├¡ch xuß║Ñt sß╗æ kß╗│ (1, 2, 3) tß╗½ object hoß║╖c chuß╗ùi
+
+=== Chi tiet day du (chi de tham khao, loi khac khong thuoc brief nay thi BO QUA) ===
+### alembic
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade 0016 -> 0017, admin audit log and settings
+INFO  [alembic.ddl.postgresql] Detected sequence named 'program_modules_id_seq' as owned by integer column 'program_modules(id)', assuming SERIAL and omitting
+INFO  [alembic.ddl.postgresql] Detected sequence named 'regulation_chunks_id_seq' as owned by integer column 'regulation_chunks(id)', assuming SERIAL and omitting
+INFO  [alembic.ddl.postgresql] Detected sequence named 'feedback_id_seq' as owned by integer column 'feedback(id)', assuming SERIAL and omitting
+INFO  [alembic.ddl.postgresql] Detected sequence named 'outline_schedule_id_seq' as owned by integer column 'outline_schedule(id)', assuming SERIAL and omitting
+INFO  [alembic.ddl.postgresql] Detected sequence named 'lessons_id_seq' as owned by integer column 'lessons(id)', assuming SERIAL and omitting
+INFO  [alembic.ddl.postgresql] Detected sequence named 'academic_events_id_seq' as owned by integer column 'academic_events(id)', assuming SERIAL and omitting
+INFO  [alembic.ddl.postgresql] Detected sequence named 'outline_assessments_id_seq' as owned by integer column 'outline_assessments(id)', assuming SERIAL and omitting
+INFO  [alembic.ddl.postgresql] Detected sequence named 'outline_objectives_id_seq' as owned by integer column 'outline_objectives(id)', assuming SERIAL and omitting
+INFO  [alembic.ddl.postgresql] Detected sequence named 'outline_module_links_id_seq' as owned by integer column 'outline_module_links(id)', assuming SERIAL and omitting
+INFO  [alembic.ddl.postgresql] Detected sequence named 'outline_sections_id_seq' as owned by integer column 'outline_sections(id)', assuming SERIAL and omitting
+INFO  [alembic.ddl.postgresql] Detected sequence named 'users_id_seq' as owned by integer column 'users(id)', assuming SERIAL and omitting
+INFO  [alembic.ddl.postgresql] Detected sequence named 'reviews_id_seq' as owned by integer column 'reviews(id)', assuming SERIAL and omitting
+INFO  [alembic.ddl.postgresql] Detected sequence named 'outline_materials_id_seq' as owned by integer column 'outline_materials(id)', assuming SERIAL and omitting
+INFO  [alembic.ddl.postgresql] Detected sequence named 'outline_clos_id_seq' as owned by integer column 'outline_clos(id)', assuming SERIAL and omitting
+No new upgrade operations detected.
+
+
+### tsc (web)
+src/app/modules/[code]/__tests__/page.test.tsx(204,7): error TS2353: Object literal may only specify known properties, and 'page' does not exist in type 'Paged<ModuleSummary>'.
+
+
+### vitest (web)
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ» Failed Tests 30 ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+ FAIL  src/components/__tests__/SemesterPicker.test.tsx > Brief W19: SemesterFilterSquares component (Modules page facet filter) > 10. Hiß╗ân thß╗ï c├íc ├┤ vu├┤ng hß╗ìc kß╗│ c├│ lß╗¢p mß╗ƒ k├¿m sß╗æ lß╗¢p (Kß╗│ 1 ┬╖ 651), cho ph├⌐p chß╗ìn nhiß╗üu v├á x├│a lß╗ìc
+TestingLibraryElementError: Unable to find an accessible element with the role "checkbox" and name `/Hß╗ìc kß╗│ 1.*2026ΓÇô2027/i`
+ Γ¥» Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ FAIL  src/components/__tests__/moduleFilters.test.tsx > ModulesPage Filters and Placeholders > handles filter interactions: activating facets enables reset, and reset clears facets and faculty search while preserving module search and program context
+TestingLibraryElementError: Unable to find an element with the text: /Kinh doanh quß╗æc tß║┐.*kh├│a 23/i. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+ Γ¥» Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ FAIL  src/components/__tests__/moduleFilters.test.tsx > ModulesPage Filters and Placeholders > updates count note by context: program vs dual programs (song ng├ánh)
+TestingLibraryElementError: Unable to find an element with the text: /Kinh doanh quß╗æc tß║┐.*kh├│a 23/i. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+ FAIL  src/components/__tests__/moduleFilters.test.tsx > ModulesPage Filters and Placeholders > renders semester filter squares when facets have semester data and allows selection and reset
+TestingLibraryElementError: Unable to find role="checkbox" and name `/Hß╗ìc kß╗│ 1.*2026ΓÇô2027/i`
+ FAIL  src/i18n/__tests__/names.test.ts > Brief W19: Helper t├¬n v├á nh├ún hß╗ìc kß╗│ thß╗æng nhß║Ñt (academicYearLabel, semesterTerm, semesterShort, semesterFull, semesterButtonLabel) > semesterTerm: tr├¡ch xuß║Ñt sß╗æ kß╗│ (1, 2, 3) tß╗½ object hoß║╖c chuß╗ùi
+AssertionError: expected 2026 to be 2 // Object.is equality
+ FAIL  src/app/admin/__tests__/admin.test.tsx > Brief A1 & PLAN_ADMIN Mß╗Ñc 8: Admin Shell, Login, Layout & Overview > 1. Trang ─æ─âng nhß║¡p quß║ún trß╗ï (/admin/login) > hiß╗ân thß╗ï form ─æß║ºy ─æß╗º tr╞░ß╗¥ng email, mß║¡t khß║⌐u v├á n├║t hiß╗çn/ß║⌐n mß║¡t khß║⌐u
+TestingLibraryElementError: Found multiple elements with the text of: /Mß║¡t khß║⌐u/i
+ Γ¥» Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ Γ¥» getElementError node_modules/@testing-library/dom/dist/query-helpers.js:20:35
+ Γ¥» getMultipleElementsFoundError node_modules/@testing-library/dom/dist/query-helpers.js:23:10
+ FAIL  src/app/admin/__tests__/admin.test.tsx > Brief A1 & PLAN_ADMIN Mß╗Ñc 8: Admin Shell, Login, Layout & Overview > 1. Trang ─æ─âng nhß║¡p quß║ún trß╗ï (/admin/login) > login lß╗ùi hiß╗ân thß╗ï th├┤ng b├ío inline trong form (kh├┤ng toast lß╗¢n)
+TestingLibraryElementError: Found multiple elements with the text of: /Mß║¡t khß║⌐u/i
+ Γ¥» Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ Γ¥» getElementError node_modules/@testing-library/dom/dist/query-helpers.js:20:35
+ Γ¥» getMultipleElementsFoundError node_modules/@testing-library/dom/dist/query-helpers.js:23:10
+ FAIL  src/app/admin/__tests__/admin.test.tsx > Brief A1 & PLAN_ADMIN Mß╗Ñc 8: Admin Shell, Login, Layout & Overview > 1. Trang ─æ─âng nhß║¡p quß║ún trß╗ï (/admin/login) > login th├ánh c├┤ng chuyß╗ân h╞░ß╗¢ng tß╗¢i trang ─æ├¡ch next hoß║╖c /admin
+TestingLibraryElementError: Found multiple elements with the text of: /Mß║¡t khß║⌐u/i
+ Γ¥» Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ Γ¥» getElementError node_modules/@testing-library/dom/dist/query-helpers.js:20:35
+ Γ¥» getMultipleElementsFoundError node_modules/@testing-library/dom/dist/query-helpers.js:23:10
+ FAIL  src/app/admin/__tests__/admin.test.tsx > Brief A1 & PLAN_ADMIN Mß╗Ñc 8: Admin Shell, Login, Layout & Overview > 2. Sidebar & Ph├ón quyß╗ün vai tr├▓ > hiß╗ân thß╗ï ─æß║ºy ─æß╗º 9 mß╗Ñc bao gß╗ôm 'T├ái khoß║ún quß║ún trß╗ï' cho vai tr├▓ admin
+TestingLibraryElementError: Found multiple elements with the text: Tß╗òng quan
+ Γ¥» Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ Γ¥» getElementError node_modules/@testing-library/dom/dist/query-helpers.js:20:35
+ Γ¥» getMultipleElementsFoundError node_modules/@testing-library/dom/dist/query-helpers.js:23:10
+ FAIL  src/app/admin/__tests__/admin.test.tsx > Brief A1 & PLAN_ADMIN Mß╗Ñc 8: Admin Shell, Login, Layout & Overview > 2. Sidebar & Ph├ón quyß╗ün vai tr├▓ > ß║⌐n mß╗Ñc 'T├ái khoß║ún quß║ún trß╗ï' ─æß╗æi vß╗¢i vai tr├▓ moderator
+TestingLibraryElementError: Found multiple elements with the text: Tß╗òng quan
+ Γ¥» Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ Γ¥» getElementError node_modules/@testing-library/dom/dist/query-helpers.js:20:35
+ Γ¥» getMultipleElementsFoundError node_modules/@testing-library/dom/dist/query-helpers.js:23:10
+ FAIL  src/app/admin/__tests__/admin.test.tsx > Brief A1 & PLAN_ADMIN Mß╗Ñc 8: Admin Shell, Login, Layout & Overview > 3. Layout Quß║ún trß╗ï & C╞í chß║┐ Dev Mode / Bß║úo vß╗ç Route > hiß╗ân thß╗ï m├án h├¼nh 'Khu vß╗▒c quß║ún trß╗ï ch╞░a bß║¡t' khi API trß║ú vß╗ü 404 (ch╞░a bß║¡t ADMIN_DEV_OPEN)
+TestingLibraryElementError: Unable to find an element with the text: Vß╗ü trang sinh vi├¬n. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+ Γ¥» Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ FAIL  src/app/modules/__tests__/profileFilterSync.test.tsx > W6 & W11: Profile filter banner text and real-time synchronization > Brief W16: n├║t ─Éß╗òi mß╗ƒ hß╗Öp thoß║íi pop-up (role=dialog) ngay tr├¬n trang, URL kh├┤ng ─æß╗òi, l╞░u xong cß║¡p nhß║¡t thanh lß╗ìc kh├┤ng reload
+TestingLibraryElementError: Found multiple elements with the text: /C├┤ng nghß╗ç t├ái ch├¡nh/i
+ FAIL  src/app/programs/__tests__/page.test.tsx > Brief W25: Thiß║┐t lß║¡p lß║íi hß╗ç thß╗æng lß╗ìc trang Ch╞░╞íng tr├¼nh ─æ├áo tß║ío (CT─ÉT) > 2. Mß║╖c ─æß╗ïnh chß╗ë hiß╗ân thß╗ï CT─ÉT cß╗ºa ng╞░ß╗¥i d├╣ng: c├│ ch╞░╞íng tr├¼nh K24414 ΓåÆ mß║╖c ─æß╗ïnh chß╗ë duy nhß║Ñt mß╗Öt thß║╗ 'C├┤ng nghß╗ç t├ái ch├¡nh'
+AssertionError: expected <option ΓÇª(1)></option> to be null
+ FAIL  src/app/programs/__tests__/page.test.tsx > Brief W25: Thiß║┐t lß║¡p lß║íi hß╗ç thß╗æng lß╗ìc trang Ch╞░╞íng tr├¼nh ─æ├áo tß║ío (CT─ÉT) > 3. N├║t 'Xem tß║Ñt cß║ú CT─ÉT' nß║▒m TRONG khß╗æi lß╗ìc (within khß╗æi form/region t├¼m ch╞░╞íng tr├¼nh); bß║Ñm ΓåÆ hiß╗çn tß║Ñt cß║ú CT─ÉT tß╗½ mock, bß╗Ö lß╗ìc vß╗ü mß║╖c ─æß╗ïnh
+TestingLibraryElementError: Found multiple elements with the text: /Hß╗ç thß╗æng th├┤ng tin quß║ún l├╜/i
+ FAIL  src/app/programs/__tests__/page.test.tsx > Brief W25: Thiß║┐t lß║¡p lß║íi hß╗ç thß╗æng lß╗ìc trang Ch╞░╞íng tr├¼nh ─æ├áo tß║ío (CT─ÉT) > 4. Bß║Ñm 'Chß╗ë CT─ÉT cß╗ºa t├┤i' ΓåÆ quay lß║íi chß║┐ ─æß╗Ö mß║╖c ─æß╗ïnh chß╗ë hiß╗ân thß╗ï CT─ÉT cß╗ºa ng╞░ß╗¥i d├╣ng
+TestingLibraryElementError: Found multiple elements with the text: /Hß╗ç thß╗æng th├┤ng tin quß║ún l├╜/i
+ FAIL  src/app/programs/__tests__/page.test.tsx > Brief W25: Thiß║┐t lß║¡p lß║íi hß╗ç thß╗æng lß╗ìc trang Ch╞░╞íng tr├¼nh ─æ├áo tß║ío (CT─ÉT) > 5. G├╡ t├¼m kiß║┐m khi ß╗ƒ chß║┐ ─æß╗Ö mß║╖c ─æß╗ïnh ('chß╗ë CT─ÉT cß╗ºa t├┤i') ΓåÆ tß╗▒ chuyß╗ân sang xem tß║Ñt cß║ú
+AssertionError: expected <option ΓÇª(1)></option> to be null
+ FAIL  src/app/programs/__tests__/page.test.tsx > Brief W25: Thiß║┐t lß║¡p lß║íi hß╗ç thß╗æng lß╗ìc trang Ch╞░╞íng tr├¼nh ─æ├áo tß║ío (CT─ÉT) > 6. T├¼m kiß║┐m theo tß╗½ viß║┐t tß║»t (HTTQL) hoß║╖c m├ú CT─ÉT kh├┤ng ph├ón biß╗çt hoa th╞░ß╗¥ng
+TestingLibraryElementError: Found multiple elements with the text: /Hß╗ç thß╗æng th├┤ng tin quß║ún l├╜/i
+ FAIL  src/app/programs/__tests__/page.test.tsx > Brief W25: Thiß║┐t lß║¡p lß║íi hß╗ç thß╗æng lß╗ìc trang Ch╞░╞íng tr├¼nh ─æ├áo tß║ío (CT─ÉT) > 7. Song ng├ánh: c├│ ng├ánh 2 ΓåÆ mß║╖c ─æß╗ïnh hiß╗çn 2 thß║╗ vß╗¢i nh├ún Ng├ánh ch├¡nh / Ng├ánh 2
+AssertionError: expected <option ΓÇª(1)></option> to be null
+ FAIL  src/app/programs/__tests__/page.test.tsx > Brief W25: Thiß║┐t lß║¡p lß║íi hß╗ç thß╗æng lß╗ìc trang Ch╞░╞íng tr├¼nh ─æ├áo tß║ío (CT─ÉT) > 8. Ch╞░a c├│ ch╞░╞íng tr├¼nh ΓåÆ hiß╗ân thß╗ï to├án bß╗Ö CT─ÉT, k├¿m gß╗úi ├╜ chß╗ìn ch╞░╞íng tr├¼nh v├á kh├┤ng c├│ n├║t 'Chß╗ë CT─ÉT cß╗ºa t├┤i'
+TestingLibraryElementError: Found multiple elements with the text: /Hß╗ç thß╗æng th├┤ng tin quß║ún l├╜/i
+ FAIL  src/app/programs/__tests__/page.test.tsx > Brief W25: Thiß║┐t lß║¡p lß║íi hß╗ç thß╗æng lß╗ìc trang Ch╞░╞íng tr├¼nh ─æ├áo tß║ío (CT─ÉT) > 9. Hß╗ù trß╗ú giao diß╗çn tiß║┐ng Anh (EN): nh├ún n├║t, ti├¬u ─æß╗ü v├á sß╗æ l╞░ß╗úng hiß╗ân thß╗ï tiß║┐ng Anh
+TestingLibraryElementError: Found multiple elements with the text: /Hß╗ç thß╗æng th├┤ng tin quß║ún l├╜/i
+ FAIL  src/app/programs/__tests__/page.test.tsx > Brief W25: Thiß║┐t lß║¡p lß║íi hß╗ç thß╗æng lß╗ìc trang Ch╞░╞íng tr├¼nh ─æ├áo tß║ío (CT─ÉT) > 10. ─Éß╗òi ch╞░╞íng tr├¼nh qua profile ΓåÆ danh s├ích mß║╖c ─æß╗ïnh cß║¡p nhß║¡t ngay lß║¡p tß╗⌐c
+AssertionError: expected <option ΓÇª(1)></option> to be null
+ FAIL  src/app/venues/__tests__/page.test.tsx > Brief W24: Kh├┤i phß╗Ñc l╞░ß╗¢i lß╗ïch th├íng ph├▓ng hß╗ìc (~30 ng├áy) v├á bß╗Å dß║íng danh s├ích dß╗ìc > 1. Hiß╗ân thß╗ï l╞░ß╗¢i 7 cß╗Öt vß╗¢i ─æß╗º sß╗æ ng├áy cß╗ºa th├íng (T2 ... CN)
+TestingLibraryElementError: Found multiple elements with the text: 17 buß╗òi
+ Γ¥» Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ Γ¥» getElementError node_modules/@testing-library/dom/dist/query-helpers.js:20:35
+ Γ¥» getMultipleElementsFoundError node_modules/@testing-library/dom/dist/query-helpers.js:23:10
+ FAIL  src/app/venues/__tests__/page.test.tsx > Brief W24: Kh├┤i phß╗Ñc l╞░ß╗¢i lß╗ïch th├íng ph├▓ng hß╗ìc (~30 ng├áy) v├á bß╗Å dß║íng danh s├ích dß╗ìc > 3. Bß║Ñm ├┤ mß╗ƒ popover nß╗òi vß╗¢i ─æß║ºy ─æß╗º c├íc buß╗òi, hß╗ù trß╗ú ─æ├│ng qua n├║t X v├á ph├¡m Esc
+TestingLibraryElementError: Unable to find an element with the text: /Thß╗⌐ Hai, ng├áy 02\/11\/2026/. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+ Γ¥» Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ FAIL  src/app/venues/__tests__/page.test.tsx > Brief W24: Kh├┤i phß╗Ñc l╞░ß╗¢i lß╗ïch th├íng ph├▓ng hß╗ìc (~30 ng├áy) v├á bß╗Å dß║íng danh s├ích dß╗ìc > 7. Hoß║ít ─æß╗Öng ch├¡nh x├íc ß╗ƒ chß║┐ ─æß╗Ö tiß║┐ng Anh (EN)
+TestingLibraryElementError: Found multiple elements with the text: 17 sessions
+ Γ¥» Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ Γ¥» getElementError node_modules/@testing-library/dom/dist/query-helpers.js:20:35
+ Γ¥» getMultipleElementsFoundError node_modules/@testing-library/dom/dist/query-helpers.js:23:10
+ FAIL  src/app/modules/[code]/__tests__/page.test.tsx > Brief B7: Hiß╗ân thß╗ï li├¬n kß║┐t PDF ─æß╗ü c╞░╞íng tr├¬n trang chi tiß║┐t v├á danh s├ích theo ng├┤n ngß╗» > 1. Trang chi tiß║┐t c├│ cß║ú 2 link (BKB4060) hiß╗ân thß╗ï cß║ú 2 n├║t tiß║┐ng Viß╗çt v├á English ß╗ƒ giao diß╗çn tiß║┐ng Viß╗çt
+TestingLibraryElementError: Unable to find role="link" and name `/Tiß║┐ng Viß╗çt/`
+ FAIL  src/app/modules/[code]/__tests__/page.test.tsx > Brief B7: Hiß╗ân thß╗ï li├¬n kß║┐t PDF ─æß╗ü c╞░╞íng tr├¬n trang chi tiß║┐t v├á danh s├ích theo ng├┤n ngß╗» > 2. Trang chi tiß║┐t c├│ cß║ú 2 link (BKB4060) hiß╗ân thß╗ï cß║ú 2 n├║t ß╗ƒ giao diß╗çn tiß║┐ng Anh
+TestingLibraryElementError: Unable to find role="link" and name `/Tiß║┐ng Viß╗çt/`
+ FAIL  src/app/modules/[code]/__tests__/page.test.tsx > Brief B7: Hiß╗ân thß╗ï li├¬n kß║┐t PDF ─æß╗ü c╞░╞íng tr├¬n trang chi tiß║┐t v├á danh s├ích theo ng├┤n ngß╗» > 3. Trang chi tiß║┐t chß╗ë c├│ link tiß║┐ng Viß╗çt hiß╗ân thß╗ï n├║t ─æ╞ín theo ng├┤n ngß╗»
+TestingLibraryElementError: Unable to find role="link" and name `/─Éß╗ü c╞░╞íng \(PDF\)/`
+ FAIL  src/app/modules/[code]/__tests__/page.test.tsx > Brief B7: Hiß╗ân thß╗ï li├¬n kß║┐t PDF ─æß╗ü c╞░╞íng tr├¬n trang chi tiß║┐t v├á danh s├ích theo ng├┤n ngß╗» > 4. Trang chi tiß║┐t chß╗ë c├│ link tiß║┐ng Anh hiß╗ân thß╗ï n├║t ─æ╞ín d├╣ng link tiß║┐ng Anh
+TestingLibraryElementError: Unable to find role="link" and name `/─Éß╗ü c╞░╞íng \(PDF\)/`
+ FAIL  src/app/modules/[code]/__tests__/page.test.tsx > Brief B7: Hiß╗ân thß╗ï li├¬n kß║┐t PDF ─æß╗ü c╞░╞íng tr├¬n trang chi tiß║┐t v├á danh s├ích theo ng├┤n ngß╗» > 5. Trang chi tiß║┐t kh├┤ng c├│ link ─æß╗ü c╞░╞íng th├¼ kh├┤ng hiß╗ân thß╗ï n├║t li├¬n kß║┐t n├áo
+TestingLibraryElementError: Unable to find an element with the text: NOLINK99. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+ FAIL  src/app/modules/[code]/__tests__/page.test.tsx > Brief B7: Hiß╗ân thß╗ï li├¬n kß║┐t PDF ─æß╗ü c╞░╞íng tr├¬n trang chi tiß║┐t v├á danh s├ích theo ng├┤n ngß╗» > 7. Trang chi tiß║┐t hß╗ìc phß║ºn (/modules/[code]) c├│ n├║t BackButton quay lß║íi danh s├ích hß╗ìc phß║ºn
+TestingLibraryElementError: Unable to find role="link" and name "Quay lß║íi danh s├ích hß╗ìc phß║ºn"
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ» Unhandled Errors ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+Error: [vitest] No "useRouter" export is defined on the "next/navigation" mock. Did you forget to return it from "vi.mock"?
+ Γ¥» VitestMocker.createError node_modules/vitest/dist/chunks/index.C7Nn66Gy.js:68:17
+Error: [vitest] No "useRouter" export is defined on the "next/navigation" mock. Did you forget to return it from "vi.mock"?
+ Γ¥» VitestMocker.createError node_modules/vitest/dist/chunks/index.C7Nn66Gy.js:68:17
+Error: [vitest] No "useRouter" export is defined on the "next/navigation" mock. Did you forget to return it from "vi.mock"?
+ Γ¥» VitestMocker.createError node_modules/vitest/dist/chunks/index.C7Nn66Gy.js:68:17
+Error: [vitest] No "useRouter" export is defined on the "next/navigation" mock. Did you forget to return it from "vi.mock"?
+ Γ¥» VitestMocker.createError node_modules/vitest/dist/chunks/index.C7Nn66Gy.js:68:17
+Error: [vitest] No "useRouter" export is defined on the "next/navigation" mock. Did you forget to return it from "vi.mock"?
+ Γ¥» VitestMocker.createError node_modules/vitest/dist/chunks/index.C7Nn66Gy.js:68:17
+Error: [vitest] No "useRouter" export is defined on the "next/navigation" mock. Did you forget to return it from "vi.mock"?
+ Γ¥» VitestMocker.createError node_modules/vitest/dist/chunks/index.C7Nn66Gy.js:68:17
+      Tests  30 failed | 418 passed (448)
+     Errors  6 errors
+

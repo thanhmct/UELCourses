@@ -1,156 +1,117 @@
-"use client";
+﻿"use client";
+
 import { useEffect, useState } from "react";
 import { api, type OutlineData } from "@/lib/api";
 import { useT } from "@/i18n";
+import { fold } from "@/lib/text";
+import { formatOutlineAssessment, formatOutlineMaterial } from "@/lib/outlineLanguage";
+import type { ModuleAssessment, ModuleTextbook } from "@/lib/types";
 
-const str = (v: unknown): string => (v === null || v === undefined || v === "" ? "" : String(v));
+const STAGES = ["process", "midterm", "final", "advanced"] as const;
 
-/** Đề cương: shown only when GET /api/modules/{code}/outline answers 200; otherwise renders nothing (no error). */
-export function OutlineBlock({ code }: { code: string }) {
-  const { t } = useT();
+export function OutlineBlock({ code, cohort, assessment, textbooks }: {
+  code: string;
+  cohort?: string;
+  assessment?: ModuleAssessment | null;
+  textbooks?: ModuleTextbook[];
+}) {
+  const { t, lang } = useT();
   const [data, setData] = useState<OutlineData | null>(null);
   useEffect(() => {
-    let alive = true;
+    let active = true;
     setData(null);
-    api.outline(code).then((d) => alive && setData(d));
-    return () => {
-      alive = false;
-    };
-  }, [code]);
-  if (!data) return null;
+    api.outline(code, { cohort }).then((outline) => {
+      if (active) setData(outline);
+    });
+    return () => { active = false; };
+  }, [code, cohort]);
 
-  const course = (data.course ?? {}) as Record<string, unknown>;
-  const info: [string, string][] = [
-    [t("outline.faculty"), str(course.faculty)],
-    [t("outline.department"), str(course.department)],
-    [t("outline.credits"), str(course.credits)],
-    [t("outline.hoursLec"), str(course.hours_lecture)],
-    [t("outline.hoursPrac"), str(course.hours_practice)],
-    [t("outline.hoursSelf"), str(course.hours_self_study)],
-    [t("outline.prereq"), str(course.prerequisite_raw)],
-    [t("outline.previous"), str(course.previous_raw)],
-    [t("outline.coreq"), str(course.corequisite_raw)],
-    [t("outline.next"), str(course.next_raw)],
-    [t("outline.lecturers"), Array.isArray(course.lecturers) ? course.lecturers.map(String).join(", ") : ""],
-  ].filter(([, v]) => v !== "") as [string, string][];
+  const assessments = STAGES.flatMap((stage) => {
+    const form = assessment?.[`${stage}_form`]?.trim();
+    const ratio = assessment?.[`${stage}_ratio`];
+    return form || typeof ratio === "number" ? [{ stage, form, ratio }] : [];
+  });
+  const examType = assessment?.exam_type?.trim() || null;
+  const examDuration = assessment?.exam_duration?.trim() || null;
+  const materials = new Map<string, { kind?: string; citation: string; url?: string; docCode?: string; note?: string }>();
+  for (const { kind, citation } of data?.materials ?? []) {
+    if (citation?.trim()) materials.set(fold(citation), { kind, citation: citation.trim() });
+  }
+  for (const { name, url, is_main, document_code, note } of textbooks ?? []) {
+    const citation = name?.trim() || url?.trim();
+    if (!citation) continue;
+    const safeUrl = url?.trim() && /^https?:\/\//i.test(url.trim()) ? url.trim() : undefined;
+    materials.set(fold(citation), {
+      kind: is_main ? "textbook" : "reference",
+      citation,
+      url: safeUrl,
+      docCode: document_code?.trim() || undefined,
+      note: note?.trim() || undefined,
+    });
+  }
 
-  const objectives = data.objectives ?? [];
-  const clos = data.clos ?? [];
-  const assessments = data.assessments ?? [];
-  const weeks = data.schedule ?? [];
-  const materials = data.materials ?? [];
-  const totalWeight = assessments.reduce((s, a) => s + (typeof a.weight_pct === "number" ? a.weight_pct : 0), 0);
+  if (!assessments.length && !materials.size && !examType && !examDuration) return null;
+
+  const percent = new Intl.NumberFormat(lang, { style: "percent", maximumFractionDigits: 2 });
 
   return (
     <section className="card space-y-5" aria-label={t("outline.title")}>
-      <h2 className="font-semibold">{t("outline.title")}</h2>
-
-      {info.length > 0 && (
-        <div>
-          <h3 className="mb-1 text-sm font-semibold">{t("outline.info")}</h3>
-          <dl className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
-            {info.map(([k, v]) => (
-              <div key={k} className="flex gap-2">
-                <dt className="shrink-0 text-slate-500">{k}:</dt>
-                <dd className="min-w-0 break-words">{v}</dd>
-              </div>
-            ))}
-          </dl>
-        </div>
-      )}
-
-      {objectives.length > 0 && (
-        <div>
-          <h3 className="mb-1 text-sm font-semibold">{t("outline.co")}</h3>
-          <ul className="space-y-1 text-sm">
-            {objectives.map((o, i) => (
-              <li key={o.code ?? i}>
-                <strong className="font-mono">{o.code}</strong> {o.description}
-                {o.clo_codes?.length ? <span className="ml-1 text-xs text-slate-500">({o.clo_codes.join(", ")})</span> : null}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {clos.length > 0 && (
+      {(assessments.length > 0 || examType || examDuration) && (
         <div className="overflow-x-auto">
-          <h3 className="mb-1 text-sm font-semibold">{t("outline.clo")}</h3>
-          <table className="w-full text-left text-sm">
-            <tbody>
-              {clos.map((c, i) => (
-                <tr key={c.code ?? i} className="border-t border-slate-100 align-top dark:border-slate-800">
-                  <td className="w-20 py-1 pr-2 font-mono font-semibold">{c.code}</td>
-                  <td className="py-1">{c.description}</td>
-                  {c.teaching_levels ? <td className="w-28 py-1 text-xs text-slate-500">{c.teaching_levels}</td> : null}
+          <h2 className="mb-1 font-semibold">{t("outline.assess")}</h2>
+          {assessments.length > 0 && (
+            <table className="w-full text-left text-sm">
+              <thead className="text-xs uppercase text-slate-500">
+                <tr>
+                  <th scope="col" className="py-1">{t("outline.assessItem")}</th>
+                  <th scope="col" className="py-1 text-right">{t("outline.assessWeight")}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {assessments.map(({ stage, form, ratio }) => (
+                  <tr key={stage} className="border-t border-slate-100 align-top dark:border-slate-800">
+                    <td className="py-2 pr-3">
+                      <div>{t(`outline.assessStage.${stage}`)}</div>
+                      {form && <div className="text-xs text-slate-500">{formatOutlineAssessment(form, lang)}</div>}
+                    </td>
+                    <td className="py-2 text-right font-semibold tabular-nums">
+                      {typeof ratio === "number" ? percent.format(ratio) : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          {(examType || examDuration) && (
+            <dl className="mt-3 grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 text-sm">
+              {examType && (
+                <>
+                  <dt className="text-slate-500">{t("outline.examType")}</dt>
+                  <dd>{formatOutlineAssessment(examType, lang)}</dd>
+                </>
+              )}
+              {examDuration && (
+                <>
+                  <dt className="text-slate-500">{t("outline.examDuration")}</dt>
+                  <dd>{examDuration}</dd>
+                </>
+              )}
+            </dl>
+          )}
         </div>
       )}
-
-      {assessments.length > 0 && (
-        <div className="overflow-x-auto">
-          <h3 className="mb-1 text-sm font-semibold">{t("outline.assess")}</h3>
-          <table className="w-full min-w-[420px] text-left text-sm">
-            <thead className="text-xs uppercase text-slate-500">
-              <tr>
-                <th className="py-1">{t("outline.assessItem")}</th>
-                <th className="py-1">{t("outline.assessClo")}</th>
-                <th className="py-1 text-right">{t("outline.assessWeight")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {assessments.map((a, i) => (
-                <tr key={i} className="border-t border-slate-100 align-top dark:border-slate-800">
-                  <td className="py-1 pr-3">
-                    <div>{a.component || a.item_name || "—"}</div>
-                    {a.item_name && a.component && <div className="text-xs text-slate-500">{a.item_name}</div>}
-                    {a.criteria && <div className="text-xs text-slate-500">{a.criteria}</div>}
-                  </td>
-                  <td className="py-1 pr-3 text-xs text-slate-600 dark:text-slate-300">{a.clo_codes?.join(", ") || "—"}</td>
-                  <td className="py-1 text-right font-semibold tabular-nums">{typeof a.weight_pct === "number" ? `${a.weight_pct}%` : "—"}</td>
-                </tr>
-              ))}
-            </tbody>
-            {totalWeight > 0 && (
-              <tfoot>
-                <tr className="border-t border-slate-200 dark:border-slate-700">
-                  <td className="py-1" colSpan={2}>Σ</td>
-                  <td className="py-1 text-right font-semibold tabular-nums">{Math.round(totalWeight * 10) / 10}%</td>
-                </tr>
-              </tfoot>
-            )}
-          </table>
-        </div>
-      )}
-
-      {weeks.length > 0 && (
+      {materials.size > 0 && (
         <div>
-          <h3 className="mb-1 text-sm font-semibold">{t("outline.schedule")}</h3>
-          <ol className="space-y-1.5 text-sm">
-            {weeks.map((w, i) => (
-              <li key={i} className="flex gap-2">
-                <span className="w-16 shrink-0 font-semibold text-slate-600 dark:text-slate-300">{t("outline.week")} {w.week_label || i + 1}</span>
-                <span className="min-w-0">
-                  {w.content}
-                  {w.clo_codes?.length ? <span className="ml-1 text-xs text-slate-500">({w.clo_codes.join(", ")})</span> : null}
-                </span>
-              </li>
-            ))}
-          </ol>
-        </div>
-      )}
-
-      {materials.length > 0 && (
-        <div>
-          <h3 className="mb-1 text-sm font-semibold">{t("outline.materials")}</h3>
+          <h2 className="mb-1 font-semibold">{t("outline.materials")}</h2>
           <ul className="list-disc space-y-1 pl-5 text-sm">
-            {materials.map((m, i) => (
-              <li key={i}>
-                <span className="mr-1 text-xs text-slate-500">{m.kind === "textbook" ? t("outline.textbook") : m.kind === "software" ? t("outline.software") : t("outline.reference")}:</span>
-                {m.citation}
+            {[...materials].map(([key, { kind, citation, url, docCode, note }]) => (
+              <li key={key}>
+                <span className="mr-1 text-xs text-slate-500">
+                  {t(kind === "textbook" ? "outline.textbook" : kind === "software" ? "outline.software" : "outline.reference")} ·
+                </span>
+                {url ? <a href={url} className="text-brand-700 underline dark:text-brand-300" target="_blank" rel="noreferrer">{formatOutlineMaterial(citation, lang)}</a> : formatOutlineMaterial(citation, lang)}
+                {docCode && <span className="ml-2 text-xs text-slate-500">{t("outline.docCode")}: {docCode}</span>}
+                {note && <div className="text-xs text-slate-500">{t("outline.note")}: {formatOutlineMaterial(note, lang)}</div>}
               </li>
             ))}
           </ul>

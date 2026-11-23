@@ -28,16 +28,140 @@ _VI_CHARS = re.compile(r"[àáảãạăằắẳẵặâầấẩẫậèéẻ�
 MIN_LEN, MAX_LEN = 60, 2500
 _RANK = {"ok": 0, "partial": 1}
 
+# Một số đề cương PDF bị mất ngắt trang/ngắt mục khi trích xuất, khiến phần
+# giáo trình được nối thẳng vào `outline_courses.description`. Chỉ nhận các
+# tiêu đề mục rõ ràng; không cắt những câu hợp lệ như "dựa trên giáo trình...".
+_MATERIAL_SECTION_RE = re.compile(
+    r"""
+    (?:
+        (?:\b\d+(?:\.\d+)*[.)]?\s+)?
+        (?:
+            tài\s+liệu\s+học\s+tập
+            | tài\s+liệu\s+tham\s+khảo
+            | study\s+materials?
+            | study\s+documents?
+            | learning\s+materials?
+            | course\s+books?\s*,?\s*reference\s+books?\s+and\s+softwares?
+        )\b
+        |
+        (?:^|(?<=[\n.!?]))\s*(?:\d+(?:\.\d+)*[.)]?\s*)?
+        (?:
+            giáo\s+trình\s*(?=[:：\[])
+            | (?:study\s+)?materials?\s*(?=(?:textbooks?|books?|references?)\b)
+            | textbooks?\s*(?=[:：\[])
+            | (?:other\s+)?references?\s*(?=[:：\[])
+        )
+    )
+    """,
+    re.IGNORECASE | re.VERBOSE,
+)
+_PAGE_MARKER_RE = re.compile(r"\b(?:trang|page)\s*\d+\s*/\s*\d+\b", re.IGNORECASE)
+_EMBEDDED_OUTLINE_HEADER_RE = re.compile(
+    r"\b(?:đề\s+cương\s+(?:môn\s+học|học\s+phần)|course\s+syllabus)\b.{0,120}?"
+    r"(?=\b(?:trang|page)\s*\d+\s*/\s*\d+\b)",
+    re.IGNORECASE,
+)
+_PDF_TEMPLATE_LINE_RE = re.compile(
+    r"^\s*(?:mẫu\s+\d+\s*:\s*)?đề\s+cương\s+chi\s+tiết\s+học\s+phần\s*$",
+    re.IGNORECASE | re.MULTILINE,
+)
+_PDF_CONTROL_LINE_RE = re.compile(r"^\s*(?:\d{1,3}|x)\s*$", re.IGNORECASE | re.MULTILINE)
+
 
 def detect_lang(text: str) -> str:
     return "vi" if len(_VI_CHARS.findall(text)) >= 3 else "en"
 
 
-def clean_description(text: str | None) -> str | None:
-    """Gọn khoảng trắng; loại đoạn quá ngắn/quá dài (phân tích lỗi)."""
+def _leading_parenthetical_end(text: str) -> int | None:
+    """Vị trí dấu `)` đóng ngoặc đầu chuỗi, có hỗ trợ ngoặc lồng như `(CTĐT)`."""
+    if not text.startswith("("):
+        return None
+    depth = 0
+    for i, char in enumerate(text):
+        if char == "(":
+            depth += 1
+        elif char == ")":
+            depth -= 1
+            if depth == 0:
+                return i
+    return None
+
+
+def _is_description_instruction(prefix: str) -> bool:
+    """Nhận diện câu hướng dẫn mẫu về vị trí/mục tiêu/nội dung, không phải mô tả thật."""
+    p = prefix.casefold()
+    vi = (
+        "vị trí" in p
+        and any(term in p for term in ("môn học", "học phần", "khóa học"))
+        and any(term in p for term in ("chương trình", "ctđt"))
+    )
+    en = (
+        any(term in p for term in ("position", "location"))
+        and any(term in p for term in ("course", "subject", "module"))
+        and any(term in p for term in ("program", "programme", "curriculum"))
+    )
+    return vi or en
+
+
+def strip_description_artifacts(text: str | None) -> str | None:
+    """Bỏ câu hướng dẫn mẫu, đầu/dấu trang PDF bị chèn vào mô tả."""
     if not text:
         return None
-    t = re.sub(r"[ \t]+", " ", text.replace("\r", "")).strip()
+
+    cleaned = text
+    changed = False
+    stripped = cleaned.lstrip()
+    end = _leading_parenthetical_end(stripped)
+    if end is not None and _is_description_instruction(stripped[: end + 1]):
+        cleaned = stripped[end + 1 :]
+        # Số trang đơn lẻ thường đứng ngay sau câu hướng dẫn, ví dụ `) 2 The course...`.
+        cleaned = re.sub(r"^\s*\d{1,3}\s+(?=\S)", "", cleaned, count=1)
+        changed = True
+
+    without_headers = _EMBEDDED_OUTLINE_HEADER_RE.sub(" ", cleaned)
+    without_templates = _PDF_TEMPLATE_LINE_RE.sub(" ", without_headers)
+    without_controls = _PDF_CONTROL_LINE_RE.sub(" ", without_templates)
+    without_pages = _PAGE_MARKER_RE.sub(" ", without_controls)
+    changed = changed or without_pages != cleaned
+    if not changed:
+        return text
+    cleaned = re.sub(r"[ \t]+", " ", without_pages.replace("\r", "")).strip()
+    cleaned = re.sub(r"(?:\n[ \t]*){2,}", "\n\n", cleaned)
+    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
+    return cleaned or None
+
+
+def strip_material_sections(text: str | None) -> str | None:
+    """Bỏ mục giáo trình/tài liệu bị nối vào mô tả, giữ nguyên phần mô tả trước đó."""
+    if not text:
+        return None
+    match = _MATERIAL_SECTION_RE.search(text)
+    if not match:
+        return text
+    cleaned = text[:match.start()]
+    cleaned = cleaned.rstrip(" \t\r\n:;-")
+    return cleaned or None
+
+
+def normalize_description_line_breaks(text: str | None) -> str | None:
+    cleaned = (text or "").strip()
+    if not cleaned:
+        return None
+
+    # Một số PDF tách mỗi từ thành một đoạn riêng. Chỉ nối khi mẫu này lặp suốt mô tả.
+    paragraphs = re.split(r"\r?\n(?:[ \t]*\r?\n)+", cleaned)
+    if len(paragraphs) >= 10 and all(len(part.split()) == 1 for part in paragraphs):
+        return " ".join(part.strip() for part in paragraphs)
+    return cleaned
+
+
+def clean_description(text: str | None) -> str | None:
+    """Bỏ phần tài liệu, gọn khoảng trắng; loại đoạn quá ngắn/quá dài."""
+    stripped = strip_material_sections(strip_description_artifacts(text))
+    stripped = normalize_description_line_breaks(stripped)
+    if not stripped:
+        return None
+    t = re.sub(r"[ \t]+", " ", stripped.replace("\r", "")).strip()
     t = re.sub(r"\n{3,}", "\n\n", t)
     return t if MIN_LEN <= len(t) <= MAX_LEN else None
 

@@ -5,7 +5,7 @@ import io
 from collections import defaultdict
 from datetime import date, datetime, timezone
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -13,14 +13,24 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.deps import require_admin
 from app.models import Feedback
+from app.rate_limit import heavy_rate_limit, limiter
 from app.schemas import CategoryStat, DayStat, FeedbackIn, FeedbackItem, FeedbackOut, FeedbackStats, PageStat
+from app.services.moderation import check_content
 
 router = APIRouter(prefix="/feedback", tags=["feedback"])
 
 
 @router.post("", response_model=FeedbackOut, status_code=201, summary="Gửi phản hồi từ widget")
 def create_feedback(body: FeedbackIn, db: Session = Depends(get_db)):
-    fb = Feedback(**body.model_dump())
+    flags: list[str] = []
+    if body.message and body.message.strip():
+        flags = check_content(body.message, db=db, min_len=1, max_len=5000)
+
+    fb = Feedback(
+        **body.model_dump(),
+        status="pending",
+        flag_reasons=flags or None,
+    )
     db.add(fb)
     db.commit()
     db.refresh(fb)
@@ -89,7 +99,9 @@ def _cell(v):
 
 @router.get("/export.csv", summary="Xuất phản hồi ra CSV (UTF-8 BOM, mở được bằng Excel)",
             dependencies=[Depends(require_admin)], response_class=StreamingResponse)
+@limiter.limit(heavy_rate_limit)
 def export_feedback_csv(
+    request: Request,
     since: date | None = None,
     until: date | None = None,
     include_contact: bool = Query(False, description="Kèm cột liên hệ (dữ liệu cá nhân) — mặc định không"),

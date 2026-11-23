@@ -37,7 +37,9 @@ def test_build_k25_from_catalog(db):
 
     res = build_catalog_programs(db, "K25")
     ids = {p["id"] for p in res["programs"]}
-    assert ids == {"K25404", "K25LUAT", "K25405", "K25405-V2"}
+    # "Luật" chung bị bỏ (trùng 501–506 từ BĐCL); xem SKIP_LABELS trong catalog_programs.py
+    assert ids == {"K25404", "K25405", "K25405E"}
+    assert "K25LUAT" not in ids
     assert res["duplicate_rows_dropped"] == 1
 
     p = db.get(Program, "K25404")
@@ -51,7 +53,9 @@ def test_build_k25_from_catalog(db):
     rel = {(r.source, r.target, r.type) for r in db.scalars(select(ModuleRelation).where(ModuleRelation.program_id == "K25404"))}
     assert rel == {("BFF1001", "BFF2002", "previous")}  # không có "mã" rác sinh từ tên môn
     assert db.get(Module, "BFF2002") is not None  # môn thiếu được tạo như đường nhập CTĐT chuẩn
-    assert db.get(Program, "K25405-V2").name == "Kế toán – DLG Kế toán (E) Khóa 25"
+    assert db.get(Program, "K25405E").name == "Kế toán – Hệ tiếng Anh Khóa 25"
+    english_module = db.scalars(select(ProgramModule).where(ProgramModule.program_id == "K25405E")).one()
+    assert (english_module.module_code, english_module.suggested_order) == ("BAA1001", 2)
 
     again = build_catalog_programs(db, "K25")  # idempotent
     assert len(db.scalars(select(ProgramModule).where(ProgramModule.program_id == "K25404")).all()) == 2

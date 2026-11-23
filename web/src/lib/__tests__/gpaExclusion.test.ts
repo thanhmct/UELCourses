@@ -21,9 +21,9 @@ describe("môn không tính vào GPA", () => {
 
   it("calculateGpa bỏ qua môn bị loại (cả tín chỉ lẫn điểm)", () => {
     const r = calculateGpa([
-      { name: "Kinh tế vi mô", credits: 3, grade: "A" },
-      { name: "Tiếng Anh 1", credits: 3, grade: "F" },
-      { name: "Giáo dục thể chất 1", credits: 2, grade: "D" },
+      { name: "Kinh tế vi mô", credits: 3, score10: 9 },
+      { name: "Tiếng Anh 1", credits: 3, score10: 2 },
+      { name: "Giáo dục thể chất 1", credits: 2, score10: 4 },
     ]);
     expect(r.gpa4).toBe(4);
     expect(r.totalCredits).toBe(3);

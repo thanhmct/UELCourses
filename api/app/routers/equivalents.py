@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.models import Equivalent, Module
 from app.schemas import EquivalentItem, EquivalentRef
+from app.services.catalog_visibility import visible_module
 from app.services.text import search_tokens
 
 router = APIRouter(tags=["equivalents"])
@@ -25,7 +26,8 @@ def codes_with_equivalents(db: Session, codes: Iterable[str]) -> set[str]:
         return set()
     rows = db.execute(
         select(Equivalent.code, Equivalent.equivalent_code).where(
-            or_(Equivalent.code.in_(codes), Equivalent.equivalent_code.in_(codes))
+            or_(Equivalent.code.in_(codes), Equivalent.equivalent_code.in_(codes)),
+            visible_module(Equivalent.code), visible_module(Equivalent.equivalent_code),
         )
     ).all()
     found = set()
@@ -42,9 +44,10 @@ def _en_names(db: Session) -> dict[str, str | None]:
 def equivalents_for(db: Session, code: str, en_map: dict[str, str | None] | None = None) -> list[EquivalentRef]:
     """Tương đương hai chiều (A~B thì B~A), bỏ trùng."""
     refs: dict[str, EquivalentRef] = {}
-    for e in db.scalars(select(Equivalent).where(Equivalent.code == code).order_by(Equivalent.equivalent_code)):
+    base = select(Equivalent).where(visible_module(Equivalent.code), visible_module(Equivalent.equivalent_code))
+    for e in db.scalars(base.where(Equivalent.code == code).order_by(Equivalent.equivalent_code)):
         refs.setdefault(e.equivalent_code, EquivalentRef(code=e.equivalent_code, name=e.equivalent_name, credits=e.equivalent_credits))
-    for e in db.scalars(select(Equivalent).where(Equivalent.equivalent_code == code).order_by(Equivalent.code)):
+    for e in db.scalars(base.where(Equivalent.equivalent_code == code).order_by(Equivalent.code)):
         refs.setdefault(e.code, EquivalentRef(code=e.code, name=e.name, credits=e.credits))
     if refs:  # tên tiếng Anh lấy từ bảng modules (bảng equivalents chỉ lưu tên Việt tại thời điểm nhập)
         en = en_map if en_map is not None else dict(
@@ -78,7 +81,9 @@ def _bulk_items(db: Session, codes: list[str]) -> list[EquivalentItem]:
     """Cùng kết quả như `_item` cho từng mã, nhưng nạp bảng một lần (2 truy vấn thay vì ~6 truy vấn mỗi mã)."""
     if not codes:
         return []
-    eqs = db.scalars(select(Equivalent).order_by(Equivalent.id)).all()
+    eqs = db.scalars(select(Equivalent).where(
+        visible_module(Equivalent.code), visible_module(Equivalent.equivalent_code),
+    ).order_by(Equivalent.id)).all()
     mods = {c: (n, cr, en) for c, n, cr, en in db.execute(select(Module.code, Module.name, Module.credits, Module.name_en))}
     fwd: dict[str, list[Equivalent]] = defaultdict(list)   # code -> các dòng có code đó là môn gốc
     back: dict[str, list[Equivalent]] = defaultdict(list)  # code -> các dòng có code đó là môn tương đương
@@ -113,10 +118,12 @@ def _bulk_items(db: Session, codes: list[str]) -> list[EquivalentItem]:
 @router.get("/equivalents", response_model=list[EquivalentItem], summary="Tra cứu học phần tương đương")
 def list_equivalents(
     q: str | None = Query(None, description="Mã hoặc tên (không dấu cũng được)"),
-    limit: int = Query(500, ge=1, le=5000),
+    limit: int = Query(100, ge=1, le=100),
     db: Session = Depends(get_db),
 ):
-    stmt = select(Equivalent.code).distinct().order_by(Equivalent.code)
+    stmt = select(Equivalent.code).where(
+        visible_module(Equivalent.code), visible_module(Equivalent.equivalent_code),
+    ).distinct().order_by(Equivalent.code)
     for tok in search_tokens(q):
         stmt = stmt.where(Equivalent.search_text.like(f"%{like_escape(tok)}%", escape="\\"))
     codes = list(db.scalars(stmt.limit(limit)))

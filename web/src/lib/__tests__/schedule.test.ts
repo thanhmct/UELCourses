@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseSchedules, parseWeekList, parseWeekday } from "../schedule";
+import { formatLessonSchedule, parseSchedules, parseWeekList, parseWeekday } from "../schedule";
 import { periodEndTime, periodStartTime, timeToPeriod, PERIOD_COUNT } from "../periods";
 
 describe("periods config", () => {
@@ -82,5 +82,22 @@ describe("parseWeekList", () => {
     expect([...parseWeekList("1,3,5-6")!]).toEqual([1, 3, 5, 6]);
     expect(parseWeekList("")).toBeNull();
     expect(parseWeekList(undefined)).toBeNull();
+  });
+});
+
+describe("formatLessonSchedule", () => {
+  it("formats single-day session as 'Một ngày · DD/MM/YYYY' (vi) and 'One day · DD/MM/YYYY' (en)", () => {
+    const singleDay = { date_start: "2026-09-09", date_end: "2026-09-09" };
+    expect(formatLessonSchedule(singleDay, "vi")).toBe("Một ngày · 09/09/2026");
+    expect(formatLessonSchedule(singleDay, "en")).toBe("One day · 09/09/2026");
+  });
+
+  it("formats multi-day date range and weeks fallback", () => {
+    const range = { date_start: "2026-09-07", date_end: "2026-11-20" };
+    expect(formatLessonSchedule(range, "vi")).toBe("07/09/2026 – 20/11/2026");
+
+    const weeksOnly = { weeks: "1-10" };
+    expect(formatLessonSchedule(weeksOnly, "vi")).toBe("Tuần 1-10");
+    expect(formatLessonSchedule(weeksOnly, "en")).toBe("Weeks 1-10");
   });
 });

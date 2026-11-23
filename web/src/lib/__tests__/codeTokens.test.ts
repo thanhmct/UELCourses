@@ -1,5 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { activeToken, finishedCodes, rankSuggestions, replaceActiveToken } from "../codeTokens";
+import { activeToken, finishedCodes, parseCodes, rankSuggestions, replaceActiveToken } from "../codeTokens";
+
+describe("parseCodes", () => {
+  it("tách khoảng trắng, dấu phẩy, dấu chấm, chấm phẩy và xuống dòng; viết hoa, bỏ trùng", () => {
+    expect(parseCodes("baa2028, BAA2029.BIM5011; TKE2001\nbaa2028")).toEqual([
+      "BAA2028",
+      "BAA2029",
+      "BIM5011",
+      "TKE2001",
+    ]);
+  });
+});
 
 describe("activeToken", () => {
   it("là đoạn cuối sau dấu phẩy", () => {
@@ -11,8 +22,10 @@ describe("activeToken", () => {
     expect(activeToken("BIM5011,").token).toBe("");
     expect(activeToken("").token).toBe("");
   });
-  it("xuống dòng và chấm phẩy cũng bắt đầu mã mới", () => {
+  it("khoảng trắng, xuống dòng, dấu chấm và chấm phẩy đều bắt đầu mã mới", () => {
+    expect(activeToken("A1 BFF4").token).toBe("BFF4");
     expect(activeToken("A1\nBFF4").token).toBe("BFF4");
+    expect(activeToken("A1.BFF4").token).toBe("BFF4");
     expect(activeToken("A1; BF").token).toBe("BF");
   });
 });

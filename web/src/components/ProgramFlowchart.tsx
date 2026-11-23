@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ProgramGraph, ProgramGraphNode } from "@/lib/types";
 import { useT } from "@/i18n";
-import { moduleName } from "@/i18n/names";
+import { formatPlannerTerm, formatPlannerTermStats, moduleName } from "@/i18n/names";
 import { relatedChain } from "@/lib/programs";
 import { api } from "@/lib/api";
 import { useApi } from "@/lib/useApi";
@@ -51,7 +51,7 @@ function ModuleCard({
       aria-pressed={selected}
       className={`w-full rounded-md border p-2.5 text-left transition-all ${
         selected
-          ? "border-brand-600 bg-brand-50 ring-2 ring-brand-500 dark:bg-brand-950/70"
+          ? "brand-selected border-brand-focus bg-brand-50 ring-2 ring-brand-focus dark:bg-brand-900"
           : inChain
           ? "border-amber-500 bg-amber-50 dark:bg-amber-950/40"
           : "border-slate-200 bg-white hover:border-brand-400 dark:border-slate-700 dark:bg-slate-900"
@@ -75,8 +75,8 @@ function ModuleCard({
           {node.required ? t("pd.required") : t("pd.elective")}
         </span>
         {prereqs.length > 0 && (
-          <span className="truncate text-[10px] text-slate-500" title={`Học trước: ${prereqs.join(", ")}`}>
-            Học trước: <span className="font-mono">{prereqs.join(", ")}</span>
+          <span className="truncate text-[10px] text-slate-600 dark:text-slate-300" title={t("flow.previousCodes", { codes: prereqs.join(", ") })}>
+            {t("flow.previousLabel")} <span className="font-mono">{prereqs.join(", ")}</span>
           </span>
         )}
       </div>
@@ -93,7 +93,7 @@ export function ProgramFlowchart({
   selectedCode?: string;
   onSelectModule?: (code: string) => void;
 }) {
-  const { t } = useT();
+  const { t, lang } = useT();
   const [searchQuery, setSearchQuery] = useState("");
   const [blockFilter, setBlockFilter] = useState("all");
   const [zoom, setZoom] = useState(1);
@@ -132,11 +132,11 @@ export function ProgramFlowchart({
     const map = new Map<string, ProgramGraphNode[]>();
     for (const n of graph.nodes) {
       if (n.required) continue;
-      const key = n.block || "Khác";
+      const key = n.block || t("common.other");
       map.set(key, [...(map.get(key) ?? []), n]);
     }
     return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0], "vi"));
-  }, [graph.nodes]);
+  }, [graph.nodes, t]);
 
   // Kỳ hiện tại tự động: học kỳ đang diễn ra (api.semesters, is_current) ghép với nhãn kỳ của CTĐT.
   // Ví dụ: học kỳ 1 năm học 2026-2027 → nhãn "HK01 năm học 2026-2027".
@@ -177,10 +177,10 @@ export function ProgramFlowchart({
           <input
             type="text"
             className="input w-48 text-xs sm:w-56"
-            placeholder="Nhập mã hoặc tên môn để tìm…"
+            placeholder={t("flow.search")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            aria-label="Lọc môn theo mã hoặc tên"
+            aria-label={t("flow.searchAria")}
           />
           <select className="input max-w-[220px] truncate text-xs" value={blockFilter} onChange={(e) => setBlockFilter(e.target.value)} aria-label={t("flow.filterBlock")}>
             <option value="all">{t("flow.allBlocks", { n: blocks.length })}</option>
@@ -196,15 +196,15 @@ export function ProgramFlowchart({
         </div>
 
         <div className="flex items-center gap-1 text-xs">
-          <button type="button" className="btn-outline px-2 py-1" onClick={() => setZoom((z) => Math.max(0.6, +(z - 0.1).toFixed(1)))} aria-label="Thu nhỏ">−</button>
+          <button type="button" className="btn-outline px-2 py-1" onClick={() => setZoom((z) => Math.max(0.6, +(z - 0.1).toFixed(1)))} aria-label={t("flow.zoomOut")}>−</button>
           <span className="w-12 text-center tabular-nums text-slate-600 dark:text-slate-300">{Math.round(zoom * 100)}%</span>
-          <button type="button" className="btn-outline px-2 py-1" onClick={() => setZoom((z) => Math.min(1.4, +(z + 0.1).toFixed(1)))} aria-label="Phóng to">+</button>
+          <button type="button" className="btn-outline px-2 py-1" onClick={() => setZoom((z) => Math.min(1.4, +(z + 0.1).toFixed(1)))} aria-label={t("flow.zoomIn")}>+</button>
         </div>
       </div>
 
       {/* Chip chọn kỳ hiện tại: bấm để nhảy tới kỳ đó */}
       <div className="flex flex-wrap items-center gap-1.5 text-xs">
-        <span className="mr-1 font-semibold text-slate-600 dark:text-slate-300">Kỳ:</span>
+        <span className="mr-1 font-semibold text-slate-600 dark:text-slate-300">{t("flow.termsLabel")}</span>
         {terms.map((term) => (
           <button
             key={term}
@@ -214,17 +214,17 @@ export function ProgramFlowchart({
             }}
             className={`rounded-full border px-3 py-1 font-semibold ${
               currentTerm === term
-                ? "border-brand-600 bg-brand-600 text-white"
+                ? "brand-fill border-brand-focus"
                 : "border-slate-300 bg-white text-slate-600 hover:border-brand-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
             }`}
           >
-            {term}
+            {formatPlannerTerm(term, lang)}
           </button>
         ))}
         <span className="ml-auto flex gap-3 text-slate-500">
-          <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm bg-emerald-300" /> Bắt buộc</span>
-          <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm bg-violet-300" /> Tự chọn</span>
-          <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm border border-amber-500 bg-amber-100" /> Chuỗi môn đang chọn</span>
+          <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm bg-emerald-300" /> {t("pd.required")}</span>
+          <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm bg-violet-300" /> {t("pd.elective")}</span>
+          <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm border border-amber-500 bg-amber-100" /> {t("flow.selectedChain")}</span>
         </span>
       </div>
 
@@ -248,13 +248,13 @@ export function ProgramFlowchart({
               >
                 <div className="flex items-baseline justify-between border-b border-slate-200 pb-1 dark:border-slate-700">
                   <span className="text-sm font-bold text-slate-800 dark:text-slate-100">
-                    {term === UNPLACED ? "Chưa xếp kỳ" : t("pd.termN", { n: term })}
+                    {term === UNPLACED ? t("flow.unplaced") : formatPlannerTerm(term, lang)}
                   </span>
                   <span className="text-[11px] text-slate-500">
-                    {nodes.length} môn · {credits} TC
+                    {formatPlannerTermStats(nodes.length, credits, lang)}
                   </span>
                 </div>
-                {shown.length === 0 && <p className="py-4 text-center text-xs text-slate-400">Không có môn khớp</p>}
+                {shown.length === 0 && <p className="py-4 text-center text-xs text-slate-400">{t("flow.noMatches")}</p>}
                 {shown.map((n) => (
                   <ModuleCard
                     key={n.code}
@@ -275,7 +275,7 @@ export function ProgramFlowchart({
 
       {/* Môn tự chọn: nhóm theo khối kiến thức */}
       <section className="space-y-3">
-        <h3 className="text-sm font-bold text-slate-900 dark:text-white">Môn tự chọn theo khối kiến thức</h3>
+        <h3 className="text-sm font-bold text-slate-900 dark:text-white">{t("flow.electivesTitle")}</h3>
         {electiveGroups.map(([block, nodes]) => {
           const shown = nodes.filter(matches);
           if (shown.length === 0) return null;
@@ -285,7 +285,7 @@ export function ProgramFlowchart({
               <div className="flex items-baseline justify-between gap-2">
                 <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">{block}</span>
                 <span className="text-[11px] text-slate-500">
-                  {nodes.length} môn · {credits} TC
+                  {formatPlannerTermStats(nodes.length, credits, lang)}
                 </span>
               </div>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3" style={{ zoom }}>

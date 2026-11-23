@@ -50,8 +50,19 @@ function annotateAnchors(tree: Root) {
       if (article) setProps(node, { id: `dieu-${article}`, "data-anchor": `dieu-${article}` });
       continue;
     }
-    if (node.type === "paragraph" && article) {
-      const first = (node as Paragraph).children[0] as PhrasingContent | undefined;
+    if (node.type === "paragraph") {
+      const parts = (node as Paragraph).children;
+      const last = parts.at(-1);
+      if (last?.type === "text") {
+        const block = /\s+\^(trang-\d+-muc-\d+)$/.exec(last.value);
+        if (block) {
+          last.value = last.value.slice(0, block.index);
+          setProps(node, { id: block[1], "data-anchor": block[1] });
+          continue;
+        }
+      }
+      if (!article) continue;
+      const first = parts[0] as PhrasingContent | undefined;
       if (first?.type === "strong") {
         const m = /^(\d+)\.?$/.exec(toText(first).trim());
         if (m) {

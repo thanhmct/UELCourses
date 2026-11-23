@@ -1,4 +1,4 @@
-# UELCourses — Đánh giá thiết kế hệ thống & Kế hoạch phát triển
+# UELPATH — Đánh giá thiết kế hệ thống & Kế hoạch phát triển
 
 > Lập ngày 2026-11-21 (Claude). Mọi con số dưới đây **đo trực tiếp** trên máy dev ngày này (Postgres trong Docker, API chạy trên máy),
 > không ước đoán. Tài liệu này là kế hoạch; quyết định đã chốt nằm ở `docs/DECISIONS.md`, trạng thái từng phiên ở `docs/HANDOFF.md`.
@@ -126,7 +126,7 @@ Ký hiệu: **Ưu tiên** P0 (làm ngay) → P3; **Công** = ngày làm việc �
 | D4 | i18n còn chỗ thiếu (trang Equivalents, "Chọn khóa và ngành…") | Quét chuỗi cứng bằng lint rule; bổ sung `vi.ts`/`en.ts` | P2 | 0,5 |
 | D5 | Khả năng truy cập chưa kiểm | Axe/Lighthouse cho 5 trang chính, sửa lỗi mức A | P2 | 0,5 |
 
-### E. Đề cương & AI quy chế
+### E. Đề cương, quy chế và hỏi đáp
 
 | # | Vấn đề | Đề xuất | Ưu tiên | Công |
 |---|---|---|---|---|
@@ -134,8 +134,9 @@ Ký hiệu: **Ưu tiên** P0 (làm ngay) → P3; **Công** = ngày làm việc �
 | E2 | Chưa có bộ chuẩn để báo cáo độ chính xác trích xuất | Gán nhãn tay 30 đề cương (ngẫu nhiên, đủ VI/EN) → precision/recall từng trường; đưa vào khóa luận | P1 | 1,5 |
 | E3 | 12 PDF đề cương scan | `ocr-outlines` → kiểm tra mẫu → `parse-outlines` (đã có cột `ocr_*`, đang `pending`) | P2 | 0,3 |
 | E4 | 31 mã có link Google Docs/Drive chưa tải được | **Cần chủ dự án đồng ý**: xuất Google Docs → Markdown/PDF bằng tài khoản của họ, không vượt quyền truy cập | P2 | 0,5 |
-| E5 | 4 test RAG lỗi; chưa có bộ câu hỏi đánh giá | Sửa test; bộ 50 câu hỏi có đáp án (Điều/Khoản) → đo hit@k cho chế độ extractive | P1 | 1,5 |
-| E6 | ~8 PDF quy chế scan | OCR + rà soát tay (văn bản pháp lý cần chính xác tuyệt đối) | P2 | 1 |
+| E5 | Đã sửa 4 test RAG và đo 66 câu trên tài liệu thật. Recall@3 100%, MRR@5 0,9201 | Đo lại sau khi nạp PostgreSQL. Rà 7 câu còn sai trích dẫn đầu. Xem [RAG_EVAL.md](RAG_EVAL.md). | P1 | — |
+| E6 | 22 PDF quy chế cần OCR lại, gồm 12 bản scan. 23 văn bản thiếu file | Bổ sung file, cài OCR tiếng Việt và đối chiếu metadata chưa xác minh theo `data/processed/regulations_status.md`. | P2 | — |
+| E7 | Code hỏi đáp học phần, đề cương và phản hồi ẩn danh đã có ở `/ask`. Hai phạm vi dùng chung hạn mức LLM và hậu kiểm trích dẫn | Sao lưu, áp migration `0028–0029`, nạp snapshot quy chế và chạy `alembic check` theo [RAG_EVAL.md](RAG_EVAL.md). | P1 | — |
 
 ## 4. Lộ trình
 

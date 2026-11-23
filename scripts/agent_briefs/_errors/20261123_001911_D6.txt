@@ -1,0 +1,15 @@
+﻿LOI MOI do brief D6_thac_si gay ra (chi sua nhung loi nay):
+tsc|src/mocks/programs.ts|TS2322
+
+=== Chi tiet day du (chi de tham khao, loi khac khong thuoc brief nay thi BO QUA) ===
+### alembic
+No new upgrade operations detected.
+
+
+### tsc (web)
+src/mocks/programs.ts(80,5): error TS2322: Type 'ProgramSummary[]' is not assignable to type '{ degree: string; program_id: string; name: string; cohort: string; faculty?: string | undefined; total_credits: number; track_source?: "official" | "derived" | null | undefined; }[]'.
+  Type 'ProgramSummary' is not assignable to type '{ degree: string; program_id: string; name: string; cohort: string; faculty?: string; total_credits: number; track_source?: "official" | "derived" | null; }'.
+    Types of property 'degree' are incompatible.
+      Type 'string | undefined' is not assignable to type 'string'.
+        Type 'undefined' is not assignable to type 'string'.
+

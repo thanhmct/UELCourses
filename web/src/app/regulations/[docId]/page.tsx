@@ -12,5 +12,5 @@ export default function RegulationRedirect() {
     useWorkspace.getState().open(decodeURIComponent(docId), window.location.hash.slice(1) || undefined);
     router.replace("/regulations");
   }, [docId, router]);
-  return <Loading text="Đang mở văn bản…" />;
+  return <Loading />;
 }

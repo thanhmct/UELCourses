@@ -145,7 +145,10 @@ def _read_text_file(p: Path) -> str:
 
 
 def _split_pages(text: str) -> list[tuple[int, str]]:
-    """Form feed (\\f) separates pages in plain-text exports."""
+    """Read explicit OCR page numbers or form feed separators in plain-text exports."""
+    marked = re.split(r"(?m)^[ \t]*=== Trang (\d+) ===[ \t]*\r?$", text)
+    if len(marked) > 1:
+        return [(int(page), content.strip()) for page, content in zip(marked[1::2], marked[2::2])]
     parts = text.split("\f")
     return [(i + 1, t) for i, t in enumerate(parts)]
 

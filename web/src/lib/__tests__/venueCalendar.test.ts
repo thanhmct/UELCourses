@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dateKey, defaultMonth, monthGrid, monthsOf, occurrencesByDay, sessionDates } from "../venueCalendar";
+import { dateKey, defaultMonth, monthGrid, monthLabel, monthsOf, occurrencesByDay, sessionDates } from "../venueCalendar";
 import type { VenueSession } from "../types";
 
 const S = (weekday: number, start: number, end: number, extra: Partial<VenueSession> = {}): VenueSession =>
@@ -40,5 +40,11 @@ describe("lịch phòng theo tháng", () => {
     expect(dateKey(cells[0])).toBe("2026-06-29");
     expect(cells.length % 7).toBe(0);
     expect(dateKey(cells[cells.length - 1])).toBe("2026-08-02");
+  });
+
+  it("định dạng nhãn tháng theo ngôn ngữ VI và EN", () => {
+    expect(monthLabel("2026-07", "vi")).toBe("07/2026");
+    expect(monthLabel("2026-07", "en")).toBe("07/2026");
+    expect(monthLabel("2027-11", "en")).toBe("11/2027");
   });
 });

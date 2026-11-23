@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 API_DIR = Path(__file__).resolve().parent.parent
@@ -39,6 +40,26 @@ class Settings(BaseSettings):
     # Danh sách origin phân tách bởi dấu phẩy.
     cors_origins: str = "http://localhost:3000"
 
+    # Chế độ phát triển khu vực quản trị (/api/admin/*). Khi bật (true) và ENV != production,
+    # các endpoint quản trị mở cho dev truy cập (require_admin_dev). Khi ENV=production, validate_production()
+    # từ chối khởi động nếu cờ này là true.
+    admin_dev_open: bool = False
+
+    # Thu thập xu hướng ẩn danh (Brief A2, D-A5). Khi tắt (false), POST /api/analytics/events trả 204 và bỏ qua.
+    analytics_enabled: bool = True
+    # Thời gian lưu trữ sự kiện thô (ngày). Mặc định 180 ngày theo D-A5.
+    analytics_retention_days: int = 180
+
+    # Giới hạn tần suất & chống cào dữ liệu (Brief S1)
+    # RATE_LIMIT_DEFAULT: 240/phút cho mọi /api/* (phù hợp NAT trường)
+    rate_limit_default: str = "240/minute"
+    # RATE_LIMIT_HEAVY: 20/phút cho các endpoint nặng (hỏi đáp quy chế, compare, export)
+    rate_limit_heavy: str = "20/minute"
+    # RATE_LIMIT_ENABLED: bật giới hạn tần suất (mặc định true; test/dev đặt false)
+    rate_limit_enabled: bool = True
+    # BLOCK_EMPTY_USER_AGENT: chặn request không có User-Agent (mặc định false để tránh lỗi SSR web)
+    block_empty_user_agent: bool = False
+
     # Tự nạp dữ liệu MẪU (api/seed/*.json) khi DB chưa có học phần nào. Tắt mặc định: DB chỉ chứa dữ liệu thật
     # (chủ dự án yêu cầu 2026-11-21). Bật bằng AUTO_SEED=true khi cần DB thử trống.
     auto_seed: bool = False
@@ -48,6 +69,24 @@ class Settings(BaseSettings):
     min_program_cohort: int = 23
     # Cho phép tắt việc nạp router RAG (vd. khi chạy test backend riêng).
     enable_rag: bool = True
+    # Nhà cung cấp AI cho RAG: none | ollama | claude | codex.
+    llm_provider: str = "none"
+    ollama_url: str = "http://localhost:11434"
+    ollama_model: str = "qwen2.5:7b-instruct"
+    anthropic_api_key: str | None = None
+    claude_model: str = "claude-sonnet-5-5"
+    codex_api_key: str | None = None
+    codex_model: str = "gpt-6-sol"
+    codex_base_url: str = "https://api.openai.com/v1"
+    llm_timeout_seconds: float = Field(12, gt=0, le=30)
+    llm_max_tokens: int = Field(600, ge=64, le=1200)
+    llm_context_chunks: int = Field(4, ge=1, le=6)
+    llm_max_concurrent: int = Field(2, ge=1, le=16)
+    llm_ip_hourly_cap: int = Field(10, ge=0)
+    llm_ip_daily_cap: int = Field(30, ge=0)
+    llm_daily_call_cap: int = Field(300, ge=0)
+    llm_log_questions: bool = False
+    llm_hash_secret: str | None = None
     # Nếu đặt, các endpoint import/sync/export yêu cầu header `X-Admin-Key`.
     admin_key: str | None = None
     # Đăng nhập (xem app/services/auth.py). Để trống thì đăng nhập trả 503.
@@ -123,6 +162,32 @@ def validate_production(settings: Settings | None = None) -> None:
                 f"Cấu hình production không an toàn: CORS_ORIGINS không được chứa localhost hoặc 127.0.0.1 (tìm thấy: '{origin}'). "
                 "Vui lòng cấu hình chính xác tên miền frontend công khai (ví dụ: https://uelcourses.vercel.app)."
             )
+
+    # 3. Kiểm tra ADMIN_DEV_OPEN
+    if getattr(settings, "admin_dev_open", False):
+        raise RuntimeError(
+            "Cấu hình production không an toàn: ADMIN_DEV_OPEN không được bật ở môi trường production."
+        )
+
+    # 4. Cảnh báo nếu chưa có tài khoản admin nào trong production (Brief A0)
+    try:
+        import logging
+        from app.db import SessionLocal
+        from app.models import AdminUser
+        from sqlalchemy import select, func
+
+        log = logging.getLogger("uelcourses")
+        with SessionLocal() as db:
+            admin_count = db.scalar(
+                select(func.count(AdminUser.id)).where(AdminUser.role == "admin", AdminUser.is_active.is_(True))
+            )
+            if admin_count == 0:
+                log.warning(
+                    "CẢNH BÁO PRODUCTION: Chưa có tài khoản quản trị viên nào trong hệ thống! "
+                    "Hãy chạy lệnh: python -m app.cli create-admin --email ... để tạo tài khoản ban đầu."
+                )
+    except Exception:
+        pass
 
 
 # ---------------------------------------------------------------------------

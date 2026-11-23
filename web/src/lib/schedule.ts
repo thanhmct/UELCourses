@@ -194,3 +194,41 @@ export function parseWeekList(weeks?: string): Set<number> | null {
   }
   return set.size ? set : null;
 }
+
+/**
+ * Format lesson date/recurrence label.
+ * For single-day sessions (date_start === date_end), returns:
+ * - "Một ngày · DD/MM/YYYY" (lang="vi")
+ * - "One day · DD/MM/YYYY" (lang="en")
+ */
+export function formatLessonSchedule(
+  lesson: { date_start?: string | null; date_end?: string | null; weeks?: string | null },
+  lang: "vi" | "en" = "vi",
+): string {
+  const dmy = (iso?: string | null) => {
+    if (!iso) return "";
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+    if (m) return `${m[3]}/${m[2]}/${m[1]}`;
+    return iso;
+  };
+
+  if (lesson.date_start && lesson.date_end && lesson.date_start === lesson.date_end) {
+    const prefix = lang === "en" ? "One day" : "Một ngày";
+    const dateFormatted = dmy(lesson.date_start);
+    return dateFormatted ? `${prefix} · ${dateFormatted}` : prefix;
+  }
+
+  if (lesson.date_start && lesson.date_end) {
+    return `${dmy(lesson.date_start)} – ${dmy(lesson.date_end)}`;
+  }
+
+  if (lesson.date_start) {
+    return lang === "en" ? `From ${dmy(lesson.date_start)}` : `Từ ngày ${dmy(lesson.date_start)}`;
+  }
+
+  if (lesson.weeks) {
+    return lang === "en" ? `Weeks ${lesson.weeks}` : `Tuần ${lesson.weeks}`;
+  }
+
+  return "";
+}

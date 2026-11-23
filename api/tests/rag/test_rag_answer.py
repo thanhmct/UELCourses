@@ -1,7 +1,25 @@
 import json
 
-from app.rag.answer import REFUSAL, answer_extractive, answer_llm, verify_llm_output, retrieve
-from app.rag.providers import ClaudeProvider, LLMProvider, NoneProvider, OllamaProvider, ProviderError, get_provider
+from app.rag.answer import (
+    REFUSAL,
+    _handbook_window,
+    _source_tier,
+    answer_extractive,
+    answer_llm,
+    retrieve,
+    verify_llm_output,
+)
+from app.rag.index import RagIndex
+from app.rag.models import Chunk, RegulationDoc
+from app.rag.providers import (
+    ClaudeProvider,
+    CodexProvider,
+    LLMProvider,
+    NoneProvider,
+    OllamaProvider,
+    ProviderError,
+    get_provider,
+)
 from app.rag.verify import best_match, is_verbatim
 
 
@@ -33,6 +51,17 @@ def test_refusal_when_no_source(index, today):
         assert not r["found"] and r["answer"] == REFUSAL and r["citations"] == []
 
 
+def test_source_priority_prefers_exact_cohort_and_explicit_handbook():
+    general = RegulationDoc(doc_id="general", title="Chung", applies_to_cohorts=["all"])
+    specific = RegulationDoc(doc_id="specific", title="K26", applies_to_cohorts=["K26"])
+    handbook = RegulationDoc(
+        doc_id="handbook", title="Sổ tay K26", applies_to_cohorts=["K26"], source_type="handbook"
+    )
+
+    assert _source_tier(specific, "K26", False) > _source_tier(general, "K26", False)
+    assert _source_tier(handbook, "K26", True) > _source_tier(specific, "K26", True)
+
+
 def test_old_cohort_uses_superseded_doc_with_warning(index, today):
     r = answer_extractive(index, "Sinh viên phải đăng ký tối thiểu bao nhiêu tín chỉ mỗi học kỳ?", "K18", today)
     assert r["found"]
@@ -59,6 +88,24 @@ def test_point_selection(index, today):
     assert c["quote"].startswith("b) IELTS")
     assert c["anchor"] == "dieu-3-khoan-1-diem-b"
     assert r["answer"].startswith("Theo Điểm b Khoản 1 Điều 3")
+
+
+def test_handbook_window_uses_question_relevant_chunk_on_same_page():
+    doc = RegulationDoc(doc_id="handbook", title="Sổ tay K26", source_type="handbook")
+    lead = Chunk(chunk_id="handbook:trang-36-muc-1", doc_id=doc.doc_id,
+                 text="Tổng thời gian xử lý một đơn là 15-20 ngày.", page=36,
+                 source_type="handbook", heading="Đơn học vụ")
+    evidence = Chunk(chunk_id="handbook:trang-36-muc-2", doc_id=doc.doc_id,
+                     text="Thời gian đợi BGH phê duyệt: 5-7 ngày làm việc.", page=36,
+                     source_type="handbook", heading="Đơn học vụ")
+    idx = RagIndex([doc], [lead, evidence])
+
+    selected, quote = _handbook_window(
+        lead, "Thời gian đợi Ban Giám hiệu phê duyệt đơn là bao lâu?", idx
+    )
+
+    assert selected.chunk_id == evidence.chunk_id
+    assert quote == evidence.text
 
 
 def test_unverified_metadata_warning(fresh_index, today):
@@ -105,23 +152,42 @@ def test_llm_fabricated_quote_falls_back(index, today):
                       "citations": [{"chunk_id": CID, "quote": "Sinh viên được học cải thiện không giới hạn số lần"}]},
                      ensure_ascii=False)
     r = answer_llm(index, Q, "K22", today, FakeProvider(lambda p: out))
-    assert r["mode"] == "extractive" and r["llm_fallback"] is True
-    assert "không khớp nguyên văn" in r["fallback_reason"]
-    assert r["citations"][0]["chunk_id"] == CID
+    # The model judged the context but could not quote it: abstain, never show the fabricated text.
+    assert r["mode"] == "llm" and r["found"] is False and r["abstained"] is True
+    assert "không khớp nguyên văn" in r["abstain_reason"]
+    assert r["citations"] == [] and r["related"][0]["chunk_id"] == CID
+    assert "không giới hạn" not in r["answer"]
 
 
-def test_llm_unknown_chunk_or_bad_json_or_no_citation(index, today):
+def test_llm_unknown_chunk_or_no_citation_abstains(index, today):
     bad = [
         json.dumps({"answer": "x", "citations": [{"chunk_id": "BIA:D1", "quote": "abc"}]}),
-        "Tôi nghĩ là 3 lần.",
         json.dumps({"answer": "2 lần", "citations": []}),
+        json.dumps({"answer": "KHONG_TIM_THAY", "citations": []}),
         json.dumps({"answer": "Theo quy chế: «được học lại vô hạn lần trong mọi trường hợp»",
                     "citations": [{"chunk_id": CID, "quote": "Mỗi học phần chỉ được học cải thiện điểm tối đa 2 lần"}]},
                    ensure_ascii=False),
     ]
     for out in bad:
         r = answer_llm(index, Q, "K22", today, FakeProvider(lambda p, o=out: o))
-        assert r["mode"] == "extractive" and r["llm_fallback"], out
+        assert r["found"] is False and r["abstained"] and r["citations"] == [], out
+
+
+def test_llm_unparseable_reply_falls_back_to_extractive(index, today):
+    r = answer_llm(index, Q, "K22", today, FakeProvider(lambda p: "Tôi nghĩ là 3 lần."))
+    assert r["mode"] == "extractive" and r["llm_fallback"] and r["citations"][0]["chunk_id"] == CID
+
+
+def test_llm_quote_rejoining_ocr_split_word_publishes_source_text():
+    from app.rag.completion import checked_quotes
+
+    source = "Không chấp nhận chứng chỉ TOEIC (Test of English fo r International Communication)."
+    raw = json.dumps({"answer": "x", "citations": [
+        {"chunk_id": "a", "quote": "Test of English for International Communication"}]})
+    quotes, reason = checked_quotes(raw, {"a": source})
+    assert reason is None and quotes == (("a", "Test of English fo r International Communication"),)
+    assert checked_quotes(json.dumps({"answer": "x", "citations": [
+        {"chunk_id": "a", "quote": "Test of English for National Communication"}]}), {"a": source})[0] is None
 
 
 def test_llm_not_called_when_nothing_retrieved(index, today):
@@ -165,6 +231,36 @@ def test_claude_provider_with_fake_client():
 
     p = ClaudeProvider(api_key="test", client=type("C", (), {"messages": Msgs()})())
     assert json.loads(p.generate("sys", "prompt"))["answer"] == "ok"
+
+
+def test_codex_provider_with_fake_client():
+    class Message:
+        content = '{"answer": "ok", "citations": []}'
+
+    class Choice:
+        message = Message()
+
+    class Completions:
+        def create(self, **kw):
+            assert kw["model"] == "gpt-6-sol"
+            assert "temperature" not in kw and "max_tokens" not in kw
+            assert kw["max_completion_tokens"] <= 1200 and kw["reasoning_effort"] == "low"
+            assert kw["response_format"] == {"type": "json_object"}
+            assert kw["messages"][0]["role"] == "system"
+            return type("Response", (), {"choices": [Choice()]})()
+
+    client = type("C", (), {"chat": type("Chat", (), {"completions": Completions()})()})()
+    p = CodexProvider(api_key="test", model=CodexProvider.DEFAULT_MODEL, client=client)
+    assert json.loads(p.generate("sys", "prompt"))["answer"] == "ok"
+
+
+def test_get_codex_provider_env(monkeypatch):
+    monkeypatch.setenv("LLM_PROVIDER", "codex")
+    monkeypatch.setenv("CODEX_API_KEY", "test")
+    monkeypatch.setenv("CODEX_MODEL", "custom-test-model")
+    p = get_provider()
+    assert isinstance(p, CodexProvider)
+    assert p.available() and p.model == "custom-test-model"
 
 
 def test_verify_helpers(index, today):

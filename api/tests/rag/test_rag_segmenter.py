@@ -1,3 +1,4 @@
+from app.rag.handbook import build_handbook_chunks
 from app.rag.models import RegulationDoc
 from app.rag.segmenter import build_chunks, segment
 
@@ -102,3 +103,28 @@ def test_chunks_metadata(fixture_dir):
     assert c.applies_to_cohorts == ["K21"] and c.page == 1
     assert c.anchor() == "dieu-5-khoan-2" and c.anchor("a") == "dieu-5-khoan-2-diem-a"
     assert p.counts() == {"articles": 9, "clauses": 20, "points": 15}
+
+
+def test_chunks_detach_appendix_and_limit_verbatim_windows():
+    clause = "1. Nội dung chính kết thúc tại đây./. 6 PHỤ LỤC I " + ("dữ liệu bảng " * 260)
+    parsed = segment("Điều 9. Điều khoản thi hành\n" + clause)
+    doc = RegulationDoc(doc_id="QD", title="Quy định", decision_no="9/QĐ-ĐHKTL")
+
+    chunks = build_chunks(doc, parsed)
+
+    assert chunks[0].text == "1. Nội dung chính kết thúc tại đây./."
+    assert chunks[0].chunk_type == "clause"
+    appendix = chunks[1:]
+    assert appendix and all(c.chunk_type == "appendix" for c in appendix)
+    assert appendix[0].appendix_label == "Phụ Lục I"
+    assert all(len(c.text) <= 1400 for c in chunks)
+    assert all(c.text in clause for c in chunks)
+    assert [c.window_part for c in appendix] == list(range(1, len(appendix) + 1))
+    assert len({c.chunk_id for c in chunks}) == len(chunks)
+
+
+def test_handbook_contact_values_are_body_evidence():
+    doc = RegulationDoc(doc_id="handbook", title="Sổ tay", source_type="handbook")
+    chunks = build_handbook_chunks(doc, [(63, "PHÒNG Y TẾ\nY SĨ NGUYỄN THỊ PHI NGA\nSĐT: 0918.181.707")])
+
+    assert any("SĐT: 0918.181.707" in chunk.text for chunk in chunks)

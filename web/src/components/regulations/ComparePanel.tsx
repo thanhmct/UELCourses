@@ -1,26 +1,35 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { COHORTS } from "@/lib/cohort";
 import { diffWords } from "@/lib/vault";
 import type { CompareResponse } from "@/lib/types";
-import { Loading } from "@/components/ui";
+import { ErrorBox, Loading } from "@/components/ui";
 import { useT } from "@/i18n";
 
 /** Side-by-side comparison of one topic between two cohorts, with word-level differences marked. */
 export function ComparePanel({ defaultCohort }: { defaultCohort: string }) {
   const { t } = useT();
-  const [topic, setTopic] = useState("tín chỉ tối đa học kỳ");
+  const [topic, setTopic] = useState("");
+  const [topicEdited, setTopicEdited] = useState(false);
   const [a, setA] = useState(defaultCohort || "K22");
   const [b, setB] = useState(defaultCohort === "K25" ? "K22" : "K25");
   const [res, setRes] = useState<CompareResponse | null>(null);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!topicEdited) setTopic(t("cmp.defaultTopic"));
+  }, [t, topicEdited]);
 
   async function run() {
     if (!topic.trim()) return;
     setBusy(true);
+    setError(null);
     try {
       setRes((await api.compare(topic.trim(), [a, b])).data);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : String(requestError));
     } finally {
       setBusy(false);
     }
@@ -32,13 +41,14 @@ export function ComparePanel({ defaultCohort }: { defaultCohort: string }) {
   return (
     <div className="space-y-3">
       <form className="grid gap-2 sm:grid-cols-[1fr_auto_auto_auto]" onSubmit={(e) => { e.preventDefault(); run(); }}>
-        <input className="input" value={topic} onChange={(e) => setTopic(e.target.value)} placeholder={t("cmp.topicPh")} aria-label={t("cmp.topic")} />
+        <input className="input" value={topic} onChange={(e) => { setTopic(e.target.value); setTopicEdited(true); }} placeholder={t("cmp.topicPh")} aria-label={t("cmp.topic")} />
         <select className="input" value={a} onChange={(e) => setA(e.target.value)} aria-label={t("cmp.cohortA")}>{COHORTS.map((c) => <option key={c}>{c}</option>)}</select>
         <select className="input" value={b} onChange={(e) => setB(e.target.value)} aria-label={t("cmp.cohortB")}>{COHORTS.map((c) => <option key={c}>{c}</option>)}</select>
         <button className="btn-primary" disabled={busy || a === b}>{t("cmp.run")}</button>
       </form>
       {a === b && <p className="text-xs text-amber-600">{t("cmp.sameCohorts")}</p>}
       {busy && <Loading />}
+      {error && <ErrorBox>{error}</ErrorBox>}
       {res && rowA && rowB && (
         <>
           {res.differences.length > 0 ? (

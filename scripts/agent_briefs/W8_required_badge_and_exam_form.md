@@ -1,0 +1,10 @@
+# Brief W8 — Nhãn "Bắt buộc/Tự chọn" cạnh tên môn + hình thức thi cuối kỳ cạnh số tín chỉ
+
+Tự tìm file; không chạy lệnh shell; không commit; không sửa backend (trừ khi dữ liệu `final_assessment` thiếu ở API — khi đó chỉ ghi vào báo cáo). Gợi ý file: `web/src/app/modules/page.tsx` (danh sách/thẻ học phần), `web/src/app/modules/[code]/page.tsx` (chi tiết), `web/src/app/timetable/finalAssessment.ts` (hàm có sẵn rút gọn dạng bài cuối kỳ từ `final_assessment` của đề cương — tái sử dụng, nếu cần chuyển sang `web/src/lib/`), `TimetableModuleSearch.tsx`, `planner`, `programs/[id]`, i18n vi/en.
+
+## Yêu cầu
+1. **Nhãn Bắt buộc / Tự chọn đặt ngay cạnh tên môn**, cùng dòng, ngay sau chuỗi "MÃ Tên môn", kiểu: `BDG1001 Triết học Mác – Lênin  [Bắt buộc]` (chip nhỏ, màu Bắt buộc = xanh lá nhạt như đang dùng; Tự chọn = vàng/cam nhạt hoặc xám xanh, chữ rõ). Áp dụng ở danh sách học phần, trang chi tiết (tiêu đề), kết quả tìm môn ở Thời khóa biểu và Kế hoạch, và trang CTĐT. Chỉ hiện khi biết được (có chương trình của người dùng/`?program=` và môn nằm trong chương trình đó); không hiện cho môn ngoài chương trình. Nếu hiện đã có nhãn ở chỗ khác (dòng phụ/chip cuối hàng) thì dời lên cạnh tên, không để trùng. EN: "Required" / "Elective".
+2. **Hình thức thi cuối kỳ cạnh số tín chỉ**: ở dòng thông tin dưới tên, ngay sau số tín chỉ, ví dụ `3 TC · Thi viết · Khoa …` / EN `3 credits · Written exam · …`. Lấy từ `final_assessment` (đề cương) rút gọn bằng hàm sẵn có (đồ án, thi viết/trắc nghiệm/vấn đáp, tiểu luận…). Môn không có dữ liệu → bỏ trống phần đó (không hiện "—" hay "chưa rõ"). Áp dụng ở danh sách học phần, trang chi tiết, kết quả tìm ở TKB và Kế hoạch.
+3. Chung một hàm/ component nhỏ dùng lại (vd `ModuleTitleLine` hoặc hàm định dạng `creditsLine(module, lang)`) để các trang nhất quán; có test Vitest (cleanup()): có/không chương trình, môn bắt buộc/tự chọn, VI/EN, có/không final_assessment.
+
+Báo cáo cuối: từng trang đã sửa và file thay đổi. Chủ dự án chạy `npx tsc --noEmit` và `npx vitest run`.

@@ -28,8 +28,8 @@ def test_faculty_and_department_name_mappings():
     assert faculty_en(None) is None
 
 
-def test_fill_faculties_from_outline_and_counterpart(db):
-    # Case 1: Outline có faculty/department tiếng Anh
+def test_fill_faculties_from_outline_only_no_counterpart(db):
+    # Case 1: Outline có faculty/department tiếng Anh -> ánh xạ sang tiếng Việt chuẩn
     db.add(Module(code="EFF4017", name="Khai thác dữ liệu trong tài chính (Data mining) (E)", faculty="Chưa rõ khoa"))
     db.add(OutlineDocument(id=101, sha256="1" * 64, file_name="101.pdf", rel_path="x/101.pdf", size_bytes=1))
     db.flush()
@@ -45,9 +45,9 @@ def test_fill_faculties_from_outline_and_counterpart(db):
     )
     db.add(OutlineModuleLink(document_id=101, module_code="EFF4017", source="catalog"))
 
-    # Case 2: Counterpart mapping
-    db.add(Module(code="BEE1001", name="Kinh tế vi mô", faculty="Khoa Kinh tế", department="Bộ môn Kinh tế học", counterpart_code="EEE1001"))
-    db.add(Module(code="EEE1001", name="Microeconomics (E)", faculty=None, department=None, counterpart_code="BEE1001"))
+    # Case 2: Môn KHÔNG có đề cương của mình lẫn bản tương ứng và không có tiền tố -> giữ nguyên giá trị cũ (không gán "Phòng Đào tạo")
+    db.add(Module(code="BZZ1001", name="Kinh tế vi mô", faculty="Khoa Kinh tế", department="Bộ môn Kinh tế học", counterpart_code="EZZ1001"))
+    db.add(Module(code="EZZ1001", name="Microeconomics (E)", faculty=None, department=None, counterpart_code="BZZ1001"))
     db.commit()
 
     fill_faculties(db)
@@ -56,9 +56,13 @@ def test_fill_faculties_from_outline_and_counterpart(db):
     assert eff.faculty == "Khoa Tài chính - Ngân hàng"
     assert eff.department == "Bộ môn Tài chính"
 
-    eee = db.get(Module, "EEE1001")
-    assert eee.faculty == "Khoa Kinh tế"
-    assert eee.department == "Bộ môn Kinh tế học"
+    bzz = db.get(Module, "BZZ1001")
+    assert bzz.faculty == "Khoa Kinh tế"
+    assert bzz.department == "Bộ môn Kinh tế học"
+
+    ezz = db.get(Module, "EZZ1001")
+    assert ezz.faculty is None
+    assert ezz.department is None
 
 
 def test_module_detail_faculty_en_and_required_in_programs(client, db):

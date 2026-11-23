@@ -1,4 +1,4 @@
-# UELCourses — cấu hình chạy production/staging.
+# UELPATH — cấu hình chạy production/staging.
 #   docker compose up -d --build
 # Phát triển (hot reload): docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 # Bật AI local (Ollama):   docker compose --profile ollama up -d
@@ -39,6 +39,9 @@ services:
       OLLAMA_URL: ${OLLAMA_URL:-http://ollama:11434}
       OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:7b}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      CODEX_API_KEY: ${CODEX_API_KEY:-}
+      CODEX_MODEL: ${CODEX_MODEL:-}
+      CODEX_BASE_URL: ${CODEX_BASE_URL:-}
     volumes:
       - apidata:/app/data
       - ./regulations:/regulations:ro

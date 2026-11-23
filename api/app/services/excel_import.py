@@ -212,6 +212,8 @@ def import_uis_classes(db: Session, src: bytes | str | Path, *, semester: str | 
     # Ngày bắt đầu học kỳ = thứ Hai của tuần 1, suy từ Ngày BĐ và tuần nhỏ nhất (lấy giá trị phổ biến nhất).
     for sem_id, counter in starts.items():
         ctx.semester(sem_id, counter.most_common(1)[0][0], ends.get(sem_id), force_start=True)
+    from app.services.faculty_names import apply_outline_faculties
+    apply_outline_faculties(db)
     return ctx.result()
 
 
@@ -319,6 +321,8 @@ def import_ta_plan(db: Session, src: bytes | str | Path, *, academic_year: str |
         plan.note = clip(cell(row, "note"), 2000)
         plan.source = "ta-plan"
         ctx.imported += 1
+    from app.services.faculty_names import apply_outline_faculties
+    apply_outline_faculties(db)
     res = ctx.result()
     res.semesters = []
     res.warnings = [f"academic_year={year}", *res.warnings]

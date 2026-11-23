@@ -1,6 +1,6 @@
 # Bản đồ hành trình người dùng (Journey Map)
 
-> **Trạng thái:** bản nháp giả định, toàn bộ nội dung mang nhãn `[GIẢ ĐỊNH – cập nhật sau khảo sát]`. Bản đồ mô tả trải nghiệm **hiện tại (as-is)** – trước khi có UELCourses – để xác định cơ hội thiết kế (Kalbach, 2016). Sau Vòng 1, lập thêm bản đồ **tương lai (to-be)** với UELCourses để so sánh.
+> **Trạng thái:** bản nháp giả định, toàn bộ nội dung mang nhãn `[GIẢ ĐỊNH – cập nhật sau khảo sát]`. Bản đồ mô tả trải nghiệm **hiện tại (as-is)** – trước khi có UELPATH – để xác định cơ hội thiết kế (Kalbach, 2016). Sau Vòng 1, lập thêm bản đồ **tương lai (to-be)** với UELPATH để so sánh.
 
 ## Hành trình 1 – Chuẩn bị và đăng ký học phần một học kỳ (Persona: Minh Anh) `[GIẢ ĐỊNH – cập nhật sau khảo sát]`
 
@@ -11,7 +11,7 @@
 | **Suy nghĩ** | "Đợt này mở lúc mấy giờ?" | "Môn nào bắt buộc kỳ này?" | "Lớp này có đè lên giờ làm thêm không?" | "Phải nhanh trước khi hết chỗ!" | "Giờ đổi lớp này thì lớp kia có trùng không?" | "Mong là không sai chỗ nào." |
 | **Cảm xúc (−2…+2)** | 0 Trung tính | −1 Bối rối | −1 Mệt, tốn thời gian | −2 Căng thẳng cao | −2 Bực bội – **điểm thấp nhất** | +1 Nhẹ nhõm |
 | **Điểm đau** | Thông tin phân tán | Khó liên kết môn – lớp – tiên quyết | Kiểm tra trùng thủ công dễ sai; không có góc nhìn cả tuần | Áp lực thời gian | Phải xếp lại từ đầu; không có phương án dự phòng sẵn | Nhập lịch thủ công |
-| **Cơ hội (UELCourses)** | — (ngoài phạm vi) | Tra cứu + lọc học phần, trang chi tiết | TKB trực quan, **tự phát hiện trùng**, màu, ẩn môn | Danh sách lớp đã chọn sẵn để đối chiếu (không tự động đăng ký – theo `CLAUDE.md`) | **Kéo-thả đổi lớp**, nhiều phương án TKB | Xuất **PNG/ICS**, chia sẻ qua URL |
+| **Cơ hội (UELPATH)** | — (ngoài phạm vi) | Tra cứu + lọc học phần, trang chi tiết | TKB trực quan, **tự phát hiện trùng**, màu, ẩn môn | Danh sách lớp đã chọn sẵn để đối chiếu (không tự động đăng ký – theo `CLAUDE.md`) | **Kéo-thả đổi lớp**, nhiều phương án TKB | Xuất **PNG/ICS**, chia sẻ qua URL |
 
 ## Hành trình 2 – Tìm học phần thay thế và kiểm tra điều kiện tốt nghiệp (Persona: Quốc Huy) `[GIẢ ĐỊNH – cập nhật sau khảo sát]`
 
@@ -22,7 +22,7 @@
 | **Suy nghĩ** | "Giờ phải học môn gì thay?" | "Thông tin này còn đúng không?" | "Văn bản này áp dụng cho K46 hay chỉ khóa sau?" | "Sao lâu trả lời vậy?" | "Liệu có kịp tốt nghiệp đúng hạn?" |
 | **Cảm xúc (−2…+2)** | −1 Lo lắng | −1 Không chắc chắn | −2 Quá tải – **điểm thấp nhất** | 0 Chờ đợi | −1 Lo lắng kéo dài |
 | **Điểm đau** | Không có cảnh báo sớm | Nguồn không chính thức, dễ lỗi thời | Nhiều văn bản, nhiều lần sửa đổi; AI chung chung có thể bịa | Phản hồi chậm | Không có công cụ tổng hợp tín chỉ |
-| **Cơ hội (UELCourses)** | Cảnh báo thiếu tiên quyết trong kế hoạch nhiều kỳ | **Trang học phần tương đương**, hiển thị ngay ở chi tiết học phần | **Hỏi AI theo khóa, trích dẫn nguyên văn**, lọc theo hiệu lực | Liên kết tới văn bản gốc; cảnh báo văn bản hết hiệu lực/bị thay thế | **Kế hoạch nhiều học kỳ**, tổng tín chỉ |
+| **Cơ hội (UELPATH)** | Cảnh báo thiếu tiên quyết trong kế hoạch nhiều kỳ | **Trang học phần tương đương**, hiển thị ngay ở chi tiết học phần | **Hỏi AI theo khóa, trích dẫn nguyên văn**, lọc theo hiệu lực | Liên kết tới văn bản gốc; cảnh báo văn bản hết hiệu lực/bị thay thế | **Kế hoạch nhiều học kỳ**, tổng tín chỉ |
 
 ## Đường cảm xúc (tóm tắt)
 

@@ -1,9 +1,19 @@
 "use client";
 import { create } from "zustand";
+import { translate, useLang } from "@/i18n";
+
+export function isConnectionError(error: unknown): boolean {
+  if (!error || typeof error !== "object" || !("status" in error)) return false;
+  return error.status === 0 || (typeof error.status === "number" && error.status >= 500);
+}
+
+export function connectionErrorMessage(): string {
+  return translate(useLang.getState().lang, "api.connectionError");
+}
 
 /**
  * mock: the UI is showing mock data (only possible when NEXT_PUBLIC_USE_MOCKS=true, i.e. dev/demo).
- * offline: the last API call could not reach the server (network error / timeout / 5xx) — shown as a warning badge.
+ * offline: the API rejected a request with a network error, timeout or 5xx.
  */
 interface DataSourceState {
   mock: boolean;

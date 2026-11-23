@@ -33,6 +33,7 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Build chỉ mục RAG quy chế")
     ap.add_argument("--regulations-dir", type=Path, default=None)
     ap.add_argument("--fixture", action="store_true", help="dùng dữ liệu MẪU trong tests/rag/fixtures")
+    ap.add_argument("--publish-db", action="store_true", help="nạp vào DB sau khi đã sao lưu")
     ap.add_argument("--out", type=Path, default=None, help="thư mục chỉ mục (mặc định RAG_INDEX_DIR)")
     ap.add_argument("--vault-dir", type=Path, default=None, help="thư mục vault Markdown (mặc định REGULATIONS_DIR/vault)")
     ap.add_argument("--no-vault", action="store_true")
@@ -40,6 +41,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--today", type=str, default=None)
     ap.add_argument("--json", type=Path, default=None, help="ghi báo cáo JSON")
     args = ap.parse_args(argv)
+    if args.publish_db and (args.fixture or args.embeddings or args.out or embeddings_requested()):
+        ap.error("--publish-db dùng dữ liệu thật và truy hồi SQL/BM25, không ghi cache file")
     try:
         sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
     except Exception:  # noqa: BLE001
@@ -52,11 +55,21 @@ def main(argv: list[str] | None = None) -> int:
         print(f"LỖI: không thấy {reg / 'catalog.json'}", file=sys.stderr)
         return 2
     index, rep = build_index(reg, today=today, with_embeddings=args.embeddings or embeddings_requested())
-    index.save(out)
+    if args.publish_db:
+        from app.db import engine
+        from app.rag.storage import publish_index
+
+        if engine.dialect.name != "postgresql":
+            ap.error("--publish-db yêu cầu PostgreSQL")
+        if not index.chunks:
+            ap.error("Không có đoạn văn bản hợp lệ để nạp vào DB")
+        publish_index(engine, index)
+    else:
+        index.save(out)
 
     vault_info = None
-    if not args.no_vault:
-        vault = build_vault(index.docs, index.articles)
+    if not args.no_vault and not args.publish_db:
+        vault = build_vault(index.docs, index.articles, index.chunks)
         vdir = args.vault_dir or (Path(os.environ["VAULT_DIR"]) if os.getenv("VAULT_DIR") else reg / "vault")
         try:
             vault.write(vdir)
@@ -66,15 +79,18 @@ def main(argv: list[str] | None = None) -> int:
         except OSError as exc:
             vault_info = {"error": f"Không ghi được vault vào {vdir}: {exc}"}
 
-    indexed = [d for d in rep.per_doc if d["articles"] > 0]
+    indexed = sum(d.indexed for d in index.docs)
     print(f"Nguồn: {reg}")
-    print(f"Chỉ mục: {out}")
-    print(f"Văn bản trong catalog: {rep.n_docs} | đã index (có Điều): {len(indexed)}")
+    print(f"Chỉ mục: {'PostgreSQL' if args.publish_db else out}")
+    print(f"Văn bản trong catalog: {rep.n_docs} | đã lập chỉ mục: {indexed}")
     print(f"Điều: {rep.n_articles} | Khoản: {rep.n_clauses} | Điểm: {rep.n_points} | Chunk: {rep.n_chunks}")
     print(f"Embeddings: {rep.embeddings or 'không (chỉ BM25)'}")
     for d in rep.per_doc:
-        flag = "OK " if d["articles"] else "-- "
-        print(f"  {flag}{d['doc_id']}: {d['articles']} Điều, {d['clauses']} Khoản, {d['points']} Điểm")
+        counts = f"{d['chunks']} đoạn"
+        if d["articles"]:
+            counts += f", {d['articles']} Điều, {d['clauses']} Khoản, {d['points']} Điểm"
+        flag = "OK " if d["chunks"] else "-- "
+        print(f"  {flag}{d['doc_id']}: {counts}")
     if rep.no_file:
         print(f"Chưa có file (file=null): {len(rep.no_file)} -> {', '.join(rep.no_file)}")
     if rep.needs_ocr:
@@ -89,7 +105,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"File chưa có trong catalog: {', '.join(rep.uncataloged_files)}")
     if vault_info:
         print(f"Vault: {vault_info}")
-    (out / "needs_ocr.json").write_text(json.dumps(rep.needs_ocr, ensure_ascii=False, indent=1), encoding="utf-8")
+    if not args.publish_db:
+        (out / "needs_ocr.json").write_text(json.dumps(rep.needs_ocr, ensure_ascii=False, indent=1), encoding="utf-8")
     if args.json:
         data = rep.to_dict() | {"vault": vault_info, "index_dir": str(out)}
         args.json.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")

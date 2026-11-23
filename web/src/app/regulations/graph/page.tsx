@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";
+import { UEL_COLORS } from "@/lib/brand";
 import { useApi } from "@/lib/useApi";
 import { useMounted } from "@/lib/useMounted";
 import { COHORTS, useSettings } from "@/lib/store";
@@ -70,16 +71,15 @@ export default function RegulationGraphPage() {
   return (
     <div>
       <PageHeader
+        backHref="/regulations"
+        backLabel={t("graph.backLabel")}
         title={t("graph.title")}
         subtitle={t("graph.sub")}
         actions={
-          <>
-            <select className="input w-auto" value={cohort} onChange={(e) => setCohort(e.target.value)} aria-label={t("reg.cohortFilter")}>
-              <option value="">{t("reg.allCohorts")}</option>
-              {COHORTS.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-            <Link href="/regulations" className="btn-outline">{t("graph.back")}</Link>
-          </>
+          <select className="input w-auto" value={cohort} onChange={(e) => setCohort(e.target.value)} aria-label={t("reg.cohortFilter")}>
+            <option value="">{t("reg.allCohorts")}</option>
+            {COHORTS.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
         }
       />
       <div className="mb-3 flex flex-wrap gap-4 text-xs">
@@ -120,7 +120,7 @@ export default function RegulationGraphPage() {
               const r = node.type === "doc" ? 7 : 4;
               ctx.beginPath();
               ctx.arc(node.x ?? 0, node.y ?? 0, r, 0, 2 * Math.PI);
-              ctx.fillStyle = node.status ? STATUS_COLOR[node.status] : "#0b4f9c";
+              ctx.fillStyle = node.status ? STATUS_COLOR[node.status] : UEL_COLORS.blue;
               ctx.fill();
               const fontSize = Math.max(10 / scale, 3);
               ctx.font = `${fontSize}px sans-serif`;

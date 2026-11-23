@@ -11,6 +11,8 @@ node_modules/
 *.db
 .env
 .env.local
+.env.deploy
+.pytest-*/
 *.log
 .next-preview/
 docs/CONTEXT_PACK.md
@@ -18,3 +20,8 @@ reference/nusmodifications/
 .next-test/
 # mọi thư mục build Next riêng (UEL_PREVIEW_DIST_DIR=.next-xxx) của từng AI/CI
 .next-*/
+
+tmp/
+*.err
+.vscode/
+/*.pdf

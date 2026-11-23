@@ -144,7 +144,7 @@ def stat_boxes(rows: list[list[str]], width: float) -> Table:
 class Doc(BaseDocTemplate):
     def __init__(self, path: str, title: str):
         super().__init__(path, pagesize=A4, leftMargin=15 * mm, rightMargin=15 * mm, topMargin=18 * mm, bottomMargin=16 * mm,
-                         title=title, author="UELCourses", subject="Từ điển dữ liệu")
+                         title=title, author="UELPATH", subject="Từ điển dữ liệu")
         frame = Frame(self.leftMargin, self.bottomMargin, self.width, self.height, id="f", leftPadding=0, rightPadding=0, topPadding=0, bottomPadding=0)
         self.addPageTemplates([PageTemplate(id="p", frames=[frame], onPage=self.decorate)])
 
@@ -155,12 +155,12 @@ class Doc(BaseDocTemplate):
         canv.rect(0, h - 9 * mm, w, 9 * mm, stroke=0, fill=1)
         canv.setFillColor(colors.white)
         canv.setFont("Body-B", 8)
-        canv.drawString(15 * mm, h - 6 * mm, "UELCourses · TỪ ĐIỂN DỮ LIỆU")
+        canv.drawString(15 * mm, h - 6 * mm, "UELPATH · TỪ ĐIỂN DỮ LIỆU")
         canv.setFont("Body", 8)
         canv.drawRightString(w - 15 * mm, h - 6 * mm, f"v{VERSION}")
         canv.setFillColor(colors.HexColor("#52606D"))
         canv.setFont("Body", 7.5)
-        canv.drawString(15 * mm, 9 * mm, "UELCourses · Database Data Dictionary")
+        canv.drawString(15 * mm, 9 * mm, "UELPATH · Database Data Dictionary")
         canv.drawRightString(w - 15 * mm, 9 * mm, f"Trang {doc.page} / {TOTAL_PAGES[0]}")
         canv.restoreState()
 

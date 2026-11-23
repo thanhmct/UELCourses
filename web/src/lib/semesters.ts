@@ -1,6 +1,8 @@
 "use client";
 import { useMemo } from "react";
+import { academicYearLabel, semesterTerm } from "@/i18n/names";
 import { api } from "./api";
+import { vietnamDate } from "./holidays";
 import { useApi } from "./useApi";
 import { parseProgramCode } from "./programCode";
 import { useSettings } from "./store";
@@ -31,6 +33,16 @@ export function cohortSemesterSlots(cohort: string): { id: string; year: string;
   return out;
 }
 
+export function emptySemester(slot: Pick<Semester, "id" | "year" | "term">): Semester {
+  return {
+    ...slot,
+    name: `Học kỳ ${slot.term}, ${slot.year}`,
+    is_current: false,
+    start_date: null,
+    end_date: null,
+  };
+}
+
 /**
  * Lọc danh sách học kỳ theo khóa của sinh viên: chỉ hiện 4 năm học của khóa đó (12 học kỳ),
  * kể cả học kỳ chưa có dữ liệu từ API. Không có khóa thì giữ nguyên danh sách.
@@ -39,18 +51,14 @@ export function scopeSemesters(all: Semester[], cohort: string): Semester[] {
   const slots = cohortSemesterSlots(cohort);
   if (slots.length === 0) return all;
   const byId = new Map(all.map((s) => [s.id, s]));
-  return slots.map(
-    (sl) =>
-      byId.get(sl.id) ?? {
-        id: sl.id,
-        name: `Học kỳ ${sl.term}, ${sl.year}`,
-        year: sl.year,
-        term: sl.term,
-        is_current: false,
-        start_date: null,
-        end_date: null,
-      },
-  );
+  return slots.map((sl) => byId.get(sl.id) ?? emptySemester(sl));
+}
+
+/** The current academic year is the enrollment year of the newest cohort. */
+export function latestEnrollmentCohort(current?: Semester, today = vietnamDate()): string {
+  const year = /^(\d{4})/.exec(academicYearLabel(current))?.[1];
+  const startYear = year ? Number(year) : Number(today.slice(0, 4)) - (today.slice(5, 7) < "08" ? 1 : 0);
+  return `K${String(startYear).slice(-2)}`;
 }
 
 /** Học kỳ theo khóa của người dùng (mã lớp trong Cài đặt). */
@@ -58,5 +66,11 @@ export function useSemesters() {
   const cohort = parseProgramCode(useSettings((s) => s.programCode))?.cohort ?? "";
   const req = useApi(() => api.semesters(), []);
   const data = useMemo(() => (req.data ? scopeSemesters(req.data, cohort) : req.data), [req.data, cohort]);
-  return { ...req, data };
+  const current = useMemo(() => data?.find((s) => s.is_current) ?? data?.[0] ?? null, [data]);
+  const globalCurrent = req.data?.find((s) => s.is_current);
+  const academicYear = academicYearLabel(globalCurrent);
+  const currentYearSecondTerm = academicYear
+    ? req.data?.find((s) => semesterTerm(s) === 2 && academicYearLabel(s) === academicYear)
+    : undefined;
+  return { ...req, data, availableSemesters: req.data, current, globalCurrent, academicYear, currentYearSecondTerm };
 }

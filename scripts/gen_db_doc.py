@@ -296,12 +296,12 @@ def main() -> int:
     n_cols = sum(len(i["cols"]) for i in info.values())
     L: list[str] = []
     a = L.append
-    a("# UELCourses — Từ điển dữ liệu (Data Dictionary)")
+    a("# UELPATH — Từ điển dữ liệu (Data Dictionary)")
     a("")
     a("*Tra cứu học phần, thời khóa biểu, kế hoạch học tập, CTĐT, học phần tương đương và quy chế học vụ của Trường ĐH Kinh tế – Luật (UEL)*")
     a("")
     a(f"Phiên bản tài liệu {VERSION} · sinh tự động ngày {date.today().isoformat()} từ database PostgreSQL đang chạy (Alembic `{stats['alembic']}`). "
-      "Tham chiếu độc lập cho database `uelplan` (tên giữ nguyên để không mất dữ liệu; thương hiệu là UELCourses). Số liệu và ví dụ lấy từ dữ liệu thật; "
+      "Tham chiếu độc lập cho database `uelplan` (tên giữ nguyên để không mất dữ liệu; thương hiệu là UELPATH). Số liệu và ví dụ lấy từ dữ liệu thật; "
       "thiết kế và vận hành xem `docs/DATABASE.md`.")
     a("")
     a("| Bảng vật lý | Trường vật lý | Ràng buộc khóa ngoại | View SQL |")

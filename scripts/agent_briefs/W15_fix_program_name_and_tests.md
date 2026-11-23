@@ -1,0 +1,10 @@
+# Brief W15 — Sửa lỗi kiểu `ProgramDetail.name` + 4 test đỏ
+
+Không chạy lệnh shell, không commit, không sửa backend. Chủ dự án chạy `cd web; npx tsc --noEmit; npx vitest run`. Mục tiêu: tsc sạch, toàn bộ test xanh.
+
+1. **Lỗi thật (tsc):** `ProgramDetail` (xem `web/src/lib/types.ts`) có dạng `{ program: ProgramSummary; blocks }` — tên chương trình là `detail.program.name`, KHÔNG phải `detail.name`. Sửa chỗ dùng sai ở `web/src/app/equivalents/page.tsx` (dòng ~136-142) và `web/src/app/modules/page.tsx` (dòng ~145-151) (banner "Chương trình đào tạo ngành … khóa …" W11/W13) — các nơi khác dùng cùng pattern (grep `\.name` với biến program detail, `programs/page.tsx`, `timetable`, `planner`, `programCode.ts`) cũng kiểm tra. Hậu quả hiện tại: banner không lấy được tên ngành nên rơi về "mã ngành 404 khóa 25…". Có thể dùng chung một hàm lấy tên ngành sạch (bỏ " Khóa NN", "(E)", "– DLG…") ở `programCode.ts`.
+2. `web/src/app/timetable/__tests__/timetable.test.tsx` dòng ~415: `Cannot find name 'Lesson'` → `import type { Lesson } from "@/lib/types"`. Test "lớp thay thế trùng lịch hiển thị cảnh báo nhưng vẫn bấm được": `getByText(/Trùng lịch/)` trùng nhiều phần tử → dùng `getAllByText`/`within` đúng vùng (ô bóng) hoặc `getByRole("button", { name: ... })`.
+3. `web/src/app/books/__tests__/books.test.tsx` "bấm nút Liên hệ …": nhiều nút role "button" tên "Đóng" (nút đóng hộp thoại + overlay/backdrop). Chọn trong `within(screen.getByRole("dialog"))` hoặc `getAllByRole(...)[0]`; không đổi UI trừ khi có 2 nút Đóng thừa thật (khi đó bỏ nút thừa, giữ aria-label khác nhau cho overlay như "Đóng nền").
+4. `web/src/app/modules/__tests__/profileFilterSync.test.tsx` (2 test): kỳ vọng `/mã ngành 404 khóa 25, chương trình tiếng Anh/i` (đường lùi khi chưa có tên ngành). Sau khi sửa mục 1, banner sẽ có tên ngành từ dữ liệu mock/API: cập nhật test mock `api.programs()`/`api.program()` để có tên ngành rồi khẳng định câu đầy đủ "Chương trình đào tạo ngành {tên} khóa 25, chương trình tiếng Anh"; thêm 1 test riêng cho trường hợp CHƯA có tên (đường lùi "mã ngành 404").
+
+Báo cáo cuối: file đã sửa.

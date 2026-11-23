@@ -1,10 +1,10 @@
-# Hướng dẫn giao diện UELCourses (bố cục tham khảo NUSMods)
+# Hướng dẫn giao diện UELPATH (bố cục tham khảo NUSMods)
 
-> Chủ dự án yêu cầu (2026-11-21): giao diện **tương tự nusmods.com**. Phạm vi cho phép: **bố cục và cách dùng** (layout, luồng thao tác, mật độ thông tin). **Không** dùng tên "NUSMods", logo, màu cam thương hiệu, hình ảnh, văn bản, hay **sao chép mã nguồn** của họ. Thương hiệu là **UELCourses**: chữ "UEL" xanh #0b4f9c + "Courses", màu nhấn xanh UEL. Trang Cài đặt/Giới thiệu có dòng ghi công: "Bố cục lấy cảm hứng từ NUSMods (NUS) và các công cụ lập thời khóa biểu mã nguồn mở".
+> Chủ dự án yêu cầu (2026-11-21): giao diện **tương tự nusmods.com**. Phạm vi cho phép: **bố cục và cách dùng** (layout, luồng thao tác, mật độ thông tin). **Không** dùng tên "NUSMods", logo, màu cam thương hiệu, hình ảnh, văn bản, hay **sao chép mã nguồn** của họ. Wordmark **UELPATH** có chữ xanh navy `#0B2A63` và tam giác cam `#FF8315` trong chữ A. Trang Cài đặt/Giới thiệu có dòng ghi công: "Bố cục lấy cảm hứng từ NUSMods (NUS) và các công cụ lập thời khóa biểu mã nguồn mở".
 
 ## 1. Khung chung (app shell)
 - **Thanh điều hướng trái** cố định, rộng ~170 px, mỗi mục là icon + nhãn; mục đang mở tô màu nhấn. Thứ tự: Hôm nay · Thời khóa biểu · Học phần · Phòng học · Kế hoạch · CTĐT (cây môn học) · Tương đương · Quy chế & AI · Cài đặt · Góp ý. Dưới 768 px: chuyển thành thanh tab dưới cùng (5 mục chính + "Thêm").
-- **Thanh trên** mỏng: bên trái wordmark UELCourses; bên phải nút tìm nhanh (Ctrl+K, mở hộp tìm học phần/lệnh), chỉ báo "Học kỳ hiện tại" (vd `2026-2027 · HK1`), nút chế độ tối/sáng.
+- **Thanh trên** mỏng: bên trái biểu tượng chữ A và tên UELPATH; bên phải nút tìm nhanh (Ctrl+K, mở hộp tìm học phần/lệnh), chỉ báo "Học kỳ hiện tại" (vd `2026-2027 · HK1`), nút chế độ tối/sáng.
 - Nền xám rất nhạt (#f7f8fa), nội dung trắng, viền mảnh 1 px, bo góc nhỏ (6 px), gần như không bóng đổ. Chữ hệ thống/Inter. Mật độ thông tin cao, ít trang trí. Hỗ trợ **chế độ tối** (biến CSS).
 - Bảng màu cho từng học phần trong TKB: 8–10 màu rõ, phân biệt được (lưu theo mã môn).
 

@@ -1,14 +1,12 @@
 // Pure iCalendar (RFC 5545) generator for a timetable.
+// Single source of truth: built directly from concrete occurrences.
 import type { ClassSection } from "./types";
 import { parseDateOnly } from "./dates";
-import { parseWeekList } from "./schedule";
+import { getTimetableOccurrences, type OccurrenceOptions } from "./occurrences";
 
-const VN_OFFSET_MIN = 7 * 60; // Asia/Ho_Chi_Minh, no DST
+const VN_OFFSET_MIN = 7 * 60; // Asia/Ho_Chi_Minh, UTC+7 (no DST)
 
-export interface IcsOptions {
-  /** Used when a section has no start/end date. ISO "YYYY-MM-DD". */
-  fallbackStart?: string;
-  fallbackEnd?: string;
+export interface IcsOptions extends OccurrenceOptions {
   moduleNames?: Record<string, string>;
   calendarName?: string;
   /** Deterministic stamp for tests. */
@@ -47,7 +45,7 @@ function fold(line: string): string {
   return parts.join("\r\n");
 }
 
-/** First date >= start whose weekday matches (2=Mon..8=Sun). */
+/** First date >= start whose weekday matches (2=Mon..8=Sun). Kept for utility. */
 export function firstOccurrence(start: Date, weekday: number): Date {
   const jsDay = weekday === 8 ? 0 : weekday - 1;
   const diff = (jsDay - start.getUTCDay() + 7) % 7;
@@ -56,53 +54,55 @@ export function firstOccurrence(start: Date, weekday: number): Date {
 
 export function buildIcs(sections: ClassSection[], opts: IcsOptions = {}): string {
   const now = opts.now ?? new Date();
+  const occurrences = getTimetableOccurrences(sections, opts);
+
   const lines: string[] = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//UELCourses//Timetable//VI",
+    "PRODID:-//UELPATH//Timetable//VI",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
-    `X-WR-CALNAME:${escapeText(opts.calendarName ?? "Thời khóa biểu UELCourses")}`,
+    `X-WR-CALNAME:${escapeText(opts.calendarName ?? "Thời khóa biểu UELPATH")}`,
     "X-WR-TIMEZONE:Asia/Ho_Chi_Minh",
   ];
-  for (const sec of sections) {
-    const start = parseDateOnly(sec.start_date) ?? parseDateOnly(opts.fallbackStart);
-    const end = parseDateOnly(sec.end_date) ?? parseDateOnly(opts.fallbackEnd);
-    if (!start) continue;
-    const name = opts.moduleNames?.[sec.module_code] ?? sec.module_code;
-    sec.lessons.forEach((lesson, idx) => {
-      const first = firstOccurrence(start, lesson.weekday);
-      const weeks = parseWeekList(lesson.weeks);
-      const dates: Date[] = weeks
-        ? [...weeks].sort((a, b) => a - b).map((w) => new Date(first.getTime() + (w - 1) * 7 * 86_400_000))
-        : [first];
-      dates.forEach((d, k) => {
-        if (end && d.getTime() > end.getTime()) return;
-        const uid = `${sec.module_code}-${sec.class_code}-${idx}-${k}@uelcourses`;
-        lines.push("BEGIN:VEVENT");
-        lines.push(`UID:${escapeText(uid)}`);
-        lines.push(`DTSTAMP:${utcStamp(now)}`);
-        lines.push(`DTSTART:${utcStamp(vnInstant(d, lesson.start_time))}`);
-        lines.push(`DTEND:${utcStamp(vnInstant(d, lesson.end_time))}`);
-        if (!weeks && end) {
-          const until = new Date(end.getTime() + (24 * 60 - 1 - VN_OFFSET_MIN) * 60_000);
-          lines.push(`RRULE:FREQ=WEEKLY;UNTIL=${utcStamp(until)}`);
-        }
-        lines.push(fold(`SUMMARY:${escapeText(`${name} (${sec.class_code})`)}`));
-        if (lesson.room) lines.push(fold(`LOCATION:${escapeText(lesson.room)}`));
-        const desc = [
-          `Mã HP: ${sec.module_code}`,
-          `Lớp: ${sec.class_code}`,
-          `Tiết ${lesson.start_period}–${lesson.end_period}`,
-          sec.lecturer ? `GV: ${sec.lecturer}` : "",
-        ]
-          .filter(Boolean)
-          .join("\n");
-        lines.push(fold(`DESCRIPTION:${escapeText(desc)}`));
-        lines.push("END:VEVENT");
-      });
-    });
+
+  for (const occ of occurrences) {
+    const d = parseDateOnly(occ.date);
+    if (!d) continue;
+
+    const startClean = occ.start.replace(":", "");
+    // Retain the original UID domain so existing subscriptions recognize each event.
+    const uid = `${occ.class_code}-${occ.date}-${startClean}@uelcourses`;
+
+    const modName = opts.moduleNames?.[occ.module_code];
+    const summary = modName && modName !== occ.module_code
+      ? `${occ.module_code} ${modName}`
+      : occ.module_code;
+
+    const descParts = [
+      `Mã HP: ${occ.module_code}`,
+      `Lớp: ${occ.class_code}`,
+      `Tiết ${occ.start_period}–${occ.end_period}`,
+    ];
+    if (occ.section.lecturer) {
+      descParts.push(`GV: ${occ.section.lecturer}`);
+    }
+
+    lines.push("BEGIN:VEVENT");
+    lines.push(`UID:${escapeText(uid)}`);
+    lines.push(`DTSTAMP:${utcStamp(now)}`);
+    lines.push(`DTSTART:${utcStamp(vnInstant(d, occ.start))}`);
+    lines.push(`DTEND:${utcStamp(vnInstant(d, occ.end))}`);
+    lines.push(fold(`SUMMARY:${escapeText(summary)}`));
+
+    if (occ.room) {
+      lines.push(fold(`LOCATION:${escapeText(occ.room)}`));
+    }
+
+    lines.push(fold(`DESCRIPTION:${escapeText(descParts.join("\n"))}`));
+    lines.push("END:VEVENT");
   }
+
   lines.push("END:VCALENDAR");
   return lines.join("\r\n") + "\r\n";
 }

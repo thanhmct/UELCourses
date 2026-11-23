@@ -1,0 +1,15 @@
+# Brief W21 — "Xem theo tuần": chỉ liệt kê các tuần thuộc học kỳ đang chọn
+
+Tự tìm file: bộ chọn "Xem theo tuần" ở `web/src/app/timetable/page.tsx` (và hàm tính tuần/khối lượng từ T4: `web/src/lib/occurrences.ts`, `workload.ts`, hàm sinh danh sách tuần), trang `venues` nếu cũng có; dữ liệu học kỳ `Semester` (`start_date`, `end_date` trong `web/src/lib/types.ts`), API `GET /api/semesters` (`api/app/routers/`), lịch năm học `GET /api/calendar…` (`api/app/routers/calendar.py`, `api/app/services/academic_calendar.py`, seed `api/seed/academic_calendar_2026_2027.json`). Được sửa API (chỉ đọc/thêm trường), web, test. Không chạy lệnh shell, không commit.
+
+## Hiện trạng (chủ dự án dán danh sách)
+Ô "Xem theo tuần" liệt kê 34 tuần từ Tuần 1 (06/07 – 12/07) đến Tuần 34 (22/02 – 28/02), trong đó hơn 20 tuần là "~0 giờ" vì nằm ngoài thời gian học thật của kỳ (tuần 1–9 và 20–34), chỉ Tuần 10–19 (07/09 – 15/11) có giờ học. Danh sách tuần đang bị dựng từ khoảng ngày quá rộng của học kỳ (ví dụ `start_date`/`end_date` của kỳ trong dữ liệu là cả năm hoặc không chính xác).
+
+## Yêu cầu
+1. **Khoảng tuần của học kỳ = thời gian học thực tế của kỳ**, theo thứ tự ưu tiên: (a) lịch năm học (sự kiện bắt đầu/kết thúc học kỳ, các tuần học và tuần thi của kỳ đó, theo khóa) nếu có trong API; (b) nếu không có, khoảng ngày bao phủ các buổi học của TẤT CẢ lớp thuộc học kỳ đó (từ `date_start` sớm nhất đến `date_end` muộn nhất trong `lessons` toàn học kỳ, không chỉ lớp người dùng đã chọn), làm tròn ra tuần Thứ 2–CN; (c) cuối cùng mới dùng `start_date`/`end_date` của `Semester`. Danh sách tuần: Tuần 1 = tuần chứa ngày bắt đầu học kỳ; chỉ gồm các tuần đến hết tuần chứa ngày kết thúc (kể cả tuần thi nếu lịch năm học cho phép).
+2. Nếu dữ liệu học kỳ trong DB sai/lệch (xem `GET /api/semesters` cho kỳ này: kiểm tra `start_date`, `end_date`), thêm bước chuẩn hóa ở API (`/api/semesters` trả thêm `teaching_start`, `teaching_end` tính từ lịch năm học hoặc từ min/max ngày buổi học trong DB cho từng học kỳ) và dùng ở web; thêm test pytest. Báo trong báo cáo giá trị cũ/mới của kỳ ví dụ (HK1 2026–2027).
+3. Trong danh sách: mỗi dòng "Tuần N (dd/MM – dd/MM)" kèm "~X giờ" như hiện có, chỉ cho các tuần trong khoảng trên; ẩn bớt các tuần thừa ở đầu/cuối. Tuần của người dùng không có giờ học (X = 0) nhưng nằm giữa kỳ vẫn giữ (để biết tuần nghỉ); nhãn "Tất cả các tuần" giữ. Mặc định chọn tuần hiện tại nếu nằm trong kỳ, ngược lại "Tất cả các tuần".
+4. Khi đổi học kỳ, danh sách tuần và lựa chọn tuần đang chọn tự cập nhật (nếu tuần đang chọn không thuộc kỳ mới → về "Tất cả các tuần"). Hàm tính tuần dùng chung (không hai nơi tính khác nhau): đặt trong `web/src/lib/semesterWeeks.ts` có test.
+5. Test Vitest (cleanup(), fake timers đúng cách) và pytest: kỳ có khoảng 07/09–15/11 → đúng 10 tuần (hoặc theo lịch năm học nếu có tuần thi); không còn tuần 0 giờ ngoài khoảng; đổi kỳ cập nhật danh sách; mặc định tuần hiện tại.
+
+Báo cáo cuối: nguồn khoảng ngày đã dùng, file thay đổi. Chủ dự án chạy pytest, `npx tsc --noEmit`, `npx vitest run`.

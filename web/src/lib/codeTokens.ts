@@ -1,8 +1,18 @@
 /**
- * Ô nhập nhiều mã môn: mã được ngăn bằng dấu phẩy, chấm phẩy, khoảng trắng hoặc xuống dòng
+ * Ô nhập nhiều mã môn: mã được ngăn bằng khoảng trắng, dấu phẩy, dấu chấm, dấu chấm phẩy hoặc xuống dòng
  * (cùng quy tắc với parseCodes). Sau mỗi dấu ngăn là một mã MỚI; "mã đang gõ" là đoạn cuối cùng.
  */
-const SEP = /[\s,;]/;
+const SEP = /[\s,.;]/;
+
+/** Tách danh sách mã bằng khoảng trắng, dấu phẩy, dấu chấm, dấu chấm phẩy hoặc xuống dòng; viết hoa và bỏ trùng. */
+export function parseCodes(input: string): string[] {
+  const seen = new Set<string>();
+  for (const raw of input.split(/[\s,.;]+/)) {
+    const code = raw.trim().toUpperCase();
+    if (code) seen.add(code);
+  }
+  return [...seen];
+}
 
 /** Mã đang gõ dở: đoạn sau dấu ngăn cuối cùng (rỗng nếu vừa gõ dấu ngăn), kèm vị trí bắt đầu trong chuỗi. */
 export function activeToken(text: string): { token: string; start: number } {
@@ -21,7 +31,7 @@ export function replaceActiveToken(text: string, code: string): string {
 export function finishedCodes(text: string): string[] {
   const { start } = activeToken(text);
   const seen = new Set<string>();
-  for (const raw of text.slice(0, start).split(/[\s,;]+/)) {
+  for (const raw of text.slice(0, start).split(/[\s,.;]+/)) {
     const c = raw.trim().toUpperCase();
     if (c) seen.add(c);
   }

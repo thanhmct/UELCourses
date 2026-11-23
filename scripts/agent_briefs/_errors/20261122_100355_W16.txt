@@ -1,0 +1,68 @@
+﻿LOI MOI do brief W16_program_banner_redesign gay ra (chi sua nhung loi nay):
+vitest|src/components/__tests__/Header.test.tsx > Brief W26: HeaderProgramCode and Header top bar tests > 1. Khi ch╞░a c├│ CT─ÉT: thanh tr├¬n hiß╗çn chip gß╗úi ├╜ 'Chß╗ìn CT─ÉT' (icon m┼⌐ + chß╗» ngß║»n), kh├┤ng c├│ hai n├║t icon v├á kh├┤ng c├│ ├┤ m├ú trß║ºn
+vitest|src/components/__tests__/Header.test.tsx > Brief W26: HeaderProgramCode and Header top bar tests > 4. Bß║Ñm icon Γ£ò tr├¬n thanh tr├¬n gß╗ìi x├│a CT─ÉT v├á chuyß╗ân vß╗ü chip gß╗úi ├╜ 'Chß╗ìn CT─ÉT'
+vitest|src/components/__tests__/Header.test.tsx > Brief W26: HeaderProgramCode and Header top bar tests > 5. Header tß╗òng hß╗úp: t├¡ch hß╗úp HeaderProgramCode trong thanh tr├¬n sticky
+vitest|src/components/__tests__/ProgramFilterBar.test.tsx > Brief W16: ProgramFilterBar component tests > 14. Brief W26 (compact/Header mode): Ch╞░a c├│ CT─ÉT -> hiß╗çn chip gß╗úi ├╜ 'Chß╗ìn CT─ÉT' (icon m┼⌐ + chß╗» ngß║»n), kh├┤ng c├│ hai n├║t icon
+
+=== Chi tiet day du (chi de tham khao, loi khac khong thuoc brief nay thi BO QUA) ===
+### tsc (web)
+src/app/modules/[code]/__tests__/page.test.tsx(8,29): error TS2305: Module '"@/lib/types"' has no exported member 'ModuleList'.
+src/app/modules/[code]/__tests__/page.test.tsx(98,19): error TS2769: No overload matches this call.
+  Overload 1 of 4, '(object: { moduleFacets: () => Promise<ApiResult<ModuleFacets>>; health: () => Promise<ApiResult<{ status: string; }>>; semesters: () => Promise<...>; ... 22 more ...; checkProgram: (id: string, req: { ...; }) => Promise<...>; }, key: "equivalents" | ... 24 more ... | "checkProgram"): Mock<...>', gave the following error.
+    Argument of type '"moduleReviews"' is not assignable to parameter of type '"equivalents" | "moduleFacets" | "health" | "semesters" | "modules" | "outline" | "module" | "classes" | "equivalent" | "venues" | "feedback" | "regulations" | "regulation" | ... 12 more ... | "checkProgram"'.
+  Overload 2 of 4, '(object: { moduleFacets: () => Promise<ApiResult<ModuleFacets>>; health: () => Promise<ApiResult<{ status: string; }>>; semesters: () => Promise<...>; ... 22 more ...; checkProgram: (id: string, req: { ...; }) => Promise<...>; }, key: never): never', gave the following error.
+    Argument of type '"moduleReviews"' is not assignable to parameter of type 'never'.
+src/app/modules/[code]/__tests__/page.test.tsx(98,54): error TS2345: Argument of type 'any' is not assignable to parameter of type 'never'.
+src/app/modules/[code]/__tests__/page.test.tsx(211,7): error TS2353: Object literal may only specify known properties, and 'total' does not exist in type 'ApiResult<ModuleFacets>'.
+src/app/programs/[id]/__tests__/page.test.tsx(39,55): error TS2322: Type 'null' is not assignable to type 'CheckResult'.
+
+
+### vitest (web)
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ» Failed Tests 21 ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+ FAIL  src/components/__tests__/Header.test.tsx > Brief W26: HeaderProgramCode and Header top bar tests > 1. Khi ch╞░a c├│ CT─ÉT: thanh tr├¬n hiß╗çn chip gß╗úi ├╜ 'Chß╗ìn CT─ÉT' (icon m┼⌐ + chß╗» ngß║»n), kh├┤ng c├│ hai n├║t icon v├á kh├┤ng c├│ ├┤ m├ú trß║ºn
+TestingLibraryElementError: Unable to find an accessible element with the role "button" and name "Chß╗ìn CT─ÉT"
+ Γ¥» Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ FAIL  src/components/__tests__/Header.test.tsx > Brief W26: HeaderProgramCode and Header top bar tests > 4. Bß║Ñm icon Γ£ò tr├¬n thanh tr├¬n gß╗ìi x├│a CT─ÉT v├á chuyß╗ân vß╗ü chip gß╗úi ├╜ 'Chß╗ìn CT─ÉT'
+TestingLibraryElementError: Unable to find role="button" and name "Chß╗ìn CT─ÉT"
+ FAIL  src/components/__tests__/Header.test.tsx > Brief W26: HeaderProgramCode and Header top bar tests > 5. Header tß╗òng hß╗úp: t├¡ch hß╗úp HeaderProgramCode trong thanh tr├¬n sticky
+TestingLibraryElementError: Unable to find an accessible element with the role "button" and name `/T├¼m kiß║┐m/i`
+ Γ¥» Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ FAIL  src/components/__tests__/ProgramFilterBar.test.tsx > Brief W16: ProgramFilterBar component tests > 14. Brief W26 (compact/Header mode): Ch╞░a c├│ CT─ÉT -> hiß╗çn chip gß╗úi ├╜ 'Chß╗ìn CT─ÉT' (icon m┼⌐ + chß╗» ngß║»n), kh├┤ng c├│ hai n├║t icon
+TestingLibraryElementError: Unable to find an accessible element with the role "button" and name `/Chß╗ìn CT─ÉT/i`
+ Γ¥» Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ FAIL  src/app/modules/__tests__/profileFilterSync.test.tsx > W6 & W11: Profile filter banner text and real-time synchronization > Brief W16: n├║t ─Éß╗òi mß╗ƒ hß╗Öp thoß║íi pop-up (role=dialog) ngay tr├¬n trang, URL kh├┤ng ─æß╗òi, l╞░u xong cß║¡p nhß║¡t thanh lß╗ìc kh├┤ng reload
+TestingLibraryElementError: Found multiple elements with the text: /C├┤ng nghß╗ç t├ái ch├¡nh/i
+ FAIL  src/app/programs/__tests__/page.test.tsx > Brief W25: Thiß║┐t lß║¡p lß║íi hß╗ç thß╗æng lß╗ìc trang Ch╞░╞íng tr├¼nh ─æ├áo tß║ío (CT─ÉT) > 2. Mß║╖c ─æß╗ïnh chß╗ë hiß╗ân thß╗ï CT─ÉT cß╗ºa ng╞░ß╗¥i d├╣ng: c├│ ch╞░╞íng tr├¼nh K24414 ΓåÆ mß║╖c ─æß╗ïnh chß╗ë duy nhß║Ñt mß╗Öt thß║╗ 'C├┤ng nghß╗ç t├ái ch├¡nh'
+TestingLibraryElementError: Found multiple elements with the text: /C├┤ng nghß╗ç t├ái ch├¡nh/i
+ FAIL  src/app/programs/__tests__/page.test.tsx > Brief W25: Thiß║┐t lß║¡p lß║íi hß╗ç thß╗æng lß╗ìc trang Ch╞░╞íng tr├¼nh ─æ├áo tß║ío (CT─ÉT) > 3. N├║t 'Xem tß║Ñt cß║ú CT─ÉT' nß║▒m TRONG khß╗æi lß╗ìc (within khß╗æi form/region t├¼m ch╞░╞íng tr├¼nh); bß║Ñm ΓåÆ hiß╗çn tß║Ñt cß║ú CT─ÉT tß╗½ mock, bß╗Ö lß╗ìc vß╗ü mß║╖c ─æß╗ïnh
+TestingLibraryElementError: Found multiple elements with the text: /Quß║ún trß╗ï kinh doanh/i
+ FAIL  src/app/programs/__tests__/page.test.tsx > Brief W25: Thiß║┐t lß║¡p lß║íi hß╗ç thß╗æng lß╗ìc trang Ch╞░╞íng tr├¼nh ─æ├áo tß║ío (CT─ÉT) > 4. Bß║Ñm 'Chß╗ë CT─ÉT cß╗ºa t├┤i' ΓåÆ quay lß║íi chß║┐ ─æß╗Ö mß║╖c ─æß╗ïnh chß╗ë hiß╗ân thß╗ï CT─ÉT cß╗ºa ng╞░ß╗¥i d├╣ng
+TestingLibraryElementError: Unable to find an accessible element with the role "button" and name "Xem tß║Ñt cß║ú CT─ÉT"
+ Γ¥» Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ FAIL  src/app/programs/__tests__/page.test.tsx > Brief W25: Thiß║┐t lß║¡p lß║íi hß╗ç thß╗æng lß╗ìc trang Ch╞░╞íng tr├¼nh ─æ├áo tß║ío (CT─ÉT) > 5. G├╡ t├¼m kiß║┐m khi ß╗ƒ chß║┐ ─æß╗Ö mß║╖c ─æß╗ïnh ('chß╗ë CT─ÉT cß╗ºa t├┤i') ΓåÆ tß╗▒ chuyß╗ân sang xem tß║Ñt cß║ú
+TestingLibraryElementError: Found multiple elements with the text of: T├¼m ch╞░╞íng tr├¼nh
+ Γ¥» Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ Γ¥» getElementError node_modules/@testing-library/dom/dist/query-helpers.js:20:35
+ Γ¥» getMultipleElementsFoundError node_modules/@testing-library/dom/dist/query-helpers.js:23:10
+ FAIL  src/app/programs/__tests__/page.test.tsx > Brief W25: Thiß║┐t lß║¡p lß║íi hß╗ç thß╗æng lß╗ìc trang Ch╞░╞íng tr├¼nh ─æ├áo tß║ío (CT─ÉT) > 6. T├¼m kiß║┐m theo tß╗½ viß║┐t tß║»t (HTTQL) hoß║╖c m├ú CT─ÉT kh├┤ng ph├ón biß╗çt hoa th╞░ß╗¥ng
+TestingLibraryElementError: Unable to find an accessible element with the role "button" and name "Xem tß║Ñt cß║ú CT─ÉT"
+ Γ¥» Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ FAIL  src/app/programs/__tests__/page.test.tsx > Brief W25: Thiß║┐t lß║¡p lß║íi hß╗ç thß╗æng lß╗ìc trang Ch╞░╞íng tr├¼nh ─æ├áo tß║ío (CT─ÉT) > 7. Song ng├ánh: c├│ ng├ánh 2 ΓåÆ mß║╖c ─æß╗ïnh hiß╗çn 2 thß║╗ vß╗¢i nh├ún Ng├ánh ch├¡nh / Ng├ánh 2
+TestingLibraryElementError: Found multiple elements with the text: /C├┤ng nghß╗ç t├ái ch├¡nh/i
+ FAIL  src/app/programs/__tests__/page.test.tsx > Brief W25: Thiß║┐t lß║¡p lß║íi hß╗ç thß╗æng lß╗ìc trang Ch╞░╞íng tr├¼nh ─æ├áo tß║ío (CT─ÉT) > 8. Ch╞░a c├│ ch╞░╞íng tr├¼nh ΓåÆ hiß╗ân thß╗ï to├án bß╗Ö CT─ÉT, k├¿m gß╗úi ├╜ chß╗ìn ch╞░╞íng tr├¼nh v├á kh├┤ng c├│ n├║t 'Chß╗ë CT─ÉT cß╗ºa t├┤i'
+TestingLibraryElementError: Unable to find an element with the text: /C├┤ng nghß╗ç t├ái ch├¡nh/i. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+ FAIL  src/app/programs/__tests__/page.test.tsx > Brief W25: Thiß║┐t lß║¡p lß║íi hß╗ç thß╗æng lß╗ìc trang Ch╞░╞íng tr├¼nh ─æ├áo tß║ío (CT─ÉT) > 9. Hß╗ù trß╗ú giao diß╗çn tiß║┐ng Anh (EN): nh├ún n├║t, ti├¬u ─æß╗ü v├á sß╗æ l╞░ß╗úng hiß╗ân thß╗ï tiß║┐ng Anh
+TestingLibraryElementError: Unable to find an element with the text: 1 programmes. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+ Γ¥» Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ FAIL  src/app/programs/__tests__/page.test.tsx > Brief W25: Thiß║┐t lß║¡p lß║íi hß╗ç thß╗æng lß╗ìc trang Ch╞░╞íng tr├¼nh ─æ├áo tß║ío (CT─ÉT) > 10. ─Éß╗òi ch╞░╞íng tr├¼nh qua profile ΓåÆ danh s├ích mß║╖c ─æß╗ïnh cß║¡p nhß║¡t ngay lß║¡p tß╗⌐c
+TestingLibraryElementError: Found multiple elements with the text: /C├┤ng nghß╗ç t├ái ch├¡nh/i
+ FAIL  src/app/modules/[code]/__tests__/page.test.tsx > Brief B7: Hiß╗ân thß╗ï li├¬n kß║┐t PDF ─æß╗ü c╞░╞íng tr├¬n trang chi tiß║┐t v├á danh s├ích theo ng├┤n ngß╗» > 1. Trang chi tiß║┐t c├│ cß║ú 2 link (BKB4060) hiß╗ân thß╗ï cß║ú 2 n├║t tiß║┐ng Viß╗çt v├á English ß╗ƒ giao diß╗çn tiß║┐ng Viß╗çt
+ FAIL  src/app/modules/[code]/__tests__/page.test.tsx > Brief B7: Hiß╗ân thß╗ï li├¬n kß║┐t PDF ─æß╗ü c╞░╞íng tr├¬n trang chi tiß║┐t v├á danh s├ích theo ng├┤n ngß╗» > 2. Trang chi tiß║┐t c├│ cß║ú 2 link (BKB4060) hiß╗ân thß╗ï cß║ú 2 n├║t ß╗ƒ giao diß╗çn tiß║┐ng Anh
+ FAIL  src/app/modules/[code]/__tests__/page.test.tsx > Brief B7: Hiß╗ân thß╗ï li├¬n kß║┐t PDF ─æß╗ü c╞░╞íng tr├¬n trang chi tiß║┐t v├á danh s├ích theo ng├┤n ngß╗» > 3. Trang chi tiß║┐t chß╗ë c├│ link tiß║┐ng Viß╗çt hiß╗ân thß╗ï n├║t ─æ╞ín theo ng├┤n ngß╗»
+ FAIL  src/app/modules/[code]/__tests__/page.test.tsx > Brief B7: Hiß╗ân thß╗ï li├¬n kß║┐t PDF ─æß╗ü c╞░╞íng tr├¬n trang chi tiß║┐t v├á danh s├ích theo ng├┤n ngß╗» > 4. Trang chi tiß║┐t chß╗ë c├│ link tiß║┐ng Anh hiß╗ân thß╗ï n├║t ─æ╞ín d├╣ng link tiß║┐ng Anh
+ FAIL  src/app/modules/[code]/__tests__/page.test.tsx > Brief B7: Hiß╗ân thß╗ï li├¬n kß║┐t PDF ─æß╗ü c╞░╞íng tr├¬n trang chi tiß║┐t v├á danh s├ích theo ng├┤n ngß╗» > 5. Trang chi tiß║┐t kh├┤ng c├│ link ─æß╗ü c╞░╞íng th├¼ kh├┤ng hiß╗ân thß╗ï n├║t li├¬n kß║┐t n├áo
+ FAIL  src/app/modules/[code]/__tests__/page.test.tsx > Brief B7: Hiß╗ân thß╗ï li├¬n kß║┐t PDF ─æß╗ü c╞░╞íng tr├¬n trang chi tiß║┐t v├á danh s├ích theo ng├┤n ngß╗» > 6. Trang danh s├ích hß╗ìc phß║ºn (/modules) chß╗ìn outline_url hoß║╖c outline_url_en theo ng├┤n ngß╗»
+ FAIL  src/app/modules/[code]/__tests__/page.test.tsx > Brief B7: Hiß╗ân thß╗ï li├¬n kß║┐t PDF ─æß╗ü c╞░╞íng tr├¬n trang chi tiß║┐t v├á danh s├ích theo ng├┤n ngß╗» > 7. Trang chi tiß║┐t hß╗ìc phß║ºn (/modules/[code]) c├│ n├║t BackButton quay lß║íi danh s├ích hß╗ìc phß║ºn
+Error: The property "moduleReviews" is not defined on the object.
+      Tests  21 failed | 370 passed (391)
+

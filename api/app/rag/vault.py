@@ -12,12 +12,15 @@ from __future__ import annotations
 
 import json
 import re
+from collections import defaultdict
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 from .links import Backlink, LinkContext, Ref, Resolver, build_backlinks, linkify, snippet
-from .models import RegulationDoc, anchor_for
+from .handbook import SUMMARY_WARNING
+from .models import Chunk, RegulationDoc, anchor_for
 
 _LABEL_RE = re.compile(r"^(\d{1,2})\.\s*")
 
@@ -50,7 +53,8 @@ def _clean(s: str) -> str:
     return re.sub(r"^([#>*+\-])", r"\\\1", s.strip())
 
 
-def render_doc(doc: RegulationDoc, articles: list[dict[str, Any]], resolver: Resolver) -> VaultDoc:
+def render_doc(doc: RegulationDoc, articles: list[dict[str, Any]], resolver: Resolver,
+               handbook_chunks: list[Chunk] | None = None) -> VaultDoc:
     fm = frontmatter_for(doc)
     out: list[str] = [_yaml(fm), "", f"# {doc.title}", ""]
     meta = []
@@ -64,13 +68,26 @@ def render_doc(doc: RegulationDoc, articles: list[dict[str, Any]], resolver: Res
     for old in doc.supersedes or []:
         meta.append(f"thay thế [[{old}]]")
     out += ["> " + " · ".join(meta), ""]
-    if doc.metadata_unverified:
+    if doc.source_type == "handbook":
+        out += [f"> [!warning] {SUMMARY_WARNING}", ""]
+    elif doc.metadata_unverified:
         out += ["> [!warning] Metadata chưa được xác minh — đối chiếu văn bản gốc.", ""]
-    if not articles:
+    if not articles and not handbook_chunks:
         out += ["_Chưa có toàn văn (file chưa thu thập hoặc là bản scan cần OCR)._", ""]
         if doc.source_url:
             out += [f"Nguồn: {doc.source_url}", ""]
     refs: list[tuple[str | None, Ref]] = []
+    page = heading = None
+    for chunk in handbook_chunks or []:
+        if chunk.page != page:
+            page, heading = chunk.page, None
+            out += [f"## Trang {page}", ""]
+        if chunk.heading != heading:
+            heading = chunk.heading
+            out += [f"### {heading}", ""]
+        body = _clean(" ".join(chunk.text.splitlines()))
+        body = re.sub(r"^(\d+)([.)])(?=\s)", r"\1\\\2", body)
+        out += [body + f" ^{chunk.anchor()}", ""]
     chapter = section = None
     for a in articles:
         art, part = str(a["article"]), int(a.get("part", 0) or 0)
@@ -124,12 +141,17 @@ def _safe(name: str) -> str:
     return re.sub(r'[<>:"/\\|?*]', "_", name)
 
 
-def build_vault(docs: list[RegulationDoc], articles: dict[str, list[dict[str, Any]]]) -> Vault:
+def build_vault(docs: list[RegulationDoc], articles: dict[str, list[dict[str, Any]]],
+                chunks: Iterable[Chunk] = ()) -> Vault:
     resolver = Resolver(docs, articles)
     rendered: dict[str, VaultDoc] = {}
     back: list[Backlink] = []
+    handbooks: dict[str, list[Chunk]] = defaultdict(list)
+    for chunk in chunks:
+        if chunk.source_type == "handbook":
+            handbooks[chunk.doc_id].append(chunk)
     for doc in docs:
-        vd = render_doc(doc, articles.get(doc.doc_id, []), resolver)
+        vd = render_doc(doc, articles.get(doc.doc_id, []), resolver, handbooks.get(doc.doc_id))
         rendered[doc.doc_id] = vd
         texts = _texts_by_anchor(articles.get(doc.doc_id, []))
         for from_anchor, r in vd.refs:

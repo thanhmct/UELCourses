@@ -1,4 +1,4 @@
-# UELCourses — Kiến trúc & hợp đồng giữa các module
+# UELPATH — Kiến trúc & hợp đồng giữa các module
 
 Khóa luận: nền tảng lập kế hoạch học tập cho sinh viên UEL (lấy cảm hứng chức năng từ NUSMods, thương hiệu/giao diện riêng), kèm AI tra cứu quy chế học vụ dạng RAG. Phát triển theo **Design Thinking** (xem `research/`).
 
@@ -25,8 +25,9 @@ Khóa luận: nền tảng lập kế hoạch học tập cho sinh viên UEL (l�
 ```
 GET  /api/health                                   -> {"status":"ok"}
 GET  /api/semesters                                -> [{id, name, year, term, is_current}]
-GET  /api/modules?q=&faculty=&credits=&type=&page=&size=
+GET  /api/modules?q=&faculty=&credits=&type=&degree=&page=&size=
                                                    -> {items:[ModuleSummary], total}
+GET  /api/programs?cohort=&q=&degree=              -> [ProgramSummary]
 GET  /api/modules/{code}                           -> ModuleDetail
 GET  /api/modules/{code}/classes?semester=         -> [ClassSection]
 GET  /api/equivalents?q=                           -> [{code, name, credits, equivalents:[{code,name,credits}]}]

@@ -2,10 +2,12 @@
 import { useEffect } from "react";
 import { useSettings } from "@/lib/store";
 import { useLang } from "@/i18n";
+import { brandVariables, normalizeHex } from "@/lib/appearance";
 
 /** Applies the `dark` class and the `lang` attribute on <html> from settings. */
 export function ThemeApplier() {
   const theme = useSettings((s) => s.theme);
+  const gradient = useSettings((s) => s.brandGradient);
   const lang = useLang((s) => s.lang);
   useEffect(() => {
     document.documentElement.lang = lang;
@@ -20,6 +22,17 @@ export function ThemeApplier() {
     mq.addEventListener("change", apply);
     return () => mq.removeEventListener("change", apply);
   }, [theme]);
+  useEffect(() => {
+    const start = normalizeHex(gradient?.[0] ?? "");
+    const end = normalizeHex(gradient?.[1] ?? "");
+    if (!start || !end) return;
+    const style = document.documentElement.style;
+    const variables = brandVariables(start, end);
+    for (const [name, value] of Object.entries(variables)) style.setProperty(name, value);
+    return () => {
+      for (const name of Object.keys(variables)) style.removeProperty(name);
+    };
+  }, [gradient]);
   return null;
 }
 

@@ -10,7 +10,7 @@ Giả định đã ghi rõ (không suy diễn thêm):
     ngành mới) dùng mã chữ: K25LUAT, K25LKT… Chương trình dựng từ catalog có programs.source = 'catalog2025'.
   * HK01…HK10 là THỨ TỰ học kỳ trong khóa (suggested_order); catalog không ghi năm học nên suggested_semester để trống.
   * Cột "bắt buộc": 'X' = bắt buộc; trống = không đánh dấu bắt buộc (tự chọn / chưa rõ).
-  * Mỗi sheet có cột học kỳ là một bản chương trình: sheet đầu (ưu tiên 'Dữ liệu gốc') lấy mã gốc, các sheet sau thêm -V2, -V3…
+  * Ưu tiên mã ngành và hậu tố ghi trên sheet. Mã thứ tự chỉ dùng cho sheet cũ chưa có định danh.
 """
 
 from __future__ import annotations
@@ -22,16 +22,22 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import Program, ProgramCatalogEntry, ProgramModule
+from app.services.ctdt_files_import import parse_bdcl_sheet_name
 from app.services.ctdt_import import import_ctdt
+from app.services.program_names import PROGRAM_ALIASES, format_undergrad_program_name
 
 MAJOR_CODE = {
     "Kinh tế": "401", "Kinh tế quốc tế": "402", "Tài chính - Ngân hàng": "404", "Kế toán": "405",
     "Hệ thống thông tin quản lý": "406", "Quản trị kinh doanh": "407", "Kinh doanh quốc tế": "408", "Kiểm toán": "409",
     "Marketing": "410", "Thương mại điện tử": "411", "Toán kinh tế": "413", "Công nghệ tài chính": "414",
-    "Quản lý công": "418",
+    "Quản lý công": "418", "Kế toán và Phân tích dữ liệu": "422",
+    "Luật kinh doanh": "501", "Luật thương mại quốc tế": "502",
 }
-SLUG_ID = {"Luật": "LUAT", "Luật kinh tế": "LKT", "KDTMHQ": "KDTMHQ",
+SLUG_ID = {"Luật": "LUAT", "Luật kinh tế": "501", "KDTMHQ": "KDTMHQ",
            "Kinh doanh nông nghiệp số": "KDNNS", "Kinh tế đất đai": "KTDD"}
+
+# Chủ dự án (23/11): theo file Phòng BĐCL. "Luật" chung là bản gộp cũ (trùng 501–506); KDTMHQ chính là ngành 430 đã nạp từ BĐCL.
+SKIP_LABELS = {"Luật", "KDTMHQ"}
 
 _TERM = re.compile(r"HK\s*0*(\d+)", re.I)
 _BRACKET_CODE = re.compile(r"\[([A-Za-z0-9]{3,12})\]")
@@ -72,13 +78,42 @@ def build_catalog_programs(db: Session, cohort: str = "K25") -> dict:
     report: list[dict] = []
     dup_dropped = 0
     for label, by_sheet in sorted(sheets.items()):
-        ordered = sorted(by_sheet.items(), key=lambda kv: (kv[0][3] != "curriculum_source", "(E)" in (kv[0][2] or ""), kv[0][2] or "", kv[0][1] or ""))
+        if label in SKIP_LABELS:
+            continue
+        ordered =sorted(by_sheet.items(), key=lambda kv: (kv[0][3] != "curriculum_source", "(E)" in (kv[0][2] or ""), kv[0][2] or "", kv[0][1] or ""))
         base = _base_id(label, cohort)
         k24 = db.get(Program, "K24" + MAJOR_CODE[label]) if label in MAJOR_CODE else None
         faculty = k24.faculty if k24 else None
-        for i, ((_f, _s, track, _c), entries) in enumerate(ordered):
-            pid = base if i == 0 else f"{base}-V{i + 1}"
-            name = f"{label} Khóa {year}" if i == 0 else f"{label} – {_sheet_title(track)} Khóa {year}"
+        for i, ((_f, sheet, track, _c), entries) in enumerate(ordered):
+            raw_pid = base if i == 0 else f"{base}-V{i + 1}"
+            sheet_info = parse_bdcl_sheet_name(sheet)
+            if sheet_info and sheet_info["has_identifier"]:
+                if sheet_info["cohort_override"] not in (None, cohort):
+                    continue
+                variant = sheet_info["variant"]
+                pid = f"{cohort}{sheet_info['major_code']}{variant}"
+                name = format_undergrad_program_name(sheet_info["major_name"], cohort, variant)
+            else:
+                # Các sheet danh mục cũ dùng (E) trong tên thay cho mã hệ ở đầu sheet.
+                if label in MAJOR_CODE and re.search(r"\(E\)", track or sheet, re.I):
+                    pid = f"{base}E"
+                else:
+                    pid = PROGRAM_ALIASES.get(raw_pid, raw_pid)
+
+                if pid.endswith("H"):
+                    name = format_undergrad_program_name(label, cohort, "H")
+                elif pid.endswith("E"):
+                    name = format_undergrad_program_name(label, cohort, "E")
+                elif pid.endswith("422"):
+                    name = f"Kế toán và Phân tích dữ liệu Khóa {year}"
+                elif pid.endswith("501"):
+                    name = f"Luật kinh doanh Khóa {year}"
+                elif pid.endswith("502"):
+                    name = f"Luật thương mại quốc tế Khóa {year}"
+                elif i == 0:
+                    name = f"{label} Khóa {year}"
+                else:
+                    name = f"{label} – {_sheet_title(track)} Khóa {year}"
             seen: set[str] = set()
             out: list[dict] = []
             order: dict[str, int] = {}
@@ -96,6 +131,13 @@ def build_catalog_programs(db: Session, cohort: str = "K25") -> dict:
                     "MaHP": e.module_code, "TenHP": e.module_name, "STC": int(e.credits) if e.credits is not None else None,
                     "HPHocTruoc": prev_codes(e.previous_raw), "TenKhoiKienThuc": None,
                 })
+            if pid == base and raw_pid != base and PROGRAM_ALIASES.get(raw_pid) == base and pid in payload:
+                if set(orders[pid]) == set(order):
+                    continue
+                pid = raw_pid
+                name = f"{label} – {_sheet_title(track)} Khóa {year}"
+                for row in out:
+                    row.update(MaCTDT=pid, TenCTDT=name)
             payload[pid] = out
             orders[pid] = order
             report.append({"id": pid, "name": name, "modules": len(out), "sheet": track})

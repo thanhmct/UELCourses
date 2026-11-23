@@ -38,10 +38,11 @@ export const monthKeyOf = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() +
 /** Khóa ngày "yyyy-mm-dd". */
 export const dateKey = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 
-/** Nhãn tháng hiển thị: "Tháng 7/2026". */
-export const monthLabel = (month: string) => {
+/** Nhãn tháng gọn, đồng nhất trong bộ lọc và tiêu đề: MM/YYYY. */
+export const monthLabel = (month: string, lang: "vi" | "en" = "vi") => {
+  void lang;
   const [y, m] = month.split("-");
-  return `Tháng ${Number(m)}/${y}`;
+  return `${m.padStart(2, "0")}/${y}`;
 };
 
 /** Mã thứ theo tiết học: 2 = Thứ Hai … 7 = Thứ Bảy, 8 = Chủ nhật → độ lệch từ thứ Hai (0..6). */
@@ -59,8 +60,16 @@ export function sessionDates(s: VenueSession, sem?: SemesterRange | null): Date[
     const from = parseISO(s.date_start);
     const to = parseISO(s.date_end ?? s.date_start);
     const out: Date[] = [];
+    const parsedWeeks = parseWeekList(s.weeks);
+    const baseMon = sem?.start_date ? mondayOf(parseISO(sem.start_date)) : mondayOf(from);
     for (let d = from; d <= to; d = addDays(d, 1)) {
-      if ((d.getDay() + 6) % 7 === dayOffset(s.weekday)) out.push(d);
+      if ((d.getDay() + 6) % 7 === dayOffset(s.weekday)) {
+        if (parsedWeeks) {
+          const weekNum = Math.floor((d.getTime() - baseMon.getTime()) / (7 * 86_400_000)) + 1;
+          if (!parsedWeeks.has(weekNum)) continue;
+        }
+        out.push(d);
+      }
     }
     return out;
   }

@@ -3,7 +3,10 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { TimetableEntry } from "./shareUrl";
 import type { ModuleRef } from "./types";
-import { moveModule, type PlanState, type PlannedModule } from "./planner";
+import { completePlannerYears, moveModule, plannerEnrollmentYear, plannerSemesterId, type PlannerAcademicYears, type PlanState, type PlannedModule } from "./planner";
+
+import { parseProgramCode } from "./programCode";
+import { DEFAULT_PLANNER_TERM_COLOR, normalizeHex } from "./appearance";
 
 export { COHORTS } from "./cohort";
 export type Theme = "system" | "light" | "dark";
@@ -17,14 +20,36 @@ interface SettingsState {
   cohort: string;
   major: string;
   theme: Theme;
+  brandGradient: [string, string] | null;
+  timetableColors: Record<number, string>;
+  plannerTermColor: string;
+  holidayAppearance: boolean;
+  tetFlower: "mai" | "dao";
+  winterMascot: "snowman" | "reindeer" | "custom";
+  winterImage: string;
+  setBrandGradient: (gradient: [string, string] | null) => void;
+  setTimetableColor: (slot: number, color: string) => void;
+  resetTimetableColors: () => void;
+  setPlannerTermColor: (color: string) => void;
+  setHolidayAppearance: (enabled: boolean) => void;
+  setTetFlower: (flower: SettingsState["tetFlower"]) => void;
+  setWinterMascot: (mascot: SettingsState["winterMascot"]) => void;
+  setWinterImage: (image: string) => void;
+  /** Bậc đào tạo: 'dai_hoc' | 'thac_si' | 'tien_si' (mặc định 'dai_hoc') */
+  degree: "dai_hoc" | "thac_si" | "tien_si";
   /** mã CTĐT của sinh viên, vd "K23406E" (xem lib/programCode.ts); "" = chưa nhập */
   programCode: string;
+  /** mã CTĐT ngành 2 (tuỳ chọn, vd "K24406A"); "" = chưa nhập */
+  secondaryProgramCode: string;
   /** đã hiện hộp thoại nhập mã CTĐT lần đầu (đóng hoặc lưu đều tính) */
   programPrompted: boolean;
   setCohort: (c: string) => void;
   setMajor: (m: string) => void;
   setTheme: (t: Theme) => void;
+  setDegree: (d: "dai_hoc" | "thac_si" | "tien_si") => void;
   setProgramCode: (c: string) => void;
+  setSecondaryProgramCode: (c: string) => void;
+  setProgramProfile: (primary: string, secondary?: string) => void;
   setProgramPrompted: (v: boolean) => void;
   /** đã có chứng chỉ đầu ra tiếng Anh → miễn Tiếng Anh 1–4 (tính là hoàn thành, không tính GPA) */
   englishCertExempt: boolean;
@@ -37,13 +62,65 @@ export const useSettings = create<SettingsState>()(
       cohort: "",
       major: "",
       theme: "system",
+      brandGradient: null,
+      timetableColors: {},
+      plannerTermColor: DEFAULT_PLANNER_TERM_COLOR,
+      holidayAppearance: false,
+      tetFlower: "mai",
+      winterMascot: "snowman",
+      winterImage: "",
+      degree: "dai_hoc",
       programCode: "",
+      secondaryProgramCode: "",
       programPrompted: false,
       englishCertExempt: false,
       setCohort: (cohort) => set({ cohort }),
       setMajor: (major) => set({ major }),
       setTheme: (theme) => set({ theme }),
-      setProgramCode: (programCode) => set({ programCode }),
+      setBrandGradient: (gradient) => {
+        if (!gradient) {
+          set({ brandGradient: null });
+          return;
+        }
+        const start = normalizeHex(gradient[0]);
+        const end = normalizeHex(gradient[1]);
+        if (start && end) set({ brandGradient: [start, end] });
+      },
+      setTimetableColor: (slot, color) => {
+        const normalized = normalizeHex(color);
+        if (normalized && Number.isInteger(slot) && slot >= 0 && slot < PALETTE.length) {
+          set((state) => ({ timetableColors: { ...state.timetableColors, [slot]: normalized } }));
+        }
+      },
+      resetTimetableColors: () => set({ timetableColors: {} }),
+      setPlannerTermColor: (color) => {
+        const normalized = normalizeHex(color);
+        if (normalized) set({ plannerTermColor: normalized });
+      },
+      setHolidayAppearance: (holidayAppearance) => set({ holidayAppearance }),
+      setTetFlower: (tetFlower) => set({ tetFlower }),
+      setWinterMascot: (winterMascot) => set({ winterMascot }),
+      setWinterImage: (winterImage) => set({ winterImage, winterMascot: winterImage ? "custom" : "snowman" }),
+      setDegree: (degree) => set({ degree }),
+      setProgramCode: (programCode) => {
+        const code = programCode.includes("+") ? programCode.split("+")[0].trim() : programCode;
+        const parsed = parseProgramCode(code);
+        set({
+          programCode,
+          ...(parsed?.degree === "dai_hoc" ? { cohort: parsed.cohort } : {}),
+          ...(parsed?.degree ? { degree: parsed.degree } : {}),
+        });
+      },
+      setSecondaryProgramCode: (secondaryProgramCode) => set({ secondaryProgramCode }),
+      setProgramProfile: (programCode, secondaryProgramCode = "") => {
+        const parsed = parseProgramCode(programCode);
+        set({
+          programCode,
+          secondaryProgramCode,
+          ...(parsed?.degree === "dai_hoc" ? { cohort: parsed.cohort } : {}),
+          ...(parsed?.degree ? { degree: parsed.degree } : {}),
+        });
+      },
       setProgramPrompted: (programPrompted) => set({ programPrompted }),
       setEnglishCertExempt: (englishCertExempt) => set({ englishCertExempt }),
     }),
@@ -58,9 +135,10 @@ interface TimetableState {
   drafts: Record<string, Record<string, TimetableEntry[]>>;
   activeDrafts: Record<string, string>;
   info: Record<string, ModuleRef>;
+  plannerAssignments: Record<string, string[]>;
   setSemester: (s: string) => void;
-  addModule: (m: ModuleRef, classCode?: string | null) => void;
-  removeModule: (code: string) => void;
+  addModule: (m: ModuleRef, classCode?: string | null, semester?: string) => void;
+  removeModule: (code: string, semester?: string) => void;
   setClass: (code: string, classCode: string | null) => void;
   toggleHidden: (code: string) => void;
   setColor: (code: string, color: number) => void;
@@ -68,16 +146,37 @@ interface TimetableState {
   rememberInfo: (m: ModuleRef) => void;
   // Multiple drafts management
   switchDraft: (semester: string, draftName: string) => void;
-  createDraft: (semester: string, draftName: string, copyFromCurrent?: boolean) => void;
+  createDraft: (semester: string, draftName: string, source?: boolean | TimetableEntry[]) => void;
   deleteDraft: (semester: string, draftName: string) => void;
   renameDraft: (semester: string, oldName: string, newName: string) => void;
 }
 
-function updateEntries(s: TimetableState, fn: (e: TimetableEntry[]) => TimetableEntry[]) {
-  const sem = s.semester;
+function currentTimetableDraft(s: TimetableState, sem: string) {
   const draftName = s.activeDrafts?.[sem] || "Phương án 1";
   const semDrafts = s.drafts?.[sem] || { [draftName]: s.bySemester[sem] ?? [] };
   const currentEntries = semDrafts[draftName] ?? s.bySemester[sem] ?? [];
+  return { draftName, semDrafts, currentEntries };
+}
+
+function appendTimetableModule(entries: TimetableEntry[], code: string, classCode: string | null, fromPlanner?: true) {
+  if (entries.some((entry) => entry.code === code)) return entries;
+  const used = new Set(entries.map((entry) => entry.color));
+  const color = PALETTE.findIndex((_, i) => !used.has(i));
+  return [...entries, {
+    code,
+    class_code: classCode,
+    color: color === -1 ? entries.length % PALETTE.length : color,
+    hidden: false,
+    ...(fromPlanner && { fromPlanner }),
+  }];
+}
+
+function timetableModuleInfo({ code, name, name_en = null, credits }: ModuleRef): ModuleRef {
+  return { code, name, name_en, credits };
+}
+
+function updateEntries(s: TimetableState, fn: (e: TimetableEntry[]) => TimetableEntry[], sem = s.semester) {
+  const { draftName, semDrafts, currentEntries } = currentTimetableDraft(s, sem);
   const nextEntries = fn(currentEntries);
 
   const nextSemDrafts = { ...semDrafts, [draftName]: nextEntries };
@@ -96,22 +195,21 @@ export const useTimetable = create<TimetableState>()(
       drafts: {},
       activeDrafts: {},
       info: {},
+      plannerAssignments: {},
       setSemester: (semester) => set({ semester }),
-      addModule: (m, classCode = null) =>
+      addModule: (m, classCode = null, semester) =>
         set((s) => {
-          const sem = s.semester;
-          const draftName = s.activeDrafts?.[sem] || "Phương án 1";
-          const semDrafts = s.drafts?.[sem] || { [draftName]: s.bySemester[sem] ?? [] };
-          const list = semDrafts[draftName] ?? s.bySemester[sem] ?? [];
-          if (list.some((e) => e.code === m.code)) return s;
-          const used = new Set(list.map((e) => e.color));
-          const color = PALETTE.findIndex((_, i) => !used.has(i));
+          const sem = semester ?? s.semester;
+          const { currentEntries } = currentTimetableDraft(s, sem);
+          const entries = appendTimetableModule(currentEntries, m.code, classCode);
+          if (entries === currentEntries) return s;
           return {
-            info: { ...s.info, [m.code]: { code: m.code, name: m.name, name_en: m.name_en ?? null, credits: m.credits } },
-            ...updateEntries(s, (e) => [...e, { code: m.code, class_code: classCode, color: color === -1 ? list.length % PALETTE.length : color, hidden: false }]),
+            semester: s.semester || sem,
+            info: { ...s.info, [m.code]: timetableModuleInfo(m) },
+            ...updateEntries(s, () => entries, sem),
           };
         }),
-      removeModule: (code) => set((s) => updateEntries(s, (e) => e.filter((x) => x.code !== code))),
+      removeModule: (code, semester) => set((s) => updateEntries(s, (e) => e.filter((x) => x.code !== code), semester)),
       setClass: (code, classCode) => set((s) => updateEntries(s, (e) => e.map((x) => (x.code === code ? { ...x, class_code: classCode } : x)))),
       toggleHidden: (code) => set((s) => updateEntries(s, (e) => e.map((x) => (x.code === code ? { ...x, hidden: !x.hidden } : x)))),
       setColor: (code, color) => set((s) => updateEntries(s, (e) => e.map((x) => (x.code === code ? { ...x, color } : x)))),
@@ -126,7 +224,7 @@ export const useTimetable = create<TimetableState>()(
             activeDrafts: { ...(s.activeDrafts || {}), [semester]: draftName },
           };
         }),
-      rememberInfo: (m) => set((s) => ({ info: { ...s.info, [m.code]: { code: m.code, name: m.name, name_en: m.name_en ?? null, credits: m.credits } } })),
+      rememberInfo: (m) => set((s) => ({ info: { ...s.info, [m.code]: timetableModuleInfo(m) } })),
       switchDraft: (semester, draftName) =>
         set((s) => {
           const semDrafts = s.drafts?.[semester] || { "Phương án 1": s.bySemester[semester] ?? [] };
@@ -137,15 +235,22 @@ export const useTimetable = create<TimetableState>()(
             drafts: { ...(s.drafts || {}), [semester]: { ...semDrafts, [draftName]: entries } },
           };
         }),
-      createDraft: (semester, draftName, copyFromCurrent = false) =>
+      createDraft: (semester, draftName, source = false) =>
         set((s) => {
-          const semDrafts = s.drafts?.[semester] || { "Phương án 1": s.bySemester[semester] ?? [] };
           const curDraftName = s.activeDrafts?.[semester] || "Phương án 1";
-          const baseEntries = copyFromCurrent ? (semDrafts[curDraftName] ?? s.bySemester[semester] ?? []) : [];
-          const nextSemDrafts = { ...semDrafts, [draftName]: [...baseEntries] };
+          const semDrafts = s.drafts?.[semester] || { [curDraftName]: s.bySemester[semester] ?? [] };
+          if (!draftName.trim() || Object.hasOwn(semDrafts, draftName)) return s;
+          const baseEntries = Array.isArray(source) ? source
+            : source ? (semDrafts[curDraftName] ?? s.bySemester[semester] ?? []) : [];
+          const entries = baseEntries.map((entry) => {
+            const copy = { ...entry };
+            delete copy.fromPlanner;
+            return copy;
+          });
+          const nextSemDrafts = { ...semDrafts, [draftName]: entries };
           return {
             activeDrafts: { ...(s.activeDrafts || {}), [semester]: draftName },
-            bySemester: { ...s.bySemester, [semester]: baseEntries },
+            bySemester: { ...s.bySemester, [semester]: entries },
             drafts: { ...(s.drafts || {}), [semester]: nextSemDrafts },
           };
         }),
@@ -169,14 +274,15 @@ export const useTimetable = create<TimetableState>()(
       renameDraft: (semester, oldName, newName) =>
         set((s) => {
           if (!newName.trim() || oldName === newName) return s;
-          const semDrafts = { ...(s.drafts?.[semester] || { "Phương án 1": s.bySemester[semester] ?? [] }) };
-          const entries = semDrafts[oldName] ?? [];
-          delete semDrafts[oldName];
-          semDrafts[newName] = entries;
           const curActive = s.activeDrafts?.[semester] || "Phương án 1";
+          const semDrafts = s.drafts?.[semester] || { [curActive]: s.bySemester[semester] ?? [] };
+          if (!Object.hasOwn(semDrafts, oldName) || Object.hasOwn(semDrafts, newName)) return s;
+          const renamed = Object.fromEntries(
+            Object.entries(semDrafts).map(([name, entries]) => [name === oldName ? newName : name, entries]),
+          );
           return {
             activeDrafts: { ...(s.activeDrafts || {}), [semester]: curActive === oldName ? newName : curActive },
-            drafts: { ...(s.drafts || {}), [semester]: semDrafts },
+            drafts: { ...(s.drafts || {}), [semester]: renamed },
           };
         }),
     }),
@@ -186,15 +292,17 @@ export const useTimetable = create<TimetableState>()(
 
 // ---------- Planner ----------
 interface PlannerStore extends PlanState {
+  academicYears: PlannerAcademicYears | null;
+  addAcademicYears: (years: PlannerAcademicYears) => void;
   addTerm: (name: string) => void;
   removeTerm: (id: string) => void;
   renameTerm: (id: string, name: string) => void;
   addToBacklog: (m: PlannedModule) => void;
+  addCompletedModule: (m: PlannedModule) => void;
   removeModule: (code: string) => void;
   move: (code: string, target: string) => void;
   toggleCompleted: (code: string) => void;
   replaceModule: (oldCode: string, m: PlannedModule) => void;
-  /** Đồng bộ theo CTĐT của người dùng: danh sách chờ = mọi học phần của CTĐT chưa hoàn thành và chưa xếp kỳ. */
   syncProgram: (modules: PlannedModule[], exemptCodes?: string[]) => void;
 }
 
@@ -207,12 +315,17 @@ export const PROGRAM_TERMS = Array.from({ length: 12 }, (_, i) => {
 
 /** Bản lưu cũ (version 0) đặt tên học kỳ thứ 3 là "HKhè": đổi lại thành "HK3". */
 export function migratePlannerState(persisted: unknown, version: number): unknown {
-  if (version >= 1 || !persisted || typeof persisted !== "object") return persisted;
-  const state = persisted as { terms?: { name?: unknown }[] };
-  if (Array.isArray(state.terms)) {
-    state.terms = state.terms.map((t) => ({ ...t, name: typeof t.name === "string" ? t.name.replace(/HK\s*hè/gi, "HK3") : t.name }));
-  }
-  return state;
+  if (version >= 3 || !persisted || typeof persisted !== "object") return persisted;
+  const state = persisted as Partial<PlanState>;
+  if (!Array.isArray(state.terms)) return persisted;
+  return {
+    ...state,
+    ...(version === 0
+      ? { terms: state.terms.map((t) => ({ ...t, name: typeof t.name === "string" ? t.name.replace(/HK\s*hè/gi, "HK3") : t.name })) }
+      : {}),
+    // Giữ nguyên danh sách Dự định học của các bản lưu cũ.
+    backlog: Array.isArray(state.backlog) ? state.backlog : [],
+  };
 }
 
 const defaultTerms = PROGRAM_TERMS.slice(0, 4);
@@ -221,14 +334,25 @@ export const usePlanner = create<PlannerStore>()(
   persist(
     (set) => ({
       terms: defaultTerms,
+      academicYears: null,
       backlog: [],
       completed: [],
       catalog: {},
+      addAcademicYears: (years) => set((s) => {
+        const { programCode, cohort } = useSettings.getState();
+        const previousAdmission = s.academicYears?.admission ?? plannerEnrollmentYear(programCode, cohort) ?? years.admission;
+        return { academicYears: years, terms: completePlannerYears(s.terms, years, previousAdmission) };
+      }),
       addTerm: (name) => set((s) => ({ terms: [...s.terms, { id: `t${Date.now().toString(36)}`, name, modules: [] }] })),
       removeTerm: (id) =>
         set((s) => {
           const t = s.terms.find((x) => x.id === id);
-          return { terms: s.terms.filter((x) => x.id !== id), backlog: [...s.backlog, ...(t?.modules ?? [])] };
+          const removed = new Set(t?.modules ?? []);
+          return {
+            terms: s.terms.filter((x) => x.id !== id),
+            backlog: s.backlog.filter((code) => !removed.has(code)),
+            completed: s.completed.filter((code) => !removed.has(code)),
+          };
         }),
       renameTerm: (id, name) => set((s) => ({ terms: s.terms.map((t) => (t.id === id ? { ...t, name } : t)) })),
       addToBacklog: (m) =>
@@ -236,6 +360,12 @@ export const usePlanner = create<PlannerStore>()(
           const inPlan = s.backlog.includes(m.code) || s.terms.some((t) => t.modules.includes(m.code));
           return { catalog: { ...s.catalog, [m.code]: m }, backlog: inPlan ? s.backlog : [...s.backlog, m.code] };
         }),
+      addCompletedModule: (m) =>
+        set((s) => ({
+          catalog: { ...s.catalog, [m.code]: m },
+          completed: s.completed.includes(m.code) ? s.completed : [...s.completed, m.code],
+          backlog: s.backlog.filter((code) => code !== m.code),
+        })),
       removeModule: (code) =>
         set((s) => ({
           backlog: s.backlog.filter((c) => c !== code),
@@ -257,18 +387,85 @@ export const usePlanner = create<PlannerStore>()(
           for (const m of modules) catalog[m.code] = { ...catalog[m.code], ...m };
           // Môn được miễn (chứng chỉ tiếng Anh) coi như đã hoàn thành.
           const completed = Array.from(new Set([...s.completed, ...exemptCodes]));
-          const codes = modules.map((m) => m.code);
           const placed = new Set(s.terms.flatMap((t) => t.modules));
-          const backlog = codes.filter((c) => !placed.has(c) && !completed.includes(c));
+          const backlog = s.backlog.filter((code) => !placed.has(code) && !completed.includes(code));
+
           // Chưa có học kỳ nào được xếp: dùng đủ 12 học kỳ của CTĐT thay cho 4 học kỳ mặc định.
           const untouched = s.terms.length <= defaultTerms.length && placed.size === 0;
           const terms = untouched ? PROGRAM_TERMS.map((t) => ({ ...t, modules: [] as string[] })) : s.terms;
           return { catalog, backlog, terms, completed };
         }),
     }),
-    { name: "uelcourses-planner", version: 1, migrate: migratePlannerState as never },
+    { name: "uelcourses-planner", version: 3, migrate: migratePlannerState as never },
   ),
 );
+
+function reconcilePlannerTimetable(timetable: TimetableState, plan: PlanState, enrollmentYear: number | null) {
+  const bySemester = new Map<string, Set<string>>();
+  for (const { name, modules } of plan.terms) {
+    const semester = modules.length ? plannerSemesterId(name, enrollmentYear) : null;
+    if (!semester) continue;
+    const codes = bySemester.get(semester) ?? new Set<string>();
+    modules.forEach((code) => codes.add(code));
+    bySemester.set(semester, codes);
+  }
+
+  const previous = timetable.plannerAssignments;
+  const semesters = new Set([...Object.keys(previous), ...bySemester.keys()]);
+  let next: TimetableState | undefined;
+  for (const semester of semesters) {
+    const assigned = bySemester.get(semester) ?? new Set<string>();
+    const prior = new Set(previous[semester] ?? []);
+    const added = [...assigned].filter((code) => !prior.has(code));
+    const removed = new Set([...prior].filter((code) => !assigned.has(code)));
+    if (!added.length && !removed.size) continue;
+
+    next ??= {
+      ...timetable,
+      bySemester: { ...timetable.bySemester },
+      drafts: { ...timetable.drafts },
+      activeDrafts: { ...timetable.activeDrafts },
+      info: { ...timetable.info },
+      plannerAssignments: Object.fromEntries([...bySemester].map(([id, codes]) => [id, [...codes]])),
+    };
+    const { draftName, semDrafts, currentEntries } = currentTimetableDraft(timetable, semester);
+    const drafts = { ...semDrafts, [draftName]: currentEntries };
+    if (removed.size) {
+      for (const name of Object.keys(drafts)) {
+        drafts[name] = drafts[name].filter((entry) => !(entry.fromPlanner && removed.has(entry.code)));
+      }
+    }
+    for (const code of added) {
+      drafts[draftName] = appendTimetableModule(drafts[draftName], code, null, true);
+      if (!next.info[code] && plan.catalog[code]) next.info[code] = timetableModuleInfo(plan.catalog[code]);
+    }
+    next.drafts[semester] = drafts;
+    next.activeDrafts[semester] = draftName;
+    next.bySemester[semester] = drafts[draftName];
+  }
+  return next;
+}
+
+/** Reconcile saved plans at startup and apply subsequent planner changes on this device. */
+export function startPlannerTimetableSync() {
+  const sync = () => {
+    const settings = useSettings.getState();
+    const enrollmentYear = plannerEnrollmentYear(settings.programCode, settings.cohort);
+    const next = reconcilePlannerTimetable(useTimetable.getState(), usePlanner.getState(), enrollmentYear);
+    if (next) useTimetable.setState(next);
+  };
+  const stopPlanner = usePlanner.subscribe((state, previous) => {
+    if (state.terms !== previous.terms) sync();
+  });
+  const stopSettings = useSettings.subscribe((state, previous) => {
+    if (state.programCode !== previous.programCode || state.cohort !== previous.cohort) sync();
+  });
+  sync();
+  return () => {
+    stopPlanner();
+    stopSettings();
+  };
+}
 
 export const LOCAL_KEYS = [
   "uelcourses-settings",

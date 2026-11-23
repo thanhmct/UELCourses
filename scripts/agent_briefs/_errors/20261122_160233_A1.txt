@@ -1,0 +1,45 @@
+﻿LOI MOI do brief A1_admin_shell gay ra (chi sua nhung loi nay):
+alembic
+vitest|src/app/equivalents/__tests__/page.test.tsx > Brief W13: Trang Hß╗ìc phß║ºn t╞░╞íng ─æ╞░╞íng chß╗ë hiß╗çn c├íc m├┤n trong CT─ÉT ─æang lß╗ìc > 1. Kh├┤ng c├│ ch╞░╞íng tr├¼nh -> Hiß╗çn hß║┐t to├án bß╗Ö c├íc nh├│m v├á gß╗úi ├╜ chß╗ìn CT─ÉT
+vitest|src/app/equivalents/__tests__/page.test.tsx > Brief W13: Trang Hß╗ìc phß║ºn t╞░╞íng ─æ╞░╞íng chß╗ë hiß╗çn c├íc m├┤n trong CT─ÉT ─æang lß╗ìc > 2. C├│ ch╞░╞íng tr├¼nh -> ß║¿n nh├│m kh├┤ng li├¬n quan v├á ß║⌐n m├┤n ngo├ái ch╞░╞íng tr├¼nh theo mß║╖c ─æß╗ïnh
+vitest|src/app/equivalents/__tests__/page.test.tsx > Brief W13: Trang Hß╗ìc phß║ºn t╞░╞íng ─æ╞░╞íng chß╗ë hiß╗çn c├íc m├┤n trong CT─ÉT ─æang lß╗ìc > 6. Bß║Ñm n├║t 'Bß╗Å lß╗ìc CT─ÉT' -> Trß╗ƒ vß╗ü hiß╗ân thß╗ï to├án bß╗Ö
+vitest|src/components/__tests__/moduleFilters.test.tsx > ModulesPage Filters and Placeholders > handles filter interactions: activating facets enables reset, and reset clears facets and faculty search while preserving module search and program context
+vitest|src/components/__tests__/moduleFilters.test.tsx > ModulesPage Filters and Placeholders > updates count note by context: program vs dual programs (song ng├ánh)
+
+=== Chi tiet day du (chi de tham khao, loi khac khong thuoc brief nay thi BO QUA) ===
+### alembic
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.ddl.postgresql] Detected sequence named 'equivalents_id_seq' as owned by integer column 'equivalents(id)', assuming SERIAL and omitting
+INFO  [alembic.ddl.postgresql] Detected sequence named 'import_runs_id_seq' as owned by integer column 'import_runs(id)', assuming SERIAL and omitting
+INFO  [alembic.ddl.postgresql] Detected sequence named 'outline_assessments_id_seq' as owned by integer column 'outline_assessments(id)', assuming SERIAL and omitting
+INFO  [alembic.ddl.postgresql] Detected sequence named 'lessons_id_seq' as owned by integer column 'lessons(id)', assuming SERIAL and omitting
+INFO  [alembic.ddl.postgresql] Detected sequence named 'outline_objectives_id_seq' as owned by integer column 'outline_objectives(id)', assuming SERIAL and omitting
+INFO  [alembic.ddl.postgresql] Detected sequence named 'outline_module_links_id_seq' as owned by integer column 'outline_module_links(id)', assuming SERIAL and omitting
+INFO  [alembic.ddl.postgresql] Detected sequence named 'class_sections_id_seq' as owned by integer column 'class_sections(id)', assuming SERIAL and omitting
+INFO  [alembic.ddl.postgresql] Detected sequence named 'module_offering_plans_id_seq' as owned by integer column 'module_offering_plans(id)', assuming SERIAL and omitting
+INFO  [alembic.ddl.postgresql] Detected sequence named 'regulation_chunks_id_seq' as owned by integer column 'regulation_chunks(id)', assuming SERIAL and omitting
+INFO  [alembic.ddl.postgresql] Detected sequence named 'academic_events_id_seq' as owned by integer column 'academic_events(id)', assuming SERIAL and omitting
+INFO  [alembic.ddl.postgresql] Detected sequence named 'outline_documents_id_seq' as owned by integer column 'outline_documents(id)', assuming SERIAL and omitting
+INFO  [alembic.ddl.postgresql] Detected sequence named 'feedback_id_seq' as owned by integer column 'feedback(id)', assuming SERIAL and omitting
+INFO  [alembic.ddl.postgresql] Detected sequence named 'module_relations_id_seq' as owned by integer column 'module_relations(id)', assuming SERIAL and omitting
+INFO  [alembic.ddl.postgresql] Detected sequence named 'outline_sections_id_seq' as owned by integer column 'outline_sections(id)', assuming SERIAL and omitting
+No new upgrade operations detected.
+
+
+### vitest (web)
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ» Failed Tests 5 ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+ FAIL  src/components/__tests__/moduleFilters.test.tsx > ModulesPage Filters and Placeholders > handles filter interactions: activating facets enables reset, and reset clears facets and faculty search while preserving module search and program context
+TestingLibraryElementError: Unable to find an element with the text: /Kinh doanh quß╗æc tß║┐.*kh├│a 23/i. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+ Γ¥» Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ FAIL  src/components/__tests__/moduleFilters.test.tsx > ModulesPage Filters and Placeholders > updates count note by context: program vs dual programs (song ng├ánh)
+TestingLibraryElementError: Unable to find an element with the text: /Kinh doanh quß╗æc tß║┐.*kh├│a 23/i. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+ FAIL  src/app/equivalents/__tests__/page.test.tsx > Brief W13: Trang Hß╗ìc phß║ºn t╞░╞íng ─æ╞░╞íng chß╗ë hiß╗çn c├íc m├┤n trong CT─ÉT ─æang lß╗ìc > 1. Kh├┤ng c├│ ch╞░╞íng tr├¼nh -> Hiß╗çn hß║┐t to├án bß╗Ö c├íc nh├│m v├á gß╗úi ├╜ chß╗ìn CT─ÉT
+TestingLibraryElementError: Unable to find an element with the text: /Chß╗ìn ch╞░╞íng tr├¼nh ─æß╗â chß╗ë xem m├┤n li├¬n quan/i. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+ FAIL  src/app/equivalents/__tests__/page.test.tsx > Brief W13: Trang Hß╗ìc phß║ºn t╞░╞íng ─æ╞░╞íng chß╗ë hiß╗çn c├íc m├┤n trong CT─ÉT ─æang lß╗ìc > 2. C├│ ch╞░╞íng tr├¼nh -> ß║¿n nh├│m kh├┤ng li├¬n quan v├á ß║⌐n m├┤n ngo├ái ch╞░╞íng tr├¼nh theo mß║╖c ─æß╗ïnh
+TestingLibraryElementError: Unable to find an element with the text: /Ch╞░╞íng tr├¼nh ─æ├áo tß║ío ng├ánh Kinh tß║┐ hß╗ìc kh├│a 24/i. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+ FAIL  src/app/equivalents/__tests__/page.test.tsx > Brief W13: Trang Hß╗ìc phß║ºn t╞░╞íng ─æ╞░╞íng chß╗ë hiß╗çn c├íc m├┤n trong CT─ÉT ─æang lß╗ìc > 6. Bß║Ñm n├║t 'Bß╗Å lß╗ìc CT─ÉT' -> Trß╗ƒ vß╗ü hiß╗ân thß╗ï to├án bß╗Ö
+TestingLibraryElementError: Unable to find an accessible element with the role "button" and name `/Bß╗Å lß╗ìc/i`
+ Γ¥» Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+      Tests  5 failed | 443 passed (448)
+

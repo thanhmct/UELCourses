@@ -1,21 +1,35 @@
 {
-  "name": "UELCourses — Nền tảng học tập UEL",
-  "short_name": "UELCourses",
+  "name": "UELPATH — Nền tảng học tập UEL",
+  "short_name": "UELPATH",
   "description": "Thời khóa biểu, kế hoạch học tập nhiều kỳ và AI tra cứu quy chế học vụ cho sinh viên UEL",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#0b4f9c",
+  "theme_color": "#0B2A63",
   "icons": [
     {
-      "src": "/globe.svg",
+      "src": "/icons/icon-192.png",
       "sizes": "192x192",
-      "type": "image/svg+xml"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
-      "src": "/globe.svg",
+      "src": "/icons/icon-512.png",
       "sizes": "512x512",
-      "type": "image/svg+xml"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
     }
   ]
 }

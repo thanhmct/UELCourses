@@ -1,0 +1,45 @@
+﻿LOI MOI do brief A2_analytics_trends gay ra (chi sua nhung loi nay):
+tsc|src/app/admin/trends/page.tsx|TS18047
+tsc|src/app/admin/trends/page.tsx|TS2322
+tsc|src/app/admin/trends/page.tsx|TS2339
+tsc|src/lib/__tests__/analytics.test.ts|TS2540
+vitest|src/app/admin/__tests__/trends.test.tsx > Brief A2: Admin Trends Page (/admin/trends) > bß║Ñm 'Xem lß╗¢p' hiß╗ân thß╗ï danh s├ích lß╗¢p chi tiß║┐t cß╗ºa m├┤n ─æ├│
+vitest|src/app/admin/__tests__/trends.test.tsx > Brief A2: Admin Trends Page (/admin/trends) > bß║ún ─æß╗ô nhiß╗çt Thß╗⌐ ├ù Tiß║┐t vß║╜ ─æ├║ng 112 ├┤ t╞░╞íng ß╗⌐ng 7 ng├áy ├ù 16 tiß║┐t
+vitest|src/app/admin/__tests__/trends.test.tsx > Brief A2: Admin Trends Page (/admin/trends) > hiß╗ân thß╗ï ─æß║ºy ─æß╗º ti├¬u ─æß╗ü, bß╗Ö lß╗ìc v├á c├íc khß╗æi sß╗æ liß╗çu tß╗½ mock API
+vitest|src/app/admin/__tests__/trends.test.tsx > Brief A2: Admin Trends Page (/admin/trends) > thay ─æß╗òi khoß║úng thß╗¥i gian lß╗ìc (7, 30, 90 ng├áy) k├¡ch hoß║ít tß║úi lß║íi dß╗» liß╗çu
+vitest|src/components/__tests__/ProgramFilterBar.test.tsx > Brief W16: ProgramFilterBar component tests > 5. Bß║Ñm n├║t '─Éß╗òi' -> mß╗ƒ hß╗Öp thoß║íi pop-up (role='dialog'), URL kh├┤ng ─æß╗òi; l╞░u m├ú mß╗¢i cß║¡p nhß║¡t thanh tß╗⌐c th├¼
+
+=== Chi tiet day du (chi de tham khao, loi khac khong thuoc brief nay thi BO QUA) ===
+### alembic
+No new upgrade operations detected.
+
+
+### tsc (web)
+src/app/admin/trends/page.tsx(56,27): error TS2339: Property 'current' does not exist on type '{ data: Semester[] | null; loading: boolean; error: string | null; mock: boolean; }'.
+src/app/admin/trends/page.tsx(57,24): error TS2339: Property 'current' does not exist on type '{ data: Semester[] | null; loading: boolean; error: string | null; mock: boolean; }'.
+src/app/admin/trends/page.tsx(59,12): error TS2339: Property 'current' does not exist on type '{ data: Semester[] | null; loading: boolean; error: string | null; mock: boolean; }'.
+src/app/admin/trends/page.tsx(202,12): error TS18047: 'sems.data' is possibly 'null'.
+src/app/admin/trends/page.tsx(204,15): error TS2322: Type 'Semester[] | null' is not assignable to type 'Semester[]'.
+  Type 'null' is not assignable to type 'Semester[]'.
+src/lib/__tests__/analytics.test.ts(63,17): error TS2540: Cannot assign to 'NODE_ENV' because it is a read-only property.
+
+
+### vitest (web)
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ» Failed Tests 7 ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+ FAIL  src/components/__tests__/ProgramFilterBar.test.tsx > Brief W16: ProgramFilterBar component tests > 5. Bß║Ñm n├║t '─Éß╗òi' -> mß╗ƒ hß╗Öp thoß║íi pop-up (role='dialog'), URL kh├┤ng ─æß╗òi; l╞░u m├ú mß╗¢i cß║¡p nhß║¡t thanh tß╗⌐c th├¼
+TestingLibraryElementError: Unable to find a label with the text of: /Ng├ánh ch├¡nh/i
+ Γ¥» Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ FAIL  src/components/__tests__/moduleFilters.test.tsx > ModulesPage Filters and Placeholders > handles filter interactions: activating facets enables reset, and reset clears facets and faculty search while preserving module search and program context
+TestingLibraryElementError: Unable to find an element with the text: /Kinh doanh quß╗æc tß║┐.*kh├│a 23/i. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+ FAIL  src/components/__tests__/moduleFilters.test.tsx > ModulesPage Filters and Placeholders > updates count note by context: program vs dual programs (song ng├ánh)
+TestingLibraryElementError: Unable to find an element with the text: /Kinh doanh quß╗æc tß║┐.*kh├│a 23/i. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+ FAIL  src/app/admin/__tests__/trends.test.tsx > Brief A2: Admin Trends Page (/admin/trends) > hiß╗ân thß╗ï ─æß║ºy ─æß╗º ti├¬u ─æß╗ü, bß╗Ö lß╗ìc v├á c├íc khß╗æi sß╗æ liß╗çu tß╗½ mock API
+TestingLibraryElementError: Found multiple elements with the text: BIM5001
+ FAIL  src/app/admin/__tests__/trends.test.tsx > Brief A2: Admin Trends Page (/admin/trends) > bß║ún ─æß╗ô nhiß╗çt Thß╗⌐ ├ù Tiß║┐t vß║╜ ─æ├║ng 112 ├┤ t╞░╞íng ß╗⌐ng 7 ng├áy ├ù 16 tiß║┐t
+TestingLibraryElementError: Found multiple elements with the text: BIM5001
+ FAIL  src/app/admin/__tests__/trends.test.tsx > Brief A2: Admin Trends Page (/admin/trends) > bß║Ñm 'Xem lß╗¢p' hiß╗ân thß╗ï danh s├ích lß╗¢p chi tiß║┐t cß╗ºa m├┤n ─æ├│
+TestingLibraryElementError: Found multiple elements with the text: BIM5001
+ FAIL  src/app/admin/__tests__/trends.test.tsx > Brief A2: Admin Trends Page (/admin/trends) > thay ─æß╗òi khoß║úng thß╗¥i gian lß╗ìc (7, 30, 90 ng├áy) k├¡ch hoß║ít tß║úi lß║íi dß╗» liß╗çu
+TestingLibraryElementError: Found multiple elements with the text: BIM5001
+      Tests  7 failed | 462 passed (469)
+

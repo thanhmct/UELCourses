@@ -7,6 +7,7 @@ export interface ConfirmOptions {
   title?: string;
   okLabel?: string;
   cancelLabel?: string;
+  compact?: boolean;
   /** nút xác nhận màu đỏ (xóa dữ liệu, xóa bản nháp…) */
   danger?: boolean;
 }

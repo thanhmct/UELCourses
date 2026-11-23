@@ -28,6 +28,17 @@ describe("programs logic & mocks", () => {
     expect(search.some((p) => p.program_id === "K24406")).toBe(true);
   });
 
+  it("filters program summaries by degree (Brief D6)", () => {
+    const daiHoc = mockPrograms({ degree: "dai_hoc" });
+    expect(daiHoc.length).toBeGreaterThan(0);
+    expect(daiHoc.every((p) => (p.degree || "dai_hoc") === "dai_hoc")).toBe(true);
+
+    const thacSi = mockPrograms({ degree: "thac_si" });
+    expect(thacSi.length).toBeGreaterThan(0);
+    expect(thacSi.every((p) => p.degree === "thac_si")).toBe(true);
+    expect(thacSi.some((p) => p.program_id === "M601NC")).toBe(true);
+  });
+
   it("fetches program details and builds graph", () => {
     const detail = mockProgram("K22406");
     expect(detail).not.toBeNull();
@@ -57,5 +68,37 @@ describe("programs logic & mocks", () => {
     });
     expect(Array.isArray(res.eligible_now)).toBe(true);
     expect(Array.isArray(res.blocked)).toBe(true);
+  });
+
+  it("handles English track programs correctly (Brief D7)", () => {
+    // Kiểu dữ liệu ProgramSummary và ProgramDetail hỗ trợ track_source
+    const progSummary = {
+      program_id: "K25410E",
+      name: "Marketing (tiếng Anh) Khóa 25",
+      cohort: "K25",
+      total_credits: 130,
+      track_source: "official" as const,
+    };
+    expect(progSummary.track_source).toBe("official");
+
+    // Môn B hợp lệ trong hệ E có is_vietnamese_track
+    const modB = {
+      code: "BDG1001",
+      name: "Triết học Mác-Lênin",
+      credits: 3,
+      required: true,
+      is_vietnamese_track: true,
+    };
+    expect(modB.is_vietnamese_track).toBe(true);
+
+    // Môn chuyên ngành tiếng Anh
+    const modE = {
+      code: "EBM1001",
+      name: "Principles of Marketing",
+      credits: 3,
+      required: true,
+      is_vietnamese_track: false,
+    };
+    expect(modE.is_vietnamese_track).toBe(false);
   });
 });

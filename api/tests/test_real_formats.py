@@ -11,6 +11,7 @@ import openpyxl
 import pytest
 
 from app.services.excel_import import (
+    _map_uis_header,
     import_ta_plan,
     import_uis_classes,
     parse_credit_spec,
@@ -168,9 +169,15 @@ def test_import_uis_api(client):
     assert upload_xlsx(client, "/api/import/uis-classes", make_uis_xlsx(), "x.xlsx").json()["imported"] == 3
 
     m = client.get("/api/modules/XYZ1001").json()
-    assert m["is_english"] is True and m["faculty"] == "Khoa Giả định" and m["credits"] == 3
+    assert m["is_english"] is True and m["faculty"] is None and m["department"] is None and m["credits"] == 3
     assert client.get("/api/modules/XYZ2002").json()["is_english"] is False
     assert client.get("/api/modules/XY47").json()["is_english"] is True  # từ ghi chú
+
+    # Kiểm tra parser đọc đúng cột Khoa từ file UIS (theo Brief B6b: modules.faculty chỉ nhận từ đề cương)
+    wb_uis = openpyxl.load_workbook(io.BytesIO(make_uis_xlsx()), data_only=True)
+    uis_rows = [tuple(r) for r in wb_uis.worksheets[0].iter_rows(values_only=True)]
+    col, first = _map_uis_header(uis_rows)
+    assert uis_rows[first][col["faculty"]] == "Khoa Giả định"
 
     c = client.get("/api/modules/XYZ1001/classes").json()[0]
     assert c["class_code"] == "251XYZ100101" and c["semester"] == "2025-2026-1"
@@ -201,7 +208,7 @@ def test_import_uis_api(client):
     assert venues["Z1.102"]["capacity"] == 90
     assert client.get("/api/modules", params={"is_english": True}).json()["total"] == 2
     assert client.get("/api/modules", params={"semester": "2025-2026-1"}).json()["total"] == 3
-    assert client.get("/api/faculties").json() == ["Khoa Giả định"]
+    assert client.get("/api/faculties").json() == []
 
 
 def test_import_uis_rejects_bad_files(client):
@@ -224,8 +231,13 @@ def test_import_ta_plan_api(client):
 
     m = client.get("/api/modules/XYZ1001").json()
     assert m["name"] == "Nhập môn dữ liệu (E)"  # giữ tên từ UIS
-    assert m["department"] == "Bộ môn Giả định 1" and m["faculty"] == "Khoa Giả định"
+    assert m["department"] is None and m["faculty"] is None
     assert m["offering_plan"] == [{"academic_year": "2026-2027", "terms": [1, 3], "terms_text": "Học kỳ 1,3", "open_pct": 100.0}]
+
+    # Kiểm tra parser đọc được thông tin Khoa/Bộ môn từ file TA plan
+    wb_ta = openpyxl.load_workbook(io.BytesIO(make_ta_xlsx()), data_only=True)
+    ta_rows = [tuple(r) for r in wb_ta.worksheets[0].iter_rows(values_only=True)]
+    assert any("Bộ môn Giả định 1" in str(cell) for row in ta_rows for cell in row)
     new = client.get("/api/modules/XYZ3003").json()
     assert new["name"] == "Môn mới chưa có lớp" and new["credits"] == 2 and new["is_english"] is True
     assert new["offering_plan"][0]["terms"] == [1, 2, 3] and new["offering_plan"][0]["open_pct"] == 50.0

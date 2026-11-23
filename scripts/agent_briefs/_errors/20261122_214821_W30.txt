@@ -1,0 +1,11 @@
+﻿LOI MOI do brief W30_validate_program_code gay ra (chi sua nhung loi nay):
+vitest|src/components/__tests__/ProgramProfileValidation.test.tsx > Brief W30: Program Code Validation & Auto-Open Tests > L╞░u K23414B v├á K24404 th├ánh K23414B v├á K24404A
+
+=== Chi tiet day du (chi de tham khao, loi khac khong thuoc brief nay thi BO QUA) ===
+### vitest (web)
+   Γ¥» Brief W30: Program Code Validation & Auto-Open Tests (15)
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ» Failed Tests 1 ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+ FAIL  src/components/__tests__/ProgramProfileValidation.test.tsx > Brief W30: Program Code Validation & Auto-Open Tests > L╞░u K23414B v├á K24404 th├ánh K23414B v├á K24404A
+AssertionError: expected 'K24404' to be 'K24404A' // Object.is equality
+      Tests  1 failed | 530 passed (531)
+

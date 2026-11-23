@@ -2,9 +2,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Modal } from "./Modal";
 import { registerDialogHost, type DialogRequest } from "@/lib/dialog";
+import { useT } from "@/i18n";
 
 /** Hộp thoại xác nhận / nhập liệu nổi, dùng chung cho toàn ứng dụng (xem lib/dialog.ts). */
 export function AppDialog() {
+  const { t } = useT();
   const [req, setReq] = useState<DialogRequest | null>(null);
   const [value, setValue] = useState("");
   const [err, setErr] = useState<string | null>(null);
@@ -42,17 +44,19 @@ export function AppDialog() {
   };
 
   const opts = req?.opts;
-  const title = opts?.title ?? (req?.kind === "prompt" ? "Nhập thông tin" : "Xác nhận");
-  const okLabel = opts?.okLabel ?? (req?.kind === "prompt" ? "Lưu" : "Đồng ý");
-  const cancelLabel = opts?.cancelLabel ?? "Hủy";
-  const okClass = opts?.danger
-    ? "rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
-    : "btn-primary";
+  const title = opts?.title ?? (req?.kind === "prompt" ? t("dialog.promptTitle") : t("dialog.confirmTitle"));
+  const okLabel = opts?.okLabel ?? (req?.kind === "prompt" ? t("common.save") : t("dialog.agree"));
+  const cancelLabel = opts?.cancelLabel ?? t("common.cancel");
+  const dangerClass = opts?.compact
+    ? "btn bg-rose-700 font-semibold text-white hover:bg-rose-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-focus"
+    : "rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700";
+  const okClass = opts?.danger ? dangerClass : "btn-primary";
 
   return (
     <Modal
       open={!!req}
       title={title}
+      compact={opts?.compact}
       onClose={() => close(false)}
       actions={
         <>

@@ -6,6 +6,8 @@ export interface TimetableEntry {
   class_code: string | null;
   color: number;
   hidden: boolean;
+  /** Set on the original entry inserted from the planner, not on shared or copied drafts. */
+  fromPlanner?: true;
 }
 
 export interface SharedTimetable {

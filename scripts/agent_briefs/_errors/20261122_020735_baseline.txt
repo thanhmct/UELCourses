@@ -1,0 +1,17 @@
+﻿### tsc (web)
+src/components/ProgramFilterBar.tsx(425,5): error TS1128: Declaration or statement expected.
+src/components/ProgramFilterBar.tsx(426,3): error TS1109: Expression expected.
+src/components/ProgramFilterBar.tsx(427,1): error TS1128: Declaration or statement expected.
+
+
+### vitest (web)
+[41m[1m FAIL [22m[49m src/components/__tests__/ProgramFilterBar.test.tsx[2m [ src/components/__tests__/ProgramFilterBar.test.tsx ][22m
+[31m[1mError[22m: Transform failed with 1 error:
+[41m[1m FAIL [22m[49m src/components/__tests__/moduleFilters.test.tsx[2m [ src/components/__tests__/moduleFilters.test.tsx ][22m
+[41m[1m FAIL [22m[49m src/app/equivalents/__tests__/page.test.tsx[2m [ src/app/equivalents/__tests__/page.test.tsx ][22m
+[41m[1m FAIL [22m[49m src/app/modules/__tests__/profileFilterSync.test.tsx[2m [ src/app/modules/__tests__/profileFilterSync.test.tsx ][22m
+[41m[1m FAIL [22m[49m src/app/programs/__tests__/page.test.tsx[2m [ src/app/programs/__tests__/page.test.tsx ][22m
+[41m[1m FAIL [22m[49m src/app/modules/[code]/__tests__/page.test.tsx[2m [ src/app/modules/[code]/__tests__/page.test.tsx ][22m
+[31m[1mError[22m: Transform failed with 1 error:
+[2m      Tests [22m [1m[32m332 passed[39m[22m[90m (332)[39m
+

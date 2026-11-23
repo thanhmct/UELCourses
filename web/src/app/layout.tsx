@@ -1,27 +1,27 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import { BottomNav, Header, SideNav } from "@/components/Header";
-import { AppFooter } from "@/components/AppFooter";
-import { FeedbackWidget } from "@/components/FeedbackWidget";
+import { UELPATH_THEME_COLOR } from "@/lib/brand";
+import { AppShell } from "@/components/AppShell";
 import { CommandPalette } from "@/components/CommandPalette";
 import { ThemeApplier, themeInitScript } from "@/components/ThemeApplier";
 import { PwaRegister } from "@/components/PwaRegister";
-import { FirstVisitModal } from "@/components/FirstVisitModal";
+import { GlobalProgramProfileDialog } from "@/components/ProgramProfileDialog";
 import { AppDialog } from "@/components/AppDialog";
 
 export const metadata: Metadata = {
-  title: { default: "UELCourses — Lập kế hoạch học tập UEL", template: "%s · UELCourses" },
-  description: "Tra cứu học phần, xếp thời khóa biểu, lập kế hoạch nhiều học kỳ và hỏi đáp quy chế học vụ cho sinh viên UEL.",
+  title: { default: "UELPATH", template: "%s · UELPATH" },
+  description: "Module search, timetable planning, multi-semester study planning, and academic regulations Q&A for UEL students.",
   manifest: "/manifest.json",
+  // icon.svg, favicon.ico và apple-icon.png trong src/app được Next tự gắn vào <head>.
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "UELCourses",
+    title: "UELPATH",
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0b4f9c",
+  themeColor: UELPATH_THEME_COLOR,
   width: "device-width",
   initialScale: 1,
 };
@@ -34,17 +34,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       </head>
       <body className="min-h-screen">
         <ThemeApplier />
-        <Header />
-        <SideNav />
-        <div className="md:pl-[212px]">
-          <main className="mx-auto max-w-[1400px] px-3 py-4 pb-24 md:px-5">{children}</main>
-          <AppFooter />
-        </div>
-        <BottomNav />
-        <FeedbackWidget />
+        <AppShell>{children}</AppShell>
         <CommandPalette />
         <PwaRegister />
-        <FirstVisitModal />
+        <GlobalProgramProfileDialog />
         <AppDialog />
       </body>
     </html>

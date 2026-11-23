@@ -136,7 +136,8 @@ def import_ctdt(db: Session, payload: Any, *, is_sample: bool = False) -> Import
                 ctx.skipped += 1
                 continue
             ctx.module(code, name=clip(get_ci(r, "TenHP"), 512), credits=to_int(get_ci(r, "STC")),
-                       faculty=get_ci(r, "Khoa"), department=get_ci(r, "BoMon"))
+                       faculty=get_ci(r, "Khoa"), department=get_ci(r, "BoMon"),
+                       overwrite_faculty=False, overwrite_department=False)
             db.flush()
             pm = seen.get(code)
             if pm is None:
@@ -189,6 +190,9 @@ def import_ctdt(db: Session, payload: Any, *, is_sample: bool = False) -> Import
             db.add(ModuleRelation(source=src[:64], target=tgt[:64], type=rtype, program_id=pid))
             n_rel += 1
         db.flush()
+    if not is_sample:
+        from app.services.faculty_names import apply_outline_faculties
+        apply_outline_faculties(db)
     res = ctx.result()
     res.warnings = [f"programs={len(programs)}", f"relations={n_rel}", *res.warnings]
     return res

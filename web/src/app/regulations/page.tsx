@@ -93,7 +93,7 @@ export default function RegulationsWorkspace() {
           <h1 className="page-title">{t("reg.title")}</h1>
           <p className="text-xs text-slate-500">
             {t("reg.sub")}{" "}
-            {!savedCohort && <Link href="/settings" className="text-brand-600 underline">{t("reg.chooseCohort")}</Link>}
+            {!savedCohort && <Link href="/settings" className="text-brand-ink underline">{t("reg.chooseCohort")}</Link>}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -105,6 +105,7 @@ export default function RegulationsWorkspace() {
             {t("reg.search")} <kbd className="rounded border px-1 text-[10px]">Ctrl K</kbd>
           </button>
           <Link href="/regulations/graph" className="btn-outline">{t("reg.graph")}</Link>
+          <Link href="/ask" className="btn-outline">{t("ask.title")}</Link>
         </div>
       </div>
       <WarningBanner cohort={cohort} />

@@ -1,4 +1,4 @@
-import io
+﻿import io
 import json
 
 from app.services.seed import run_seed
@@ -194,20 +194,20 @@ def test_seed_idempotent(db, client):
     assert first["modules"] >= 40 and first["classes"] >= 100 and first["semesters"] == 2
     totals = client.get("/api/modules").json()["total"]
     classes = sum(len(client.get(f"/api/modules/{m['code']}/classes").json())
-                  for m in client.get("/api/modules", params={"size": 200}).json()["items"])
+                  for m in client.get("/api/modules", params={"size": 100}).json()["items"])
     eq = len(client.get("/api/equivalents").json())
     run_seed(db)
     run_seed(db)
     assert client.get("/api/modules").json()["total"] == totals
     assert sum(len(client.get(f"/api/modules/{m['code']}/classes").json())
-               for m in client.get("/api/modules", params={"size": 200}).json()["items"]) == classes
+               for m in client.get("/api/modules", params={"size": 100}).json()["items"]) == classes
     assert len(client.get("/api/equivalents").json()) == eq
     m = client.get("/api/modules", params={"size": 1}).json()["items"][0]
     assert m["is_sample"] is True and m["faculty"]
     sems = client.get("/api/semesters").json()
     assert len(sems) == 2 and all(s["is_sample"] for s in sems)
     # mọi lớp mẫu parse được lịch
-    for mod in client.get("/api/modules", params={"size": 200}).json()["items"]:
+    for mod in client.get("/api/modules", params={"size": 100}).json()["items"]:
         for c in client.get(f"/api/modules/{mod['code']}/classes").json():
             assert c["lessons"] and c["schedule_parsed"], c
 
@@ -218,5 +218,5 @@ def test_clear_sample_keeps_real(db, client):
     run_seed(db)
     upload(client, "/api/import/classes", SAMPLE_CLASSES)
     clear_sample_data(db)
-    codes = [m["code"] for m in client.get("/api/modules", params={"size": 200}).json()["items"]]
+    codes = [m["code"] for m in client.get("/api/modules", params={"size": 100}).json()["items"]]
     assert codes == ["ECO101", "LAW201"]

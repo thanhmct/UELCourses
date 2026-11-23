@@ -1,0 +1,193 @@
+﻿LOI MOI do brief A6_system_admin gay ra (chi sua nhung loi nay):
+pytest|api\tests\test_academic_calendar.py
+pytest|api\tests\test_admin_overview.py
+pytest|api\tests\test_analytics.py
+pytest|api\tests\test_api_core.py
+pytest|api\tests\test_b3_brief.py
+pytest|api\tests\test_b7_detail_outline_url.py
+pytest|api\tests\test_b7_outline_url.py
+pytest|api\tests\test_calendar_admin.py
+pytest|api\tests\test_catalog_programs.py
+pytest|api\tests\test_ctdt_equivalent_edges.py
+pytest|api\tests\test_data_admin.py
+pytest|api\tests\test_descriptions.py
+pytest|api\tests\test_english_names.py
+pytest|api\tests\test_equivalents_repair.py
+pytest|api\tests\test_facets.py
+pytest|api\tests\test_fix_module_faculty.py
+pytest|api\tests\test_language.py
+pytest|api\tests\test_legacy_codes.py
+pytest|api\tests\test_lesson_dates.py
+pytest|api\tests\test_moderation.py
+pytest|api\tests\test_module_multi_filters.py
+pytest|api\tests\test_outline_codes.py
+pytest|api\tests\test_outline_colab.py
+pytest|api\tests\test_outline_general_rules.py
+pytest|api\tests\test_outline_rerun_policy.py
+pytest|api\tests\test_outline_worker_sync.py
+pytest|api\tests\test_program_tracks.py
+pytest|api\tests\test_real_formats.py
+pytest|api\tests\test_reviews_auth.py
+pytest|api\tests\test_semesters.py
+pytest|api\tests\test_system_admin.py
+tsc|src/i18n/en.ts|TS1117
+tsc|src/i18n/vi.ts|TS1117
+vitest|src/app/admin/__tests__/moderation.test.tsx > Brief A3: Kiß╗âm duyß╗çt nß╗Öi dung & ─É├ính gi├í b├¼nh luß║¡n hß╗ìc phß║ºn > 2. Trang Quß║ún trß╗ï kiß╗âm duyß╗çt (/admin/moderation) > ph├¡m tß║»t b├án ph├¡m 'a' k├¡ch hoß║ít thao t├íc Duyß╗çt
+vitest|src/app/admin/__tests__/systemAdmin.test.tsx > Brief A6: Hß╗ç thß╗æng, Nhß║¡t k├╜, T├ái khoß║ún & C├ái ─æß║╖t quß║ún trß╗ï > 2. Trang Nhß║¡t k├╜ thao t├íc quß║ún trß╗ï (/admin/audit) > hiß╗ân thß╗ï danh s├ích nhß║¡t k├╜ thao t├íc v├á mß╗ƒ hß╗Öp thoß║íi So s├ính JSON (diff)
+vitest|src/app/admin/__tests__/systemAdmin.test.tsx > Brief A6: Hß╗ç thß╗æng, Nhß║¡t k├╜, T├ái khoß║ún & C├ái ─æß║╖t quß║ún trß╗ï > 3. Trang T├ái khoß║ún quß║ún trß╗ï & Ph├ón quyß╗ün (/admin/users) > khß╗æi ─æß╗òi mß║¡t khß║⌐u cß╗ºa t├┤i b├ío lß╗ùi nß║┐u mß║¡t khß║⌐u x├íc nhß║¡n kh├┤ng khß╗¢p
+
+=== Chi tiet day du (chi de tham khao, loi khac khong thuoc brief nay thi BO QUA) ===
+### alembic
+    spec.loader.exec_module(module)  # type: ignore
+    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^
+  File "<frozen importlib._bootstrap_external>", line 763, in exec_module
+  File "<frozen importlib._bootstrap>", line 491, in _call_with_frames_removed
+  File "/workspace/api/migrations/env.py", line 8, in <module>
+    from app import models  # noqa: F401  (─æ─âng k├╜ to├án bß╗Ö bß║úng v├áo Base.metadata)
+    ^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/api/app/models.py", line 809, in <module>
+    class AdminUser(Base):
+    ...<19 lines>...
+        sessions: Mapped[list[AdminSession]] = relationship(back_populates="user", cascade="all, delete-orphan")
+  File "/workspace/api/app/models.py", line 822, in AdminUser
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=sa.true())
+                                                                                  ^^
+NameError: name 'sa' is not defined
+    spec.loader.exec_module(module)  # type: ignore
+    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^
+  File "<frozen importlib._bootstrap_external>", line 763, in exec_module
+  File "<frozen importlib._bootstrap>", line 491, in _call_with_frames_removed
+  File "/workspace/api/migrations/env.py", line 8, in <module>
+    from app import models  # noqa: F401  (─æ─âng k├╜ to├án bß╗Ö bß║úng v├áo Base.metadata)
+    ^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/api/app/models.py", line 809, in <module>
+    class AdminUser(Base):
+    ...<19 lines>...
+        sessions: Mapped[list[AdminSession]] = relationship(back_populates="user", cascade="all, delete-orphan")
+  File "/workspace/api/app/models.py", line 822, in AdminUser
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=sa.true())
+                                                                                  ^^
+NameError: name 'sa' is not defined
+
+
+### tsc (web)
+src/i18n/en.ts(1278,3): error TS1117: An object literal cannot have multiple properties with the same name.
+src/i18n/en.ts(1279,3): error TS1117: An object literal cannot have multiple properties with the same name.
+src/i18n/en.ts(1280,3): error TS1117: An object literal cannot have multiple properties with the same name.
+src/i18n/vi.ts(1291,3): error TS1117: An object literal cannot have multiple properties with the same name.
+src/i18n/vi.ts(1292,3): error TS1117: An object literal cannot have multiple properties with the same name.
+src/i18n/vi.ts(1293,3): error TS1117: An object literal cannot have multiple properties with the same name.
+
+
+### vitest (web)
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ» Failed Tests 9 ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+ FAIL  src/components/__tests__/moduleFilters.test.tsx > ModulesPage Filters and Placeholders > handles filter interactions: activating facets enables reset, and reset clears facets and faculty search while preserving module search and program context
+TestingLibraryElementError: Unable to find an element with the text: /Kinh doanh quß╗æc tß║┐.*kh├│a 23/i. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+ FAIL  src/components/__tests__/moduleFilters.test.tsx > ModulesPage Filters and Placeholders > updates count note by context: program vs dual programs (song ng├ánh)
+TestingLibraryElementError: Unable to find an element with the text: /Kinh doanh quß╗æc tß║┐.*kh├│a 23/i. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+ FAIL  src/app/admin/__tests__/moderation.test.tsx > Brief A3: Kiß╗âm duyß╗çt nß╗Öi dung & ─É├ính gi├í b├¼nh luß║¡n hß╗ìc phß║ºn > 2. Trang Quß║ún trß╗ï kiß╗âm duyß╗çt (/admin/moderation) > ph├¡m tß║»t b├án ph├¡m 'a' k├¡ch hoß║ít thao t├íc Duyß╗çt
+AssertionError: expected "moderateItem" to be called with arguments: [ Any<String>, Any<Number>, ΓÇª(2) ]
+ Γ¥» runWithExpensiveErrorDiagnosticsDisabled node_modules/@testing-library/dom/dist/config.js:47:12
+ FAIL  src/app/admin/__tests__/systemAdmin.test.tsx > Brief A6: Hß╗ç thß╗æng, Nhß║¡t k├╜, T├ái khoß║ún & C├ái ─æß║╖t quß║ún trß╗ï > 2. Trang Nhß║¡t k├╜ thao t├íc quß║ún trß╗ï (/admin/audit) > hiß╗ân thß╗ï danh s├ích nhß║¡t k├╜ thao t├íc v├á mß╗ƒ hß╗Öp thoß║íi So s├ính JSON (diff)
+TestingLibraryElementError: Found multiple elements with the text: admin@uel.edu.vn
+ Γ¥» Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ Γ¥» getElementError node_modules/@testing-library/dom/dist/query-helpers.js:20:35
+ Γ¥» getMultipleElementsFoundError node_modules/@testing-library/dom/dist/query-helpers.js:23:10
+ FAIL  src/app/admin/__tests__/systemAdmin.test.tsx > Brief A6: Hß╗ç thß╗æng, Nhß║¡t k├╜, T├ái khoß║ún & C├ái ─æß║╖t quß║ún trß╗ï > 3. Trang T├ái khoß║ún quß║ún trß╗ï & Ph├ón quyß╗ün (/admin/users) > khß╗æi ─æß╗òi mß║¡t khß║⌐u cß╗ºa t├┤i b├ío lß╗ùi nß║┐u mß║¡t khß║⌐u x├íc nhß║¡n kh├┤ng khß╗¢p
+TestingLibraryElementError: Found a label with the text of: /Mß║¡t khß║⌐u hiß╗çn tß║íi/i, however no form control was found associated to that label. Make sure you're using the "for" attribute or "aria-labelledby" attribute correctly.
+ Γ¥» Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ FAIL  src/app/equivalents/__tests__/page.test.tsx > Brief W13: Trang Hß╗ìc phß║ºn t╞░╞íng ─æ╞░╞íng chß╗ë hiß╗çn c├íc m├┤n trong CT─ÉT ─æang lß╗ìc > 1. Kh├┤ng c├│ ch╞░╞íng tr├¼nh -> Hiß╗çn hß║┐t to├án bß╗Ö c├íc nh├│m v├á gß╗úi ├╜ chß╗ìn CT─ÉT
+TestingLibraryElementError: Unable to find an element with the text: /Chß╗ìn ch╞░╞íng tr├¼nh ─æß╗â chß╗ë xem m├┤n li├¬n quan/i. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+ FAIL  src/app/equivalents/__tests__/page.test.tsx > Brief W13: Trang Hß╗ìc phß║ºn t╞░╞íng ─æ╞░╞íng chß╗ë hiß╗çn c├íc m├┤n trong CT─ÉT ─æang lß╗ìc > 2. C├│ ch╞░╞íng tr├¼nh -> ß║¿n nh├│m kh├┤ng li├¬n quan v├á ß║⌐n m├┤n ngo├ái ch╞░╞íng tr├¼nh theo mß║╖c ─æß╗ïnh
+TestingLibraryElementError: Unable to find an element with the text: /Ch╞░╞íng tr├¼nh ─æ├áo tß║ío ng├ánh Kinh tß║┐ hß╗ìc kh├│a 24/i. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+ FAIL  src/app/equivalents/__tests__/page.test.tsx > Brief W13: Trang Hß╗ìc phß║ºn t╞░╞íng ─æ╞░╞íng chß╗ë hiß╗çn c├íc m├┤n trong CT─ÉT ─æang lß╗ìc > 6. Bß║Ñm n├║t 'Bß╗Å lß╗ìc CT─ÉT' -> Trß╗ƒ vß╗ü hiß╗ân thß╗ï to├án bß╗Ö
+TestingLibraryElementError: Unable to find an accessible element with the role "button" and name `/Bß╗Å lß╗ìc/i`
+ Γ¥» Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ FAIL  src/app/modules/__tests__/profileFilterSync.test.tsx > W6 & W11: Profile filter banner text and real-time synchronization > Brief W16: n├║t ─Éß╗òi mß╗ƒ hß╗Öp thoß║íi pop-up (role=dialog) ngay tr├¬n trang, URL kh├┤ng ─æß╗òi, l╞░u xong cß║¡p nhß║¡t thanh lß╗ìc kh├┤ng reload
+TestingLibraryElementError: Unable to find an accessible element with the role "button" and name `/─Éß╗òi/i`
+ Γ¥» Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+      Tests  9 failed | 499 passed (508)
+
+
+### pytest (api)
+E   sqlalchemy.exc.InvalidRequestError: Table 'semesters' is already defined for this MetaData instance.  Specify 'extend_existing=True' to redefine options and columns on an existing Table object.
+_________________ ERROR collecting tests/test_descriptions.py _________________
+E   sqlalchemy.exc.InvalidRequestError: Table 'semesters' is already defined for this MetaData instance.  Specify 'extend_existing=True' to redefine options and columns on an existing Table object.
+________________ ERROR collecting tests/test_english_names.py _________________
+E   sqlalchemy.exc.InvalidRequestError: Table 'semesters' is already defined for this MetaData instance.  Specify 'extend_existing=True' to redefine options and columns on an existing Table object.
+______________ ERROR collecting tests/test_equivalents_repair.py ______________
+E   sqlalchemy.exc.InvalidRequestError: Table 'semesters' is already defined for this MetaData instance.  Specify 'extend_existing=True' to redefine options and columns on an existing Table object.
+____________________ ERROR collecting tests/test_facets.py ____________________
+E   sqlalchemy.exc.InvalidRequestError: Table 'semesters' is already defined for this MetaData instance.  Specify 'extend_existing=True' to redefine options and columns on an existing Table object.
+______________ ERROR collecting tests/test_fix_module_faculty.py ______________
+E   sqlalchemy.exc.InvalidRequestError: Table 'semesters' is already defined for this MetaData instance.  Specify 'extend_existing=True' to redefine options and columns on an existing Table object.
+___________________ ERROR collecting tests/test_language.py ___________________
+E   sqlalchemy.exc.InvalidRequestError: Table 'semesters' is already defined for this MetaData instance.  Specify 'extend_existing=True' to redefine options and columns on an existing Table object.
+_________________ ERROR collecting tests/test_legacy_codes.py _________________
+E   sqlalchemy.exc.InvalidRequestError: Table 'semesters' is already defined for this MetaData instance.  Specify 'extend_existing=True' to redefine options and columns on an existing Table object.
+_________________ ERROR collecting tests/test_lesson_dates.py _________________
+E   sqlalchemy.exc.InvalidRequestError: Table 'semesters' is already defined for this MetaData instance.  Specify 'extend_existing=True' to redefine options and columns on an existing Table object.
+__________________ ERROR collecting tests/test_moderation.py __________________
+E   sqlalchemy.exc.InvalidRequestError: Table 'semesters' is already defined for this MetaData instance.  Specify 'extend_existing=True' to redefine options and columns on an existing Table object.
+_____________ ERROR collecting tests/test_module_multi_filters.py _____________
+E   sqlalchemy.exc.InvalidRequestError: Table 'semesters' is already defined for this MetaData instance.  Specify 'extend_existing=True' to redefine options and columns on an existing Table object.
+________________ ERROR collecting tests/test_outline_codes.py _________________
+E   sqlalchemy.exc.InvalidRequestError: Table 'semesters' is already defined for this MetaData instance.  Specify 'extend_existing=True' to redefine options and columns on an existing Table object.
+________________ ERROR collecting tests/test_outline_colab.py _________________
+E   sqlalchemy.exc.InvalidRequestError: Table 'semesters' is already defined for this MetaData instance.  Specify 'extend_existing=True' to redefine options and columns on an existing Table object.
+____________ ERROR collecting tests/test_outline_general_rules.py _____________
+E   sqlalchemy.exc.InvalidRequestError: Table 'semesters' is already defined for this MetaData instance.  Specify 'extend_existing=True' to redefine options and columns on an existing Table object.
+_____________ ERROR collecting tests/test_outline_rerun_policy.py _____________
+E   sqlalchemy.exc.InvalidRequestError: Table 'semesters' is already defined for this MetaData instance.  Specify 'extend_existing=True' to redefine options and columns on an existing Table object.
+_____________ ERROR collecting tests/test_outline_worker_sync.py ______________
+E   sqlalchemy.exc.InvalidRequestError: Table 'semesters' is already defined for this MetaData instance.  Specify 'extend_existing=True' to redefine options and columns on an existing Table object.
+________________ ERROR collecting tests/test_program_tracks.py ________________
+E   sqlalchemy.exc.InvalidRequestError: Table 'semesters' is already defined for this MetaData instance.  Specify 'extend_existing=True' to redefine options and columns on an existing Table object.
+_________________ ERROR collecting tests/test_real_formats.py _________________
+E   sqlalchemy.exc.InvalidRequestError: Table 'semesters' is already defined for this MetaData instance.  Specify 'extend_existing=True' to redefine options and columns on an existing Table object.
+_________________ ERROR collecting tests/test_reviews_auth.py _________________
+E   sqlalchemy.exc.InvalidRequestError: Table 'semesters' is already defined for this MetaData instance.  Specify 'extend_existing=True' to redefine options and columns on an existing Table object.
+__________________ ERROR collecting tests/test_semesters.py ___________________
+E   sqlalchemy.exc.InvalidRequestError: Table 'semesters' is already defined for this MetaData instance.  Specify 'extend_existing=True' to redefine options and columns on an existing Table object.
+_________________ ERROR collecting tests/test_system_admin.py _________________
+E   sqlalchemy.exc.InvalidRequestError: Table 'semesters' is already defined for this MetaData instance.  Specify 'extend_existing=True' to redefine options and columns on an existing Table object.
+============================== warnings summary ===============================
+api\app\models.py:36: 30 warnings
+  D:\UELCourse\api\app\models.py:36: SAWarning: This declarative base already contains a class with the same class name and module name as app.models.Semester, and will be replaced in the string-lookup table.
+    class Semester(Base):
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+ERROR api\tests\test_academic_calendar.py - NameError: name 'sa' is not defined
+ERROR api\tests\test_admin_overview.py - sqlalchemy.exc.InvalidRequestError: ...
+ERROR api\tests\test_analytics.py - sqlalchemy.exc.InvalidRequestError: Table...
+ERROR api\tests\test_api_core.py - sqlalchemy.exc.InvalidRequestError: Table ...
+ERROR api\tests\test_b3_brief.py - sqlalchemy.exc.InvalidRequestError: Table ...
+ERROR api\tests\test_b7_detail_outline_url.py - sqlalchemy.exc.InvalidRequest...
+ERROR api\tests\test_b7_outline_url.py - sqlalchemy.exc.InvalidRequestError: ...
+ERROR api\tests\test_calendar_admin.py - sqlalchemy.exc.InvalidRequestError: ...
+ERROR api\tests\test_catalog_programs.py - sqlalchemy.exc.InvalidRequestError...
+ERROR api\tests\test_ctdt_equivalent_edges.py - sqlalchemy.exc.InvalidRequest...
+ERROR api\tests\test_data_admin.py - sqlalchemy.exc.InvalidRequestError: Tabl...
+ERROR api\tests\test_descriptions.py - sqlalchemy.exc.InvalidRequestError: Ta...
+ERROR api\tests\test_english_names.py - sqlalchemy.exc.InvalidRequestError: T...
+ERROR api\tests\test_equivalents_repair.py - sqlalchemy.exc.InvalidRequestErr...
+ERROR api\tests\test_facets.py - sqlalchemy.exc.InvalidRequestError: Table 's...
+ERROR api\tests\test_fix_module_faculty.py - sqlalchemy.exc.InvalidRequestErr...
+ERROR api\tests\test_language.py - sqlalchemy.exc.InvalidRequestError: Table ...
+ERROR api\tests\test_legacy_codes.py - sqlalchemy.exc.InvalidRequestError: Ta...
+ERROR api\tests\test_lesson_dates.py - sqlalchemy.exc.InvalidRequestError: Ta...
+ERROR api\tests\test_moderation.py - sqlalchemy.exc.InvalidRequestError: Tabl...
+ERROR api\tests\test_module_multi_filters.py - sqlalchemy.exc.InvalidRequestE...
+ERROR api\tests\test_outline_codes.py - sqlalchemy.exc.InvalidRequestError: T...
+ERROR api\tests\test_outline_colab.py - sqlalchemy.exc.InvalidRequestError: T...
+ERROR api\tests\test_outline_general_rules.py - sqlalchemy.exc.InvalidRequest...
+ERROR api\tests\test_outline_rerun_policy.py - sqlalchemy.exc.InvalidRequestE...
+ERROR api\tests\test_outline_worker_sync.py - sqlalchemy.exc.InvalidRequestEr...
+ERROR api\tests\test_program_tracks.py - sqlalchemy.exc.InvalidRequestError: ...
+ERROR api\tests\test_real_formats.py - sqlalchemy.exc.InvalidRequestError: Ta...
+ERROR api\tests\test_reviews_auth.py - sqlalchemy.exc.InvalidRequestError: Ta...
+ERROR api\tests\test_semesters.py - sqlalchemy.exc.InvalidRequestError: Table...
+ERROR api\tests\test_system_admin.py - sqlalchemy.exc.InvalidRequestError: Ta...
+!!!!!!!!!!!!!!!!!! Interrupted: 31 errors during collection !!!!!!!!!!!!!!!!!!!
+

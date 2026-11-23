@@ -1,0 +1,4 @@
+﻿### alembic
+ERROR [alembic.util.messaging] New upgrade operations detected: [('remove_index', Index('ix_admin_users_email', Column('email', VARCHAR(length=256), table=<admin_users>, nullable=False))), ('add_index', Index('ix_admin_users_email', Column('email', String(length=256), table=<admin_users>, nullable=False), unique=True))]
+FAILED: New upgrade operations detected: [('remove_index', Index('ix_admin_users_email', Column('email', VARCHAR(length=256), table=<admin_users>, nullable=False))), ('add_index', Index('ix_admin_users_email', Column('email', String(length=256), table=<admin_users>, nullable=False), unique=True))]
+

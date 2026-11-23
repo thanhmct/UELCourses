@@ -1,77 +1,248 @@
 "use client";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import { useApi } from "@/lib/useApi";
 import { useSemesters } from "@/lib/semesters";
+import { useProgramProfile } from "@/lib/myProgram";
 import { formatDateVi } from "@/lib/dates";
-import { CntnBadge, EnBadge, Empty, ErrorBox, Loading, TypeChip } from "@/components/ui";
+import { BackButton, CntnBadge, EnBadge, Empty, ErrorBox, Loading, RequiredBadge, TypeChip } from "@/components/ui";
 import { capacityText, seatsAvailable } from "@/lib/modules";
+import { allModules } from "@/lib/programs";
 import { ModuleActions } from "@/components/ModuleActions";
+import { ReportErrorsButton } from "@/components/FeedbackWidget";
 import { PrerequisiteTree } from "@/components/PrerequisiteTree";
 import { WorkloadBreakdownView } from "@/components/WorkloadBreakdown";
 import { ModuleReviews } from "@/components/ModuleReviews";
+import { ModuleDescriptionText } from "@/components/ModuleDescriptionText";
 import { OutlineBlock } from "@/components/OutlineBlock";
 import { useT, weekdayName } from "@/i18n";
-import { departmentName, facultyName, moduleDescription, moduleName } from "@/i18n/names";
+import { creditsLine, departmentName, facultyName, moduleDescription, moduleName } from "@/i18n/names";
+import { finalAssessmentKind, getCachedFinalAssessmentKind, setCachedFinalAssessmentKind } from "@/lib/finalAssessment";
+import { track } from "@/lib/analytics";
+
 
 export default function ModuleDetailPage() {
   const { t, lang } = useT();
   const params = useParams<{ code: string }>();
   const code = decodeURIComponent(params.code);
-  const mod = useApi(() => api.module(code), [code]);
   const sems = useSemesters();
+  const { primaryProgramId, secondaryProgramId, primaryParsed } = useProgramProfile();
+  const userCohort = primaryParsed?.cohort;
+  const mod = useApi(
+    () => api.module(code, { program_id: primaryProgramId || undefined, cohort: userCohort }),
+    [code, primaryProgramId, userCohort],
+  );
+
+  useEffect(() => {
+    if (code) {
+      track("module_view", { module_code: code });
+    }
+  }, [code]);
+  const progPrimary = useApi(() => primaryProgramId ? api.program(primaryProgramId) : Promise.resolve({ data: null, mock: false }), [primaryProgramId]);
+  const progSecondary = useApi(() => secondaryProgramId ? api.program(secondaryProgramId) : Promise.resolve({ data: null, mock: false }), [secondaryProgramId]);
+  const electivesPrimary = useApi(() => primaryProgramId ? api.electiveGroups(primaryProgramId) : Promise.resolve({ data: [], mock: false }), [primaryProgramId]);
+  const electivesSecondary = useApi(() => secondaryProgramId ? api.electiveGroups(secondaryProgramId) : Promise.resolve({ data: [], mock: false }), [secondaryProgramId]);
+
+  const programModuleInfo = useMemo(() => {
+    const p1 = progPrimary.data;
+    const p2 = progSecondary.data;
+    let pm = p1 ? allModules(p1).find((x) => x.code === code) : null;
+    let inSecondary = false;
+    if (!pm && p2) {
+      pm = allModules(p2).find((x) => x.code === code) ?? null;
+      inSecondary = true;
+    }
+    if (!pm) return null;
+
+    const allGroups = [...(electivesPrimary.data ?? []), ...(electivesSecondary.data ?? [])];
+    const electiveGroup = allGroups.find((g) => g.modules.some((x) => x.code === code));
+
+    return {
+      required: pm.required,
+      inSecondary,
+      electiveGroup: electiveGroup && electiveGroup.required_credits > 0 ? electiveGroup : null,
+    };
+  }, [code, progPrimary.data, progSecondary.data, electivesPrimary.data, electivesSecondary.data]);
+
+  const treeProgramId = useMemo(() => {
+    if (!secondaryProgramId) return primaryProgramId || undefined;
+    if (!primaryProgramId) return secondaryProgramId || undefined;
+    const inPrimary = progPrimary.data?.blocks.some((b) => b.modules.some((x) => x.code === code));
+    const inSecondary = progSecondary.data?.blocks.some((b) => b.modules.some((x) => x.code === code));
+    if (inSecondary && !inPrimary) return secondaryProgramId;
+    return primaryProgramId || undefined;
+  }, [code, primaryProgramId, secondaryProgramId, progPrimary.data, progSecondary.data]);
+
   const [semester, setSemester] = useState("");
 
   useEffect(() => {
-    if (!semester && sems.data?.length) setSemester((sems.data.find((s) => s.is_current) ?? sems.data[0]).id);
+    // Học kỳ đang chọn không còn trong danh sách (đổi khóa): chọn lại học kỳ hiện tại.
+    if (sems.data?.length && !sems.data.some((s) => s.id === semester)) setSemester((sems.data.find((s) => s.is_current) ?? sems.data[0]).id);
   }, [sems.data, semester]);
 
   const classes = useApi(() => (semester ? api.classes(code, semester) : Promise.resolve({ data: [], mock: false })), [code, semester]);
 
+  const [finalKind, setFinalKind] = useState<string | null>(() => getCachedFinalAssessmentKind(code) ?? null);
+
+  useEffect(() => {
+    if (mod.data?.final_assessment) {
+      setFinalKind(mod.data.final_assessment);
+      return;
+    }
+    const cached = getCachedFinalAssessmentKind(code);
+    if (cached !== undefined) {
+      setFinalKind(cached);
+      return;
+    }
+    let alive = true;
+    api.outline(code, { cohort: userCohort }).then((outline) => {
+      if (!alive) return;
+      const kind = finalAssessmentKind(outline?.assessments);
+      setCachedFinalAssessmentKind(code, kind);
+      setFinalKind(kind);
+    }).catch(() => {
+      if (!alive) return;
+      setCachedFinalAssessmentKind(code, null);
+      setFinalKind(null);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [code, mod.data?.final_assessment, userCohort]);
+
   if (mod.loading) return <Loading />;
   if (mod.error) return <ErrorBox>{mod.error}</ErrorBox>;
   const m = mod.data;
-  if (!m) return <Empty>{t("common.notFound", { code })} <Link className="text-brand-600 underline" href="/modules">{t("common.back")}</Link></Empty>;
+  if (!m) return <Empty>{t("common.notFound", { code })} <Link className="text-brand-ink underline" href="/modules">{t("common.back")}</Link></Empty>;
 
   const openCount = new Map((m.open_semesters ?? []).map((o) => [o.semester, o.classes]));
   const isEn = m.language_track === "en" || (!m.language_track && m.is_english);
+  const { outline_url: outlineVi, outline_url_en: outlineEn } = m;
+  const outlineUrl = outlineVi || outlineEn;
+  const outlineLinks = outlineVi && outlineEn && outlineVi !== outlineEn
+    ? [{ url: outlineVi, language: t("common.languageVietnamese") }, { url: outlineEn, language: t("common.languageEnglish") }]
+    : outlineUrl ? [{ url: outlineUrl, language: null }] : [];
+  const hasBothOutlines = outlineLinks.length > 1;
+  const hasRequiredBadge = programModuleInfo?.required != null;
+  const syllabusLabel = t("det.syllabusPdf");
+
+  const cohortNum = userCohort ? parseInt(userCohort.replace(/\D/g, ""), 10) : NaN;
+  const requestedYear = !isNaN(cohortNum)
+    ? (cohortNum % 2 !== 0 ? 2000 + cohortNum : 2000 + cohortNum - 1)
+    : (m.outline_year === 2025 ? 2023 : 2025);
 
   return (
     <div className="space-y-4">
-      <div className="card flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0 space-y-1">
-          <Link href="/modules" className="text-xs text-brand-600 hover:underline">{t("det.back")}</Link>
-          <h1 className="text-xl font-bold">
-            <span className="font-mono text-brand-700 dark:text-brand-300">{m.code}</span> {moduleName(m, lang)}
-          </h1>
-          {lang === "en" && m.name_en && m.name_en !== m.name && <p className="text-sm text-slate-500">{m.name}</p>}
-          <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-            <span>{t("common.credits", { n: m.credits })} · {facultyName(m.faculty, lang) || t("common.unknownFaculty")}{m.department ? ` · ${departmentName(m.department, lang)}` : ""}</span>
-            <TypeChip type={m.type} />
-            {isEn && <EnBadge />}
-            {m.is_talent_program && <CntnBadge />}
+      <header className="card grid grid-cols-[minmax(0,1fr)] items-start gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+        <div className="flex items-start gap-3 min-w-0">
+          <BackButton href="/modules" label={t("det.backLabel")} />
+          <div className="min-w-0 space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-xl font-bold">
+                <span className="font-mono text-brand-700 dark:text-brand-300">{m.code}</span> {moduleName(m, lang)}
+              </h1>
+              {(hasRequiredBadge || outlineLinks.length > 0 || m.outline_year) && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <RequiredBadge required={programModuleInfo?.required} lang={lang} />
+                  {m.outline_year && (
+                    <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                      {t("det.outlineCtdtYear", { year: m.outline_year })}
+                    </span>
+                  )}
+                  {outlineLinks.length > 0 && (
+                    <div
+                      className="flex flex-wrap items-center gap-2"
+                      role={hasBothOutlines ? "group" : undefined}
+                      aria-label={hasBothOutlines ? syllabusLabel : undefined}
+                    >
+                      {outlineLinks.map(({ url, language }) => (
+                        <a
+                          key={url}
+                          href={url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center rounded-full border border-emerald-300 px-2 py-1 text-xs font-semibold text-emerald-800 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-950/40"
+                          aria-label={language ? `${syllabusLabel} — ${language}` : syllabusLabel}
+                        >
+                          {syllabusLabel}{language && ` · ${language}`} <span aria-hidden="true" className="ml-1">↗</span>
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            {m.outline_year_fallback && m.outline_year && (
+              <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300">
+                {t("det.outlineFallbackNotice", { requestedYear, actualYear: m.outline_year })}
+              </div>
+            )}
+            <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+              <span>
+                {creditsLine({
+                  credits: m.credits,
+                  finalAssessment: m.final_assessment || finalKind,
+                  faculty: facultyName(m, lang) || t("common.unknownFaculty"),
+                  department: m.department ? departmentName(m, lang) : undefined,
+                }, lang)}
+              </span>
+              <TypeChip type={m.type} />
+              {isEn && <EnBadge />}
+              {m.is_talent_program && <CntnBadge />}
+            </div>
+
+            {programModuleInfo?.electiveGroup && (
+              <div className="rounded-md border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                <strong>{t("det.electiveGroupRequirement")}</strong>
+                {t("mod.electiveReq", {
+                  n: programModuleInfo.electiveGroup.required_credits,
+                  block: programModuleInfo.electiveGroup.block,
+                })}
+              </div>
+            )}
+            {m.counterpart_code && (
+              <p className="text-xs text-slate-500">
+                {t("det.counterpart")}:{" "}
+                <Link href={`/modules/${encodeURIComponent(m.counterpart_code)}`} className="font-mono font-semibold text-brand-700 hover:underline dark:text-brand-300">{m.counterpart_code}</Link>
+              </p>
+            )}
           </div>
-          {m.counterpart_code && (
-            <p className="text-xs text-slate-500">
-              {t("det.counterpart")}:{" "}
-              <Link href={`/modules/${encodeURIComponent(m.counterpart_code)}`} className="font-mono font-semibold text-brand-700 hover:underline dark:text-brand-300">{m.counterpart_code}</Link>
-            </p>
-          )}
         </div>
-        <ModuleActions module={m} />
-      </div>
+        <div className="justify-self-end">
+          <ReportErrorsButton course={m} />
+        </div>
+        <div className="sm:col-span-2">
+          <ModuleActions module={m} timetableSemester={sems.currentYearSecondTerm} />
+        </div>
+      </header>
 
       <div className="grid gap-4 lg:grid-cols-3">
         <section className="card space-y-4 lg:col-span-2">
           <div>
-            <h2 className="mb-1 font-semibold">{t("det.description")}</h2>
+            <div className="mb-1 flex items-center gap-2">
+              <h2 className="font-semibold">{t("det.description")}</h2>
+              {(() => {
+                const d = moduleDescription(m, lang);
+                if (lang === "en" && d.fallback && d.text) {
+                  return (
+                    <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                      Vietnamese description
+                    </span>
+                  );
+                }
+                return null;
+              })()}
+            </div>
             {(() => {
               const d = moduleDescription(m, lang); // VI → description, EN → description_en; thiếu thì dùng bản còn lại và báo rõ
               return (
                 <>
-                  <p lang={d.fallback ? (lang === "en" ? "vi" : "en") : lang} className="whitespace-pre-line text-sm text-slate-700 dark:text-slate-300">{d.text || t("det.noDescription")}</p>
+                  <ModuleDescriptionText
+                    lang={d.fallback ? (lang === "en" ? "vi" : "en") : lang}
+                    text={d.text || t("det.noDescription")}
+                  />
                   {d.fallback && <p className="mt-1 text-xs italic text-slate-400">{t("det.descFallback")}</p>}
                 </>
               );
@@ -81,7 +252,7 @@ export default function ModuleDetailPage() {
             <WorkloadBreakdownView credits={m.credits} type={m.type} showDetails />
           </div>
           <div className="border-t border-slate-100 pt-3 dark:border-slate-800">
-            <PrerequisiteTree code={m.code} currentName={moduleName(m, lang)} />
+            <PrerequisiteTree code={m.code} programId={treeProgramId} />
           </div>
         </section>
         <section className="card self-start">
@@ -90,7 +261,9 @@ export default function ModuleDetailPage() {
             <ul className="space-y-1 text-sm">
               {m.equivalents.map((e) => (
                 <li key={e.code} className="flex justify-between gap-2">
-                  <Link href={`/modules/${encodeURIComponent(e.code)}`} className="text-brand-600 hover:underline">{e.code} · {moduleName(e, lang)}</Link>
+                  <Link href={`/modules/${encodeURIComponent(e.code)}`} className="text-brand-ink hover:underline">
+                    {e.code} · {lang === "en" && !e.name_en ? t("common.englishNameUnavailable") : moduleName(e, lang)}
+                  </Link>
                   <span className="shrink-0 text-slate-500">{t("common.credits", { n: e.credits })}</span>
                 </li>
               ))}
@@ -162,8 +335,14 @@ export default function ModuleDetailPage() {
                     </td>
                     <td className="py-2 pr-3">{c.lecturer ?? "—"}</td>
                     <td className="py-2 pr-3 text-xs">{c.student_groups?.join(", ") || "—"}</td>
-                    <td className={`py-2 pr-3 ${seatsAvailable(c) === 0 ? "text-red-600" : ""}`}>{capacityText(c)}</td>
-                    <td className="py-2">{c.start_date ? `${formatDateVi(c.start_date)} – ${formatDateVi(c.end_date)}` : "—"}</td>
+                    <td className={`py-2 pr-3 ${seatsAvailable(c) === 0 ? "text-red-600" : ""}`}>{capacityText(c, lang)}</td>
+                    <td className="py-2">
+                      {c.start_date
+                        ? c.end_date && c.start_date === c.end_date
+                          ? `${t("tt.oneTime")} · ${formatDateVi(c.start_date)}`
+                          : `${formatDateVi(c.start_date)} – ${formatDateVi(c.end_date)}`
+                        : "—"}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -172,7 +351,7 @@ export default function ModuleDetailPage() {
         )}
       </section>
 
-      <OutlineBlock code={m.code} />
+      <OutlineBlock code={m.code} cohort={userCohort} assessment={m.assessment} textbooks={m.textbooks} />
 
       <section className="card">
         <ModuleReviews moduleCode={m.code} moduleName={m.name} />

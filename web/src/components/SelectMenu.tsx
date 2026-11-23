@@ -127,7 +127,7 @@ export function SelectMenu({
         aria-controls={`${uid}-list`}
         onClick={() => (open ? setOpen(false) : openMenu())}
         onKeyDown={onKey}
-        className={`flex w-full items-center justify-between gap-3 rounded-xl border bg-white px-4 py-2 text-sm font-semibold text-slate-900 shadow-sm transition hover:border-brand-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:bg-slate-900 dark:text-slate-100 ${
+        className={`flex w-full items-center justify-between gap-3 rounded-xl border bg-white px-4 py-2 text-sm font-semibold text-slate-900 shadow-sm transition hover:border-brand-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-focus dark:bg-slate-900 dark:text-slate-100 ${
           open ? "border-brand-500 ring-2 ring-brand-500/20" : "border-slate-200 dark:border-slate-700"
         }`}
       >

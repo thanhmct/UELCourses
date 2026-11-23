@@ -31,6 +31,7 @@ export function CommandPalette() {
   const [search, setSearch] = useState("");
   const [docs, setDocs] = useState<RegulationDoc[]>([]);
   const [articles, setArticles] = useState<ArticleItem[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const path = usePathname();
 
@@ -47,6 +48,7 @@ export function CommandPalette() {
 
   useEffect(() => {
     if (!open || docs.length) return;
+    setError(null);
     api.regulations().then(async (r) => {
       setDocs(r.data);
       const items = await Promise.all(
@@ -56,7 +58,7 @@ export function CommandPalette() {
         }),
       );
       setArticles(items.flat());
-    });
+    }).catch((requestError: unknown) => setError(requestError instanceof Error ? requestError.message : String(requestError)));
   }, [open, docs.length]);
 
   const close = () => {
@@ -83,6 +85,7 @@ export function CommandPalette() {
         placeholder={t("pal.placeholder")}
         className="w-full border-b border-slate-200 bg-transparent px-4 py-3 text-sm outline-none dark:border-slate-700"
       />
+      {error && <p role="status" className="px-4 py-2 text-sm text-rose-700 dark:text-rose-300">{error}</p>}
       <Command.List className="max-h-[60vh] overflow-y-auto p-2 text-sm">
         <Command.Empty className="px-3 py-4 text-slate-500">{t("pal.empty")}</Command.Empty>
         {search.trim().length > 3 && (
@@ -117,7 +120,11 @@ export function CommandPalette() {
           </Command.Group>
         )}
         <Command.Group heading={t("pal.pages")} className={GROUP}>
-          {[...NAV.map((n) => ({ href: n.href, label: t(n.labelKey) })), { href: "/regulations/graph", label: t("pal.graph") }].map((n) => (
+          {[
+            ...NAV.map((n) => ({ href: n.href, label: t(n.labelKey) })),
+            { href: "/feedback", label: t("nav.feedback") },
+            { href: "/regulations/graph", label: t("pal.graph") },
+          ].map((n) => (
             <Command.Item key={n.href} value={`trang ${n.label} ${n.href}`} onSelect={() => { router.push(n.href); close(); }} className={ITEM}>
               {n.label}
             </Command.Item>

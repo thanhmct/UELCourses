@@ -1,0 +1,805 @@
+=== Trang 1 ===
+ĐẠI HỌC QUỐC GIA TP.HCM CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM
+
+TRƯỜNG ĐẠI HỌC KINH TẺ - LUẬT Độc lập — Tự do — Hạnh phúc
+
+Số: 1ể@6/QÐ-ĐHKTL Thành phố Hồ Chí Minh, ngày | tháng 9 năm 2020
+
+QUYẾT ĐỊNH
+
+Ban hành Quy định Ứng dụng công nghệ thông tin trong quản lý, tô chức đào tạo
+
+qua mạng
+
+HIỆU TRƯỞNG TRƯỜNG ĐẠI HỌC KINH TẾ - LUẬT
+
+Căn cứ Luật Giáo dục đại học năm 2012 sửa đôi bồ sung năm 2018;
+
+Căn cứ Nghị định số 72/2013/NĐ-CP ngày 15/07/2013 của Chính phủ về việc quản lý, cung
+
+cấp sử dụng dịch vụ Internet và thông tin trên mạng;
+
+Căn cứ Nghị định số 27/2018/NĐ-CP ngày 01/03/2018 của Chính phú về việc sửa đối, bồ
+
+sung một số điều của Nghị định số 72/2013/NĐ-CP của Chính phủ về quản lý, cung cấp, sử dụng
+
+địch vụ internet và thông tin trên mạng;
+
+Căn cứ Thông tư số 12/2016/TT-BGDĐT ngày 24/06/2016 của Bộ Giáo dục và Đào tạo quy
+
+định Ứng dụng công nghệ thông tin trong quản lý, tổ chức đào tạo qua mạng;
+
+Căn cứ Quyết định số 262/0Đ-ĐHQG ngày 20/04/2017 của Giám đốc ĐHQG-HCM về việc
+
+bạn hành Quy chế đào tạo đại học;
+
+Căn cứ Quyết định số 789/QĐ-ĐHKTL ngày 09/08/2017 của Hiệu trưởng Trường Đại học
+
+Kinh tế - Luật về việc ban hành Quy chế đào tạo đại học;
+
+Căn cứ Quyết định số 1310/QĐ-ĐHKTL ngày 31/10/2019 của Hiệu trưởng Trường Đại học
+
+Kinh tế -Luật về việc ban hành Ouy định Quản trị tài sản trí tuệ trong Trường ĐĨ Kinh tế -Luật;
+
+Theo đề nghị của Trưởng phòng Đào tạo và Trưởng phòng Công nghệ thông tin,
+
+QUYẾT ĐỊNH:
+
+Điều 1. Ban hành kèm theo Quyết định này Quy định Ứng dụng công nghệ thông tin trong
+
+quản lý, tổ chức đào tạo qua mạng.
+
+Điều 2. Quyết định này có hiệu lực kể từ ngày ký, áp dụng từ năm học 2020 — 2021.
+
+=== Trang 2 ===
+Điều 3. Các ông (bà) Trưởng phòng Đào tạo, Trưởng phòng Công nghệ thông tin, Trưởng
+
+các Khoa, Bộ môn, các đơn vị và cá nhân thuộc Trường Đại học Kinh tế - Luật chịu trách nhiệm
+
+thi hành Quyết định này.
+
+”⁄
+
+Nơi nhận:
+
+- Như điều 3;
+
+- Lưu: VT,P.ĐT, he
+
+s 4
+
+<<” Dũng
+
+=== Trang 3 ===
+CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM
+
+Độc lập - Tự do — Hạnh phúc
+
+tại Trường Đại học Kinh tế - Luật, ĐHQG-HCM
+
+(Ban hành kèm theo Quyết định số 198/QĐ-ĐHKTL ngày 41. tháng...3..năm 2020
+
+của Hiệu trưởng Trường Đại học Kinh tế - Luật)
+
+Chương 1
+
+NHỮNG QUY ĐỊNH CHUNG
+
+Điều 1. Phạm vi điều chính và đối trợng áp dụng
+
+1. Văn bản này quy định về ứng dụng công nghệ thông tin trong quản lý, tổ chức đào
+
+tạo qua mạng bao gồm: những quy định chung; tổ chức và quản lý đào tạo; chế độ và chính sách
+
+đối với giảng viên, người học, quản trị hệ thống: tổ chức thực hiện.
+
+2. Quy định này áp dụng đối các chương trình đào tạo tại Trường Đại học Kinh tế - Luật
+
+(ĐHQG-HCM).
+
+Điều 2. Mục tiêu
+
+1. Tăng cường ứng dụng công nghệ thông tin và truyền thông trong quản lý, tổ chức đào tạo.
+
+2. Phát triển năng lực tự học, tự nghiên cứu và đáp ứng nhu cầu học tập mọi lúc, mọi nơi
+
+của người học.
+
+3. Đa dạng hoá, đổi mới phương pháp dạy - học nhằm nâng cao chất lượng, hiệu quả đào
+
+tạo.
+
+Điều 3. Giải thích từ ngữ
+
+Trong Quy định này, các từ ngữ dưới đây được hiểu như sau:
+
+1. Ứng dụng công nghệ thông tin trong đào tạo qua mạng là việc sử dụng các trang thiết bị
+
+điện tử, phần mềm, học liệu điện tử và mạng viễn thông (chủ yếu là mạng Internet) hỗ trợ các
+
+hoạt động dạy và học nhằm đổi mới phương pháp dạy - học, nâng cao hiệu quả công tác đào tạo.
+
+Một số mô hình ứng dụng công nghệ thông tin trong đào tạo qua mạng phô biến là:
+
+" a. Đào tạo kết hợp (Blended learning) là việc kết hợp phương thức học tập điện tử (e-
+
+Learning) với phương thức dạy - học truyền thống (theo đó người dạy và người học cùng có mặt)
+
+nhằm nâng cao hiệu quả công tác đào tạo và chất lượng giáo dục.
+
+=== Trang 4 ===
+b. Học tập điện tử (e-Learning) là hình thức học tập qua đó người học có thể tự học mọi lúc,
+
+học mọi nơi thông qua các học liệu điện tử đa phương tiện (lời giảng, lời thuyết minh, âm thanh,
+
+hình ảnh, vidco, đồ họa, các bài tập tình huống (case studies)...). Các hình thức học tập như m-
+
+Learning (học thông qua thiết bị di động: điện thoại thông minh, máy tính bảng, màn hình tương
+
+tác), u-Learning (học thông qua các phương thức tương tác thực tế ảo), hay smart-Learning
+
+(phương tiện học tập thông minh) đều là các hình thái của học tập điện tử e-Learning. Học qua
+
+các công cụ dạy học trực tuyến theo thời gian thực được tích hợp trên hệ thống e-Learning.
+
+2. Học liệu số (hay học liệu điện tử) là tập hợp các phương tiện điện tử phục vụ dạy và học,
+
+bao gồm: Giáo trình điện tử, tài liệu điện tử (bản trình chiếu, bảng dữ liệu, các tệp âm thanh, hình
+
+ảnh, video, bài giảng điện tử, ngân hàng câu hỏi và bài kiểm tra đánh giá điện tử), phần mềm dạy
+
+học, thí nghiệm mô phỏng và các học liệu số hóa khác.
+
+3. Hệ thống giảng dạy qua mạng là hệ thống hỗ trợ cho dạy và học, bao gồm các thành phần
+
+chính như: công đào tạo trực tuyến, hệ thống quản lý học tập, học liệu số. các phương thức tương
+
+tác (diễn đàn trao đồi, thảo luận trực tuyến...) hệ thống kiểm tra, đánh giá người học, người dạy,
+
+quản trị hệ thống. !
+
+4. Hệ thống quản lý học tập (LMS - Learning Management System): là hệ thống phần mềm
+
+cho phép tổ chức, quản lý và triển khai các hoạt động đào tạo qua mạng từ lúc nhập học đến khi
+
+người học hoàn thành khóa học qua mạng; giúp nhà trường theo dõi và quản lý quá trình học tập
+
+của người học; tạo ra môi trường dạy và học ảo; giúp giảng viên giao tiếp với người học trong
+
+việc giao bài tập, trợ giúp, giải đáp; giúp người học có thể theo dõi được tiến trình học tập, tham
+
+gia các nội dung học qua mạng, kết nối với giáo viên và các học viên khác đề trao đồi bài.
+
+5. Hệ thống quản lý nội dung học tập (LCMS - Learning Content Management System): là
+
+hệ thống phần mềm quản lý khơ nội dung học tập qua mạng, cho phép tổ chức lưu trữ và phân
+
+phát các nội dung học tập tới người học. Hệ thống quản lý nội dung học tập có sự phối hợp chặt
+
+chẽ với hệ thống quản lý học tập (để truyền tải nội dung học tập tới người học) và phằn mềm
+
+công cụ soạn bài giảng (để tạo ra các nội dung học tập).
+
+=== Trang 5 ===
+Chương 2
+
+TÔ CHỨC GIẢNG DẠY VÀ ĐÁNH GIÁ KÉT QUÁ HỌC TẬP
+
+Điều 4. Kế hoạch giáng dạy
+
+1. Đề cương chi tiết của học phần mô tả rõ nội dung, mục tiêu của học phần và yêu cầu về
+
+năng lực mà người học đạt được sau khi kết thúc học phần; kế hoạch học tập, giảng dạy qua
+
+mạng, phương pháp đánh giá người học và hệ thống bảng tiêu chí đánh giá.
+
+2. Kế hoạch giảng dạy được cung cấp cho người học trước khi lớp học bắt đầu, bao gồm:
+
+Định hướng đầu lớp học; Những nội dung thực hiện qua mạng, những nội dung thực hiện trên
+
+lớp học truyền thông: Tài liệu học tập; Công cụ, phương thức tương tác; Nhiệm vụ của người
+
+học; Hình thức đánh giá; Thời hạn hoàn thành các nội dung học tập.
+
+Điều 5. Nội dung giảng dạy qua mạng
+
+1. Nội dung giảng dạy phải đáp ứng yêu cầu của đáp ứng chuẩn đầu ra môn học được đề ra
+
+trong đề cương chi tiết và kế hoạch giảng dạy của môn học đã được lãnh đạo Khoa, Bộ môn thông
+
+qua.
+
+2. Nội dung ứng dụng công nghệ thông tin để dạy và học qua mạng được phân theo 03 cấp
+
+độ (chi tiết yêu cầu từng cấp độ được thể hiện trong phụ lục 1 đính kèm Quy định này). Giảng
+
+viên đăng ký cấp độ thực hiện cho môn học.
+
+Điều 6. Nội dung chuẩn bị để thực hiện dạy và học qua mạng đối với từng môn học
+
+1. Tên môn học, đối tượng học, định hướng môn học.
+
+2. Học liệu điện tử, giáo trình. Học liệu điện tử phải có nội dung bám sát mục tiêu đào tạo,
+
+dễ sử dụng, đáp ứng được nhu cầu tự học của người học.
+
+3. Bài giảng dạng video/audio. Bài giảng video của bài học có độ dài tối thiểu 5 phút, tối đa
+
+30 phút. Nếu bài học cần nhiều thời gian giảng hơn thì chia làm nhiều video.
+
+4. Diễn đàn trao đổi; thảo luận trực tuyến.
+
+5. Bài tập trắc nghiệm khách quan, bài tập thực hiện qua mạng nhằm kiểm tra, đánh giá
+
+năng lực, kiến thức mà người học tiếp thu, được thực hiện ngay trong tuần triển khai dạy — học
+
+qua mạng. Bài tập trắc nghiệm khách quan gồm từ 15 đến 30 câu hỏi.cho mỗi lần kiểm tra và
+
+tổng thời gian tối đa để làm bài là 30 phút; thời gian làm bài tập do giảng viên quy định.
+
+6. Bài tập lớn hoặc tiều luận (không bắt buộc cho tất cả các môn học).
+
+li ñ z¿ ở th ñ Ầ: + .- Ầ ˆ
+
+7. Phiêu khảo sát ý kiên phản hôi của người học về môn học.
+
+=== Trang 6 ===
+Điều 7. Phương thức tương tác
+
+Có nhiều phương thức ứng dụng công nghệ thông tin đề tương tác trong quá trình dạy và
+
+^ TT; †h›.Ã À ^: 4
+
+học. Tùy thuộc vào nội dung, thời lượng và số lượng người học tham gia mà giảng viên có th
+
+lựa chọn các phương thức tương tác phù hợp.
+
+1. Diễn đàn trao đổi
+
+a. Diễn đàn trao đồi là nơi người dạy và người học có thể trao đổi, thảo luận và chia sẻ
+
+về nội dung học tập được thực hiện trên hệ thống E-Learning của Trường.
+
+b. Nội dung bài viết cần rõ ràng, ngôn từ trong sáng, thể hiện sự tôn trọng, có thái độ
+
+đúng mực và phải phù hợp với quy định của việc sử dụng hệ thống E-Learning.
+
+c. Nghiêm cấm sử dụng hệ thống giảng dạy E-Learning làm nơi thảo luận, truyền bá các
+
+thông tin không lành mạnh, phản động, khiêu dâm, chống lại đường lối, chính sách của Đảng
+
+và Nhà nước Việt Nam, vi phạm thuần phong mỹ tục của dân tộc Việt Nam, các thông tin xâm
+
+phạm đến đời tư của các thành viên sử dụng hệ thống. các thông tin đưa lên với mục đích kiện
+
+cáo, bôi nhọ, gây dư luận....
+
+d. Quản trị hệ thống không chịu trách nhiệm về bản quyền của các nội dung được chia
+
+sẻ trên diễn đàn trao đồi.
+
+2. Chat
+
+a. Chat là công cụ trao đổi, thảo luận và chia sẻ về nội dung học tập giữa người dạy và
+
+người học được thực hiện trên hệ thống E-Learning của Trường.
+
+b. Trước khi trao đổi, người dạy và người học cần xác định chủ đề, quy định nội dung
+
+cần thảo luận. Nội dung trao đổi phải phù hợp với quy định của việc sử dụng hệ thống E-
+
+Learning.
+
+c. Nội dung trao đổi cần rõ ràng, ngôn từ trong sáng, thể hiện sự tôn trọng và có thái độ
+
+đúng mực với giảng viên và người học khác.
+
+d. Quản trị hệ thống không chịu trách nhiệm về các nội dung được chia sẻ bằng công cụ
+
+Chat.
+
+3. Thảo luận bằng công cụ dạy và học trực tuyến theo thời gian thực
+
+a. Công cụ dạy học trực tuyến theo thời gian thực (Real Time Confcerence - RTC) như
+
+BigBlueButton, Zoom, Google Meet.... là công cụ trao đổi. thảo luận trực tuyến có tính tương
+
+tác cao trên mạng giữa người dạy và người học được tích hợp vào hệ thống E-Iearning của
+
+Trường.
+
+b. Khi lựa chọn hình thức này, giảng viên đăng ký thời gian thực hiện và thể hiện cụ thể
+
+tơng đề cương chị tiết của môn học.
+
+=== Trang 7 ===
+c. Nội dung trao đổi cần rõ ràng, ngôn từ trong sáng, thể hiện sự tôn trọng và có thái độ
+
+đúng mực.
+
+d. Quản trị hệ thống không chịu trách nhiệm về các nội dung được chia sẻ bằng công cụ dạy
+
+học trực tuyến theo thời gian thực.
+
+Điều 8. Đánh giá kết quả học tập
+
+Các hình thức đánh giá và trọng số của từng loại điểm do giảng viên đề xuất, Khoa phụ
+
+trách chuyên môn phê duyệt và gửi về đơn vị quản lý đào tạo theo quy trình hiện hành.
+
+Điểm đánh giá quá trình học tập qua mạng của người học được tính là một điểm đánh giá
+
+thường xuyên của học phần với trọng số tối đa không quá 50% tổng điểm của học phần được thể
+
+hiện dưới dạng cột điểm quá trình và giữa kỳ. Tùy theo đặc thù môn học, Khoa chuyên môn đề
+
+xuất tỷ lệ đánh giá online cho quá trình, giữa kỳ trong đề cương môn học và gửi về đơn vị quản
+
+lý đào tạo theo quy trình hiện hành.
+
+Chương 3
+
+QUYỀN HẠN VÀ TRÁCH NHIỆM
+
+Điều 9. Quyền và trách nhiệm của Trường
+
+1. Xác định các yêu cầu của việc ứng dụng công nghệ thông tin trong quản lý, tổ chức đào
+
+tạo qua mạng: phát triển các hệ thống E-Learning, LMS, LCMS,...
+
+2. Xác định các chương trình đào tạo, các lớp học, các yêu cầu ứng dụng công nghệ thông
+
+tin trong quản lý, tổ chức đào tạo qua mạng.
+
+3. Phê duyệt danh sách những môn học các Khoa đăng ký thực hiện giảng dạy qua mạng.
+
+4. Xây dựng các chính sách, quy định để khuyến khích giảng viên, sinh viên ứng dụng công
+
+nghệ thông tin dạy và học qua mạng.
+
+5. Tổ chức đào tạo về phương pháp và kỹ năng cần thiết cho giảng viên, trợ giảng để có thể
+
+ứng dụng công nghệ thông tin giảng dạy qua mạng.
+
+6. Thực hiện kiểm tra, giám sát và chỉ trả các chế độ cho giảng viên tham gia ứng dụng
+
+công nghệ thông tin giảng dạy qua mạng theo quy định này và Quy chế chỉ tiêu nội bộ của Trường.
+
+7. Thực hiện theo các quy trình để xem xét lại các quyết định về công nhận chuyền đổi kết
+
+quả học tập theo đề nghị của người học và công bố công khai cho người học.
+
+8. Thực hiện công khai quy định giảng dạy qua mạng trên trang thông tin của Trường và
+
+chịu sự kiểm tra, giám sát của các cơ quan chức năng có thẳm quyền theo quy định của pháp luật.
+
+=== Trang 8 ===
+Điều 10. Quyền và trách nhiệm của Khoa, Bộ môn trực thuộc
+
+1. Triển khai kế hoạch ứng dụng công nghệ thông tin trong tổ chức đào tạo, dạy và học qua
+
+2. Phê duyệt đề xuất, tổ chức thẩm định, thông qua cấp độ triển khai giảng dạy qua mạng
+
+các môn học do Khoa, Bộ môn phụ trách.
+
+3. Kiểm tra, quản lý hoạt động giảng dạy của giảng viên tham gia thực hiện giảng dạy qua
+
+mạng.
+
+4. Báo cáo tình hình triển khai hoạt động ứng dụng công nghệ thông tin trong tổ chức đào
+
+tạo và giảng dạy qua mạng của đơn vị theo yêu cầu của nhà trường.
+
+Điều 11. Quyền và trách nhiệm của giảng viên |
+
+1. Quyền của giảng viên
+
+a. Được hỗ trợ kinh phí xây dựng học liệu số lần đầu theo môn học. Đối với môn học có
+
+nhiều giảng viên cùng tham gia xây dựng học liệu số thì chỉ hỗ trợ 1 lằn cho nhóm giảng viên.
+
+Tiết giảng dạy qua mạng của giảng viên được tính vào giờ giảng của học phần trong chương trình
+
+đào tạo đã được phê duyệt (cụ thể được thể hiện trong phụ lục 1 về cấp độ triển khai).
+
+b. Được bồi dưỡng nâng cao năng lực biên soạn học liệu số; kỹ năng giảng dạy qua mạng:
+
+kỹ năng quản lý, theo dõi, định hướng, hướng dẫn và giải đáp cho người học qua mạng: kỹ năng
+
+sử dụng hệ thống quản lý học tập qua mạng và các phương tiện công nghệ thông tin phục vụ giảng
+
+dạy.
+
+c. Được ưu tiên sử dụng trang thiết bị, cơ sở vật chất kỹ thuật phục vụ công tác giảng dạy:
+
+được hỗ trợ tạo điều kiện áp dụng các phương pháp và công nghệ dạy học tiên tiền trong điều kiện
+
+của Trường và phù hợp với hình thức giảng dạy qua mạng.
+
+2. Trách nhiệm của giảng viên
+
+a. Xây dựng đề cương môn học, xây dựng học liệu số, tạo diễn đàn trao đổi, trả lời câu hỏi
+
+và giải đáp các thắc mắc đối với những vấn đề chung của môn học theo cấp độ đăng ký đã được
+
+phê duyệt.
+
+b. Thực hiện nghiêm túc, đầy đủ các quy chế đào tạo, quy định về tổ chức đào tạo, giảng
+
+dạy qua mạng.
+
+c. Chịu trách nhiệm về nội dung bài giảng và các vấn đề thảo luận đưa lên hệ thống F-
+
+l earning.
+
+d. Tham gia thực hiện kế hoạch ứng dụng công nghệ thông tin trong tổ chức đào tạo. giảng
+
+dạy qua mạng của Khoa và Trường triển khai.
+
+=== Trang 9 ===
+Điều 12. Quyền và trách nhiệm của trợ giảng
+
+1. Quyền của trợ giảng
+
+a. Được hưởng các quyền lợi chung và ưu đãi do Nhà nước quy định đối với trợ giảng, các
+
+chế độ bồi dưỡng, thù lao theo quy chế chi tiêu nội bộ hiện hành của Trường.
+
+b. Được bồi dưỡng kỹ năng dạy học qua mạng; kỹ năng quản lý, theo dõi, định hướng,
+
+hướng dẫn và giải đáp người học qua mạng; kỹ năng sử dụng thành thạo hệ thống quản lý học tập
+
+qua mạng và các phương tiện công nghệ thông tin phục vụ cho giảng dạy.
+
+c. Được ưu tiên sử dụng trang thiết bị, cơ sở vật chất kỹ thuật phục vụ công tác giảng dạy
+
+qua mạng: được hỗ trợ tạo điều kiện áp dụng các phương pháp và công nghệ dạy học tiên tiền
+
+trong điều kiện của Trường và phù hợp với hình thức giảng dạy qua mạng.
+
+2. Trách nhiệm của trợ giảng
+
+a. Hỗ trợ giảng viên theo sự phân công để thực hiện các nhiệm vụ giảng dạy như: hỗ trợ, tư
+
+vấn cho người học về khóa học, bài học, kỹ thuật; kiểm soát các thông tín người học đưa lên hệ —_
+
+thông giảng dạy E-Learning: kiêm tra, đánh giá người học;... -
+
+b. Thực hiện nghiêm túc, đây đủ các quy chê đào tạo, quy định vê tô chức đào tạo, giảng vỊH
+
+dạy qua mạng.
+
+c. Chịu trách nhiệm về nội dung và các vấn đề thảo luận đưa lên hệ thống E-Learning. <<
+
+——
+
+—
+
+d. Tham gia thực hiện kế hoạch ứng dụng công nghệ thông tin trong tổ chức đào tạo, giảng
+
+dạy qua mạng của Khoa và Trường triển khai.
+
+Điều 13. Quyền và trách nhiệm của quân trị khóa học
+
+1. Quản trị khóa học có trách nhiệm tạo lập khóa học, phân quyền cho giảng viên, người
+
+học và phối hợp với giảng viên để hướng dẫn người học đăng ký học tại hệ thống E-Learning
+
+ngay trong tuần đầu tiên của học kỳ.
+
+2. Quản trị khóa học có quyền đưa ra khỏi hệ thống các nội dung, thông tin trái quy định
+
+và không phù hợp với mục đích của hệ thống giảng dạy E-Learning mà không cần thông báo.
+
+3. Quản trị khóa học theo dõi, giám sát khóa học; phối hợp, hỗ trợ các đơn vị chức năng
+
+trong Trường thực hiện công tác thanh tra, kiểm tra kế hoạch giảng dạy qua mạng.
+
+Điều 14. Quyền và trách nhiệm của quản trị hệ thống
+
+1. Cán bộ kỹ thuật quản trị hệ thống phải am hiểu các hệ thống ứng dụng công nghệ thông
+
+tin liên quan đến giảng dạy qua mạng: được hướng dẫn, chuyển giao công nghệ để quản trị, vận
+
+hành hệ thống công nghệ thông tin đám bảo hoạt động ổn định.
+
+2. Quản trị hệ thống có nhiệm vụ xây dựng quy trình lưu trữ, bảo mật cơ sở dữ liệu và nội
+
+dung bài giảng của giảng viên.
+
+=== Trang 10 ===
+3. Quản trị hệ thống chịu trách nhiệm lưu trữ toàn bộ quá trình tổ chức dạy học và xác nhận
+
+thông tin khoá học khi có yêu cầu.
+
+4. Quản trị hệ thống tạo và cấp phát tài khoản cho toàn bộ người dùng trên hệ thống.
+
+5. Quản trị hệ thống có nhiệm vụ hỗ trợ đào tạo và tư vấn cho người học, giảng viên sử dụng
+
+hiệu quả hệ thống băng cách cung cấp hệ thống tài liệu hướng dẫn sử dụng hệ thống dạy và học
+
+qua mạng của nhà trường.
+
+6. Quản trị hệ thống hỗ trợ giảng viên chuyển điểm của các bài kiểm tra qua mạng khi giảng
+
+viên sử dụng các công cụ giảng dạy được tích hợp trên hệ thống E-Learning và xuất ra dạng file
+
+bảng điểm mà nhà trường hiện tại đang sử dụng.
+
+Điều 15. Quyền và trách nhiệm của người học
+
+1. Người học được cung cấp tài khoản, tiếp cận các tài liệu học tập được số hoá phục vụ
+
+học tập, được giải đáp thắc mắc trên diễn đàn trao đồi.
+
+2. Người học dùng họ tên khai sinh và mã sinh viên khi tham gia học tập qua mạng.
+
+3. Mỗi thành viên có quyền bồ sung các thông tin khác trong hồ sơ cá nhân như: hình đại
+
+diện, chữ ký thuộc quyền sở hữu riêng.
+
+4. Người học tự bảo vệ tài khoản của mình, tự chịu trách nhiệm về các thông tin đưa lên hệ
+
+thống và chịu trách nhiệm về việc đề người khác sử dụng tài khoản của mình sai mục đích, không
+
+đúng với quy định.
+
+5. Người học phải hoàn thành các nhiệm vụ do giảng viên giao trên hệ thống E-Learning
+
+theo đúng thời hạn quy định.
+
+6. Người học qua mạng có các quyền và nghĩa vụ phát sinh từ quy chế đào tạo do Trường
+
+ban hành.
+
+7. Người học có nghĩa vụ tuân thủ pháp luật về sở hữu trí tuệ và nghĩa vụ tôn trọng bí mật
+
+đời tư cũng như các quy định khác của pháp luật trong quá trình tham gia học qua mạng.
+
+8. Người học chịu trách nhiệm cá nhân trong việc sử dụng tài khoản E-Learning để thực hiện
+
+các hành vi ngoài khuôn khô công việc học tập qua mạng tại UEI.
+
+Chương 4
+
+TÔ CHỨC THỰC HIỆN VÀ XỬ LÝ VI PHAM
+
+Điều 16. Tổ chức thực hiện
+
+1. Căn cứ quy định này, lãnh đạo các Khoa, Bộ môn và các đơn vị chức năng chủ động xây
+
+dựng kế hoạch triển khai xây dựng học liệu số, đưa các học phần ứng dụng công nghệ thông tn
+
+=== Trang 11 ===
+dạy và học qua mạng vào chương trình đào tạo, tập huấn nâng cao năng lực cho giảng viên, tư
+
+vấn và hỗ trợ người học, quản lý và giám sát quá trình dạy và học qua mạng đối với các môn học
+
+do đơn vị quản lý chuyên môn.
+
+2. Nhà trường sẽ điều chỉnh, bỏ sung quy định này khi có những quy định mới của Bộ Giáo
+
+dục và Đào tạo, ĐHQG TP. HCM và những vấn đề phát sinh trong quá trình thực hiện.
+
+3. Các phụ lục đính kèm quy định này được rà soát và ban hành hằng năm theo quyết định
+
+của Hiệu trưởng.
+
+Điều 17. Xử lý vi phạm |
+
+1. Nghiêm cấm các hành vi lợi dụng ứng dụng công nghệ thông tin tổ chức quản lý và đào
+
+tạo qua mạng để cung cấp thông tin trên mạng nhằm mục đích:
+
+a. Chống lại Nhà nước Cộng hòa xã hội chủ nghĩa Việt Nam; gây phương hại đến an ninh
+
+quốc gia, trật tự an toàn xã hội; phá hoại khối đại đoàn kết dân tộc; tuyên truyền chiến tranh,
+
+khủng bố; gây hận thù, mâu thuẫn giữa các dân tộc, sắc tộc, tôn giáo;
+
+b. Tuyên truyền, kích động bạo lực, dâm ô, đồi trụy, tội ác, tệ nạn xã hội, mê tín dị đoan,
+
+ˆ Ni
+
+phá hoại thuân phong, mỹ tục của dân tộc; kề
+
+c. Tiết lộ bí mật nhà nước, bí mật quân sự, an ninh, kinh tế, đối ngoại và những bí mật khác ..
+
+do pháp luật quy định; -LUẬ
+
+d. Đưa thông tin xuyên tạc, vu khống, xúc phạm uy tín của tổ chức, danh dự vànhân phẩm. —<
+
+của cá nhân;
+
+e. Quảng cáo, tuyên truyền, mua bán hàng hóa, dịch vụ bị cấm; truyền bá tác phẩm báo chí,
+
+văn học, nghệ thuật, xuất bản phẩm bị cắm;
+
+£. Giả mạo tổ chức, cá nhân và phát tán thông tin giả mạo, thông tim sai sự thật xâm hại đến
+
+quyền và lợi ích hợp pháp của tổ chức, cá nhân.
+
+2. Nghiêm cấm các hành vi tạo đường dẫn trái phép đối với tên miền hợp pháp của tổ chức,
+
+cá nhân; tạo, cải đặt, phát tán phần mềm độc hại, vi-rút máy tính; xâm nhập trái phép, chiếm
+
+quyền điều khiển hệ thống thông tin, tạo lập công cụ tấn công trên mạng.
+
+3. Nghiêm cấm hành vi vi phạm quyền sở hữu trí tuệ.
+
+4. Các vi phạm, tùy theo mức độ, sẽ bị quản trị hệ thống nhắc nhở, tước quyền đăng bài,
+
+cảnh cáo trên toàn hệ thống, tước quyền truy cập hệ thống và xử lý kỷ luật theo quy định của Nhà
+
+lài
+
+=== Trang 12 ===
+PHỤ LỤC 1
+
+MÔ TẢ CÁC CÁP ĐỘ TRIỂN KHAI ỨNG DỤNG CÔNG NGHỆ THÔNG TIN
+
+TRONG DẠY VÀ HỌC QUA MẠNG
+
+NĂM HỌC 2020 - 2021
+
+(Đính kèm Quyết định số T# ngày H/09/2020 của Hiệu trưởng Trường ĐH Kinh
+
+tế - Luật về việc ban hành Quy định Ứng dụng công nghệ thông tin trong quản lý, tổ
+
+chức đào tạo qua mạng)
+
+STT Tiêu chí Cấp độ 1 | Cấpđộ2 | Cấp độ 3
+
+1. |Có đề cương chỉ tiết và kế hoạch giảng dạy Có Có Có
+
+theo mâu đã được sô hóa ở dạng file word
+
+hoặc pdf.
+
+Có slide bài giảng (dạng powerpoint, pdf
+
+hoặc bản trình chiếu tương ứng) đáp ứng yêu
+
+cầu của nhà trường:
+
+Có giáo trình và danh mục tài liệu tham khảo.
+
+2. Video chip giới thiệu môn học theo chuẩn của Có Có Có
+
+Trường (phòng dạy và học sô hô trợ quay).
+
+s. Nội dung giảng dạy (bài giảng. bài tập, tình | Từ 15% Từ 30% Từ 45%
+
+huống,...) được số hóa ở dạng video và được | nội dung | nội dung | nội dung
+
+Khoa và Bộ môn thẩm định. giảng dạy | giảng dạy | giảng dạy
+
+môn học | môn học môn học
+
+4. Có diễn đàn trao đồi, giải đáp thắc sinh viên Có Có Có
+
+trên hệ thống E-Learning
+
+5. | Có câu hỏi trắc nghiệm khách quan và bài tập Có Có Có
+
+đê đánh giá mức độ tiêệp thu của sinh viên các
+
+nội dung đã giảng dạy qua mạng
+
+=== Trang 13 ===
+PHỤ LỤC 2
+
+MÔ TẢ CHÉ ĐỘ KHUYÉẾN KHÍCH
+
+TRIẺN KHAI ỨNG ĐỤNG CÔNG NGHỆ THÔNG TÍN TRONG ĐẠY VÀ HỌC
+
+QUA MẠNG NĂM HỌC 2020 — 2021
+
+(Đính kèm Quyết định sốTẾ ngày!/09/2020 của Hiệu trưởng Tì rường ĐH Kinh
+
+tế - Luật về việc ban hành Quy định Ứng dụng công nghệ thông tin trong quản lý,
+
+tổ chức đào tạo qua mạng)
+
+Chuyên đôi
+
+” sangtiết | Kinh phí hỗ
+
+STT| Câấâpđộ Ghi chú
+
+giảng trực trợ (VNĐ)
+
+tiếp
+
+1 Cấp độ 1 10% 1.000.000 | Môn học đã được hỗ trợ kinh phí ở
+
+- cấp độ thấp, khi triển khai cấp độ
+
+2 Cấp độ 2 15% 2.000.000 \ ~ ,
+
+cao hơn thì được hồ trợ kinh phí
+
+20% phần chênh lệch. Ví dụ: Môn học A,
+
+đã triển khai đạt cấp độ 2 nhận kinh
+
+3 Cấp độ 3 3.000.000 phí hô trợ 2.000.000 đông, sau khi
+
+hoàn tất các yêu cầu và được công
+
+nhận đạt cấp độ 3 thì kinh phí hỗ trợ Ñ
+
+thêm là 1.000.000 đồng.
+
+Hồ sơ thanh toán kinh phí bao gồm:
+
+- Biên bản thẩm định cấp độ.
+
+- Bảng kê chi tiết kinh phí hỗ trợ theo từng môn học và cấp độ tương ứng theo mẫu 01/ĐAE-
+
+TC.
+
+(Lưu ý: Ban điều hành đề án E-Learning tổng hợp theo từng học kỳ và gửi về phòng KHTC
+
+đề thanh toán).
+
+=== Trang 14 ===
+PHỤ LỤC 3
+
+i QUY TRÌNH TRIẺN KHAI ì
+
+ỨNG DỤNG CÔNG NGHỆ THÔNG TIN TRONG DẠY VÀ HỌC QUA MẠNG
+
+NĂM HỌC 2020 — 2021
+
+(Đính kèm Quyết. định số Iá*ÀWHungày.4(/09/2020 của Hiệu trưởng Trường ĐH
+
+Kinh tế - Luật về việc ban hành 'Quy định Ứng dụng công nghệ thông tin trong
+
+quản lý, tổ chức đào tạo qua mạng)
+
+Bước 1: Phòng Đào tạo triển khai kế hoạch năm học, học kỳ và ra thông báo hướng dẫn việc
+
+đăng ký các môn học ứng dụng công nghệ thông tim trong dạy và học quan mạng.
+
+Bước 2: Khoa/Bộ môn trực thuộc triển khai cho giảng viên, nhóm giảng viên đăng ký cấp
+
+độ ứng dụng công nghệ thông tin trong dạy. và học qua mạng đối với các môn học.
+
+Bước 3: Lãnh đạo Bộ môn và Ban Chủ nhiệm Khoa (Bộ môn trực thuộc) xem xét, phê duyệt
+
+và gửi danh sách đăng ký cho Phòng Đào tạo.
+
+Bước 4: Phòng Đào tạo tổng hợp danh sách trình Ban Giám hiệu có ý kiến và phê duyệt.
+
+Bước 5: Phòng Đào tạo gửi danh sách các môn học được Ban Giám hiệu cho ý kiến và phê
+
+duyệt đến các Khoa, Bộ môn, Phòng CNTT, Thư viện và các đơn vị có liên quan để
+
+phối hợp triển khai xây dựng học liệu số và các nội dung cần thiết cho triển khai dạy
+
+và học qua mạng theo quy định.
+
+Bước 6: Phòng CNTT và các đơn vị có liên quan thống nhất kế hoạch phối hợp triển khai
+
+ghi hình bài giảng và các nội dung khác (nếu có).
+
+Giảng viên xây dựng học liệu số, phối hợp với Phòng CNTT đưa học liệu số lên hệ
+
+thống UEL E-Learning.
+
+Bước 7: Triển khai giảng dạy.
+
+Bước 8: Trưởng Bộ môn và Ban chủ nhiệm khoa kiểm tra, đánh giá kết quả thực hiện và báo
+
+cáo xác nhận mức độ thực hiện theo cấp độ đăng ký.
+
+Phòng KT&ĐBCL phối hợp với Phòng CNTT và các đơn vị có liên quan khảo sát,
+
+đánh giá chất lượng dạy và học qua mạng.
+
+Bước 9: Phòng Đào tạo tổng hợp, phối hợp với Phòng CNTT và các đơn vị có liên quan báo
+
+cáo kết quả thực hiện đối với các môn học của các Khoa/Bộ môn và chuyển Phòng
+
+KH-TC hoàn tất thủ tục thanh toán thù lao cho giảng viên.

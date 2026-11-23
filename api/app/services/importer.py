@@ -7,6 +7,7 @@ from app.services.legacy import skip_legacy_code
 
 import json
 import re
+import unicodedata
 from datetime import date, datetime
 from typing import Any
 
@@ -17,6 +18,7 @@ from app.models import ClassSection, Equivalent, Lesson, Module, ModuleOfferingP
 from app.schemas import ImportResult
 from app.services.schedule_parser import ParsedLesson, parse_schedules
 from app.services.text import normalize_search
+from app.services.module_name_overrides import MODULE_NAME_OVERRIDES
 
 
 class ImportFormatError(ValueError):
@@ -99,6 +101,16 @@ def to_date(v) -> date | None:
         except ValueError:
             continue
     return None
+
+
+_VI_CHARS = re.compile(r"[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]", re.I)
+
+
+def _keeps_vietnamese_name(current: str | None, incoming: str) -> bool:
+    """False nếu ghi `incoming` sẽ thay tên tiếng Việt hiện có bằng tên không có dấu tiếng Việt (thường là tên tiếng Anh trong file CTĐT hệ E)."""
+    cur = unicodedata.normalize("NFC", current or "")
+    inc = unicodedata.normalize("NFC", incoming or "")
+    return not (_VI_CHARS.search(cur) and not _VI_CHARS.search(inc))
 
 
 def clip(v, n: int) -> str | None:
@@ -189,7 +201,7 @@ def parse_semester_id(sem_id: str) -> tuple[str, int, str] | None:
 
 # --------------------------------------------------------------------------- context
 def _refresh_module_search(m: Module) -> None:
-    m.search_text = normalize_search(f"{m.code} {m.name} {m.faculty or ''} {m.department or ''}")
+    m.search_text = normalize_search(f"{m.code} {m.name} {m.name_en or ''} {m.faculty or ''} {m.department or ''}")
 
 
 _UNSET = object()
@@ -230,23 +242,51 @@ class ImportContext:
 
     # ---- module
     def module(self, code: str, *, name=None, credits=None, type=None, faculty=None,
-               department=None, is_english: bool | None = None) -> Module:
+               department=None, is_english: bool | None = None,
+               overwrite_faculty: bool = False, overwrite_department: bool = False) -> Module:
         m = self.modules.get(code) or self.db.get(Module, code)
         if m is None:
-            m = Module(code=code, name=clip(name, 512) or code, is_sample=self.is_sample, is_english=False)
+            init_fac = None
+            init_dept = None
+            init_source = None
+            from app.services.faculty_names import load_faculty_overrides
+            overrides = load_faculty_overrides()
+            norm_code = code.strip().upper()
+            if norm_code in overrides:
+                ov_f, ov_d, _ = overrides[norm_code]
+                init_fac = ov_f
+                init_dept = ov_d or None
+                init_source = "admin"
+            elif self.is_sample:
+                if faculty:
+                    from app.services.faculty_names import faculty_vi
+                    init_fac = faculty_vi(faculty) or faculty
+                if department:
+                    from app.services.faculty_names import department_vi
+                    init_dept = department_vi(department) or department
+            m = Module(code=code, name=clip(name, 512) or code, faculty=init_fac, department=init_dept,
+                       faculty_source=init_source, is_sample=self.is_sample, is_english=False)
             self.db.add(m)
-        if name:
-            m.name = clip(name, 512)
+        if name and _keeps_vietnamese_name(m.name, name):
+            m.name = clip(unicodedata.normalize("NFC", name), 512)
+        if code in MODULE_NAME_OVERRIDES:
+            m.name, m.name_en = MODULE_NAME_OVERRIDES[code]
+            m.name_en_source = None
         if credits is not None:
             m.credits = credits
         if type:
             m.type = clip(type, 128)
-        if faculty:
-            from app.services.faculty_names import faculty_vi
-            m.faculty = clip(faculty_vi(faculty) or faculty, 256)
-        if department:
-            from app.services.faculty_names import department_vi
-            m.department = clip(department_vi(department) or department, 256)
+
+        # Quy tắc B6b: Dữ liệu mẫu cho phép gán faculty/department; dữ liệu thật từ CTĐT / lớp học phần
+        # KHÔNG được ghi đè hay gán vào modules.faculty/department (chỉ đề cương mới ghi).
+        if self.is_sample:
+            if faculty and (overwrite_faculty or not m.faculty):
+                from app.services.faculty_names import faculty_vi
+                m.faculty = clip(faculty_vi(faculty) or faculty, 256)
+            if department and (overwrite_department or not m.department):
+                from app.services.faculty_names import department_vi
+                m.department = clip(department_vi(department) or department, 256)
+
         if is_english:
             m.is_english = True
         # Phân loại ngôn ngữ / CNTN ngay khi nạp (API upload không chạy classify-languages).
@@ -392,6 +432,9 @@ def import_classes(db: Session, rows: list[dict], *, is_sample: bool = False,
             student_groups=groups or None, notes=notes or None,
             start_date=begin, end_date=end, study_type=clip(get_ci(r, "StudyUnitTypeName"), 128),
         )
+    if not is_sample:
+        from app.services.faculty_names import apply_outline_faculties
+        apply_outline_faculties(db)
     return ctx.result()
 
 

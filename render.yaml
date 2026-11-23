@@ -1,4 +1,4 @@
-# UELCourses — Render Blueprint cho bản triển khai miễn phí (Free Web Service, Docker)
+# UELPATH — Render Blueprint cho bản triển khai miễn phí (Free Web Service, Docker)
 # Hướng dẫn chi tiết: docs/DEPLOY_FREE.md
 
 services:
@@ -16,7 +16,11 @@ services:
     healthCheckPath: /api/health
     envVars:
       - key: DATABASE_URL
-        sync: false # Người dùng tự dán chuỗi kết nối PostgreSQL từ Neon (postgresql+psycopg://...)
+        sync: false # Supabase Transaction pooler cổng 6543 (postgresql+psycopg://...?sslmode=require)
+      - key: DB_POOL_SIZE
+        value: "5"
+      - key: DB_MAX_OVERFLOW
+        value: "5"
       - key: SESSION_SECRET
         generateValue: true # Render tự sinh chuỗi bí mật ngẫu nhiên an toàn cho production
       - key: CORS_ORIGINS
@@ -31,3 +35,11 @@ services:
         sync: false # URL công khai của API Render (ví dụ: https://uelcourses-api.onrender.com)
       - key: PORT
         value: "8000"
+      - key: RATE_LIMIT_DEFAULT
+        value: "240/minute"
+      - key: RATE_LIMIT_HEAVY
+        value: "20/minute"
+      - key: RATE_LIMIT_ENABLED
+        value: "true"
+      - key: BLOCK_EMPTY_USER_AGENT
+        value: "false"

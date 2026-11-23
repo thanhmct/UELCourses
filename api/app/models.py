@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import date, datetime, timezone
 from typing import Any
 
+import sqlalchemy as sa
 from sqlalchemy import (
     JSON,
     BigInteger,
@@ -21,6 +22,7 @@ from sqlalchemy import (
 from sqlalchemy import text as sql_text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.types import TypeDecorator
 
 from app.db import Base
 
@@ -33,6 +35,23 @@ def utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
+class UTCDateTime(TypeDecorator[datetime]):
+    """Khôi phục múi giờ UTC trên SQLite, nơi datetime được lưu không kèm múi giờ."""
+
+    impl = DateTime(timezone=True)
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        if value is not None and value.tzinfo is not None and dialect.name == "sqlite":
+            return value.astimezone(timezone.utc).replace(tzinfo=None)
+        return value
+
+    def process_result_value(self, value, dialect):
+        if value is not None and value.tzinfo is None and dialect.name == "sqlite":
+            return value.replace(tzinfo=timezone.utc)
+        return value
+
+
 class Semester(Base):
     __tablename__ = "semesters"
 
@@ -42,6 +61,8 @@ class Semester(Base):
     term: Mapped[int] = mapped_column(Integer)  # 1, 2, 3 — cả ba đều là học kỳ chính thức (HK3 không phải học kỳ hè)
     start_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    teaching_start: Mapped[date | None] = mapped_column(Date, nullable=True)
+    teaching_end: Mapped[date | None] = mapped_column(Date, nullable=True)
     is_current_override: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     is_sample: Mapped[bool] = mapped_column(Boolean, default=False)
 
@@ -53,6 +74,12 @@ class Module(Base):
     )
 
     code: Mapped[str] = mapped_column(String(64), primary_key=True)
+    is_hidden: Mapped[bool] = mapped_column(
+        Boolean,
+        default=lambda context: context.get_current_parameters().get("code") in {"COS101", "PHT121"},
+        server_default="false",
+        nullable=False,
+    )
     name: Mapped[str] = mapped_column(String(512))
     credits: Mapped[int | None] = mapped_column(Integer, nullable=True)
     type: Mapped[str | None] = mapped_column(String(128), nullable=True)
@@ -76,12 +103,28 @@ class Module(Base):
     description_en_source: Mapped[str | None] = mapped_column(String(16), nullable=True)
     prerequisites: Mapped[list[str] | None] = mapped_column(JsonType, nullable=True)
     search_text: Mapped[str] = mapped_column(Text, default="")  # bản không dấu; tìm bằng trigram GIN (xem __table_args__)
+    # Quản trị dữ liệu khoa/bộ môn (PLAN_ADMIN D-A7): nguồn xác nhận khoa ('outline' | 'counterpart_outline' | 'prefix' | 'admin').
+    # Khi nguồn là 'admin', các quy trình tự động (fix-module-faculty) không được ghi đè.
+    faculty_source: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    faculty_set_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    faculty_set_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    final_assessment: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    head_lecturer: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    outline_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Bậc đào tạo: 'dai_hoc' | 'thac_si' | 'tien_si' (Brief D6)
+    degree: Mapped[str] = mapped_column(String(16), default="dai_hoc", server_default="dai_hoc", nullable=False, index=True)
     is_sample: Mapped[bool] = mapped_column(Boolean, default=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
     classes: Mapped[list[ClassSection]] = relationship(back_populates="module", cascade="all, delete-orphan")
     offering_plans: Mapped[list[ModuleOfferingPlan]] = relationship(
         back_populates="module", cascade="all, delete-orphan", order_by="ModuleOfferingPlan.academic_year"
+    )
+    assessment: Mapped[ModuleAssessment | None] = relationship(
+        back_populates="module", uselist=False, cascade="all, delete-orphan"
+    )
+    textbooks: Mapped[list[ModuleTextbook]] = relationship(
+        back_populates="module", cascade="all, delete-orphan", order_by="ModuleTextbook.id"
     )
 
 
@@ -102,6 +145,49 @@ class ModuleOfferingPlan(Base):
     source: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
     module: Mapped[Module] = relationship(back_populates="offering_plans")
+
+
+class ModuleAssessment(Base):
+    """Hình thức đánh giá học phần từ Master_data (Sheet1) và đề cương (Brief D4)."""
+
+    __tablename__ = "module_assessments"
+
+    module_code: Mapped[str] = mapped_column(
+        String(64), ForeignKey("modules.code", ondelete="CASCADE"), primary_key=True
+    )
+    process_ratio: Mapped[float | None] = mapped_column(Float, nullable=True)
+    process_form: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    midterm_ratio: Mapped[float | None] = mapped_column(Float, nullable=True)
+    midterm_form: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    final_ratio: Mapped[float | None] = mapped_column(Float, nullable=True)
+    final_form: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    advanced_ratio: Mapped[float | None] = mapped_column(Float, nullable=True)
+    advanced_form: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    exam_type: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    exam_duration: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    final_assessment_kind: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    source: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    module: Mapped[Module] = relationship(back_populates="assessment")
+
+
+class ModuleTextbook(Base):
+    """Giáo trình, tài liệu học phần từ Master_data (Sheet1) phục vụ trang chi tiết và trao đổi sách (Brief D4, W9)."""
+
+    __tablename__ = "module_textbooks"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    module_code: Mapped[str] = mapped_column(
+        String(64), ForeignKey("modules.code", ondelete="CASCADE"), index=True
+    )
+    name: Mapped[str | None] = mapped_column(Text, nullable=True)
+    url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    document_code: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_main: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    module: Mapped[Module] = relationship(back_populates="textbooks")
 
 
 class ClassSection(Base):
@@ -199,6 +285,8 @@ class Program(Base):
     name: Mapped[str | None] = mapped_column(String(512), nullable=True)
     cohort: Mapped[str | None] = mapped_column(String(16), nullable=True, index=True)  # "K22"
     faculty: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    # Bậc đào tạo: 'dai_hoc' | 'thac_si' | 'tien_si' (Brief D6)
+    degree: Mapped[str] = mapped_column(String(16), default="dai_hoc", server_default="dai_hoc", nullable=False, index=True)
     search_text: Mapped[str] = mapped_column(Text, default="")
     is_sample: Mapped[bool] = mapped_column(Boolean, default=False)
     source: Mapped[str | None] = mapped_column(String(32), nullable=True)
@@ -266,6 +354,12 @@ class Feedback(Base):
     contact: Mapped[str | None] = mapped_column(String(256), nullable=True)
     app_version: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+    # Kiểm duyệt (Brief A3)
+    status: Mapped[str] = mapped_column(String(16), default="pending", server_default="pending", index=True)
+    moderated_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    moderated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    moderation_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    flag_reasons: Mapped[list[str] | None] = mapped_column(JsonType, nullable=True)
 
 
 # =============================================================================
@@ -341,6 +435,8 @@ class OutlineDocument(Base):
     rel_path: Mapped[str] = mapped_column(String(512))
     size_bytes: Mapped[int] = mapped_column(BigInteger)
     page_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    ctdt_year: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    source_format: Mapped[str | None] = mapped_column(String(16), default="pdf", nullable=True, index=True)
     text_status: Mapped[str] = mapped_column(String(16), default="pending", index=True)  # pending|extracted|needs_ocr|failed
     text_method: Mapped[str | None] = mapped_column(String(16), nullable=True)  # pdf_text | ocr
     text_chars: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -501,16 +597,20 @@ class OutlineAssessment(Base):
 
 
 class OutlineModuleLink(Base):
-    """Đề cương (PDF) ↔ mã học phần, lấy từ danh mục CTĐT 2025 (liên kết mềm tới modules.code — không ép khóa ngoại).
-    Một PDF có thể phục vụ nhiều mã (bản Việt/Anh, nhiều chương trình)."""
+    """Đề cương (PDF/Docx) ↔ mã học phần theo năm CTĐT (liên kết mềm tới modules.code — không ép khóa ngoại).
+    Một tài liệu có thể phục vụ nhiều mã (bản Việt/Anh, nhiều chương trình)."""
 
     __tablename__ = "outline_module_links"
-    __table_args__ = (UniqueConstraint("document_id", "module_code", name="uq_outline_module_link"),)
+    __table_args__ = (
+        UniqueConstraint("document_id", "module_code", "ctdt_year", name="uq_outline_module_link"),
+        Index("ix_outline_module_links_module_year", "module_code", "ctdt_year"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     document_id: Mapped[int] = mapped_column(ForeignKey("outline_documents.id", ondelete="CASCADE"), index=True)
     module_code: Mapped[str] = mapped_column(String(64), index=True)
-    source: Mapped[str] = mapped_column(String(16), default="catalog")
+    ctdt_year: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    source: Mapped[str] = mapped_column(String(32), default="catalog")
 
 
 class OutlineScheduleItem(Base):
@@ -552,6 +652,8 @@ class RegulationDocument(Base):
     file: Mapped[str | None] = mapped_column(String(512), nullable=True)
     verified: Mapped[bool] = mapped_column(Boolean, default=False)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    rag_metadata: Mapped[dict | None] = mapped_column(JsonType, nullable=True)
+    rag_articles: Mapped[list | None] = mapped_column(JsonType, nullable=True)
 
     chunks: Mapped[list[RegulationChunk]] = relationship(back_populates="document", cascade="all, delete-orphan")
 
@@ -577,8 +679,34 @@ class RegulationChunk(Base):
     page: Mapped[int | None] = mapped_column(Integer, nullable=True)
     text: Mapped[str] = mapped_column(Text)  # NGUYÊN VĂN
     search_text: Mapped[str] = mapped_column(Text, default="")  # bản không dấu để tìm kiếm
+    rag_metadata: Mapped[dict | None] = mapped_column(JsonType, nullable=True)
 
     document: Mapped[RegulationDocument] = relationship(back_populates="chunks")
+
+
+class RegulationIndexState(Base):
+    __tablename__ = "regulation_index_state"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    version: Mapped[str] = mapped_column(String(64), nullable=False)
+    stats: Mapped[dict] = mapped_column(JsonType, nullable=False)
+
+
+class RagCallBudget(Base):
+    __tablename__ = "rag_call_budget"
+
+    bucket: Mapped[str] = mapped_column(String(80), primary_key=True)
+    day: Mapped[date] = mapped_column(Date, index=True)
+    calls: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
+class RagAnswerFeedback(Base):
+    __tablename__ = "rag_answer_feedback"
+
+    answer_id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    scope: Mapped[str] = mapped_column(String(16), nullable=False)
+    helpful: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
 # =============================================================================
@@ -639,8 +767,200 @@ class AcademicEvent(Base):
     start_date: Mapped[date] = mapped_column(Date)
     end_date: Mapped[date | None] = mapped_column(Date, nullable=True)  # NULL nếu sự kiện 1 ngày
     semester_id: Mapped[str | None] = mapped_column(String(32), nullable=True)  # FK mềm tới semesters.id (không ép khóa ngoại)
-    cohorts: Mapped[list[str]] = mapped_column(JsonType, default=list)  # ["K23", "K24"] hoặc ["all"]
+    cohorts: Mapped[list[str] | None] = mapped_column(JsonType, nullable=True, default=list)  # ["K23", "K24"] hoặc ["all"]
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
     verified: Mapped[bool] = mapped_column(Boolean, default=True)
     source: Mapped[str] = mapped_column(String(128), default="TB 223/TB-ĐHKTL-ĐT")
+    updated_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
+
+# =============================================================================
+# Nhật ký thao tác quản trị (audit_log) và Cài đặt quản trị (admin_settings)
+# =============================================================================
+class AuditLog(Base):
+    """Nhật ký thao tác quản trị bất biến (chỉ thêm, không sửa/xóa)."""
+
+    __tablename__ = "audit_log"
+    __table_args__ = (
+        Index("ix_audit_log_created_at", "created_at"),
+        Index("ix_audit_log_actor", "actor_type", "actor_id"),
+        Index("ix_audit_log_entity", "entity_type", "entity_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    actor_type: Mapped[str] = mapped_column(String(16), index=True)  # admin | system | student | dev
+    actor_id: Mapped[str | None] = mapped_column(String(128), nullable=True)  # email, user_id hoặc 'dev'
+    action: Mapped[str] = mapped_column(String(64), index=True)  # e.g. update_faculty, approve_comment, ...
+    entity_type: Mapped[str | None] = mapped_column(String(64), nullable=True)  # module, review, setting, ...
+    entity_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    before: Mapped[Any | None] = mapped_column(JsonType, nullable=True)
+    after: Mapped[Any | None] = mapped_column(JsonType, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class AdminSetting(Base):
+    """Cài đặt hệ thống do quản trị viên thiết lập (key-value JSON)."""
+
+    __tablename__ = "admin_settings"
+
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    value: Mapped[Any | None] = mapped_column(JsonType, nullable=True)
+    updated_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
+# =============================================================================
+# Thu thập xu hướng ẩn danh (Analytics) & Thống kê TKB (Brief A2)
+# =============================================================================
+class AnalyticsEvent(Base):
+    """Sự kiện hành vi người dùng ẩn danh (Brief A2, D-A5).
+    Không lưu IP, user-agent, tên, email, token hay MSSV.
+    """
+
+    __tablename__ = "analytics_events"
+    __table_args__ = (
+        Index("ix_analytics_events_type_created", "event_type", "created_at"),
+        Index("ix_analytics_events_module_created", "module_code", "created_at"),
+        Index("ix_analytics_events_anon_sem", "anon_id", "semester_id"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True, autoincrement=True)
+    anon_id: Mapped[str] = mapped_column(String(36), index=True)
+    event_type: Mapped[str] = mapped_column(String(32), index=True)
+    module_code: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    class_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    semester_id: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
+    program_code: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
+    query_text: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    filters: Mapped[Any | None] = mapped_column(JsonType, nullable=True)
+    page: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+
+
+class AnalyticsDaily(Base):
+    """Bảng tổng hợp sự kiện theo ngày (Brief A2). Dựng bởi CLI aggregate-analytics."""
+
+    __tablename__ = "analytics_daily"
+    __table_args__ = (
+        Index("ix_analytics_daily_day_type", "day", "event_type"),
+        Index("ix_analytics_daily_module_day", "module_code", "day"),
+        Index("ix_analytics_daily_sem_day", "semester_id", "day"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    day: Mapped[date] = mapped_column(Date, index=True)
+    event_type: Mapped[str] = mapped_column(String(32), index=True)
+    module_code: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    semester_id: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
+    program_code: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
+    count: Mapped[int] = mapped_column(Integer, default=1)
+
+
+class AnalyticsPair(Base):
+    """Cặp môn học thường được xếp chung trong cùng một thời khóa biểu (Brief A2)."""
+
+    __tablename__ = "analytics_pairs"
+    __table_args__ = (
+        UniqueConstraint("semester_id", "module_a", "module_b", name="uq_analytics_pairs_sem_a_b"),
+        Index("ix_analytics_pairs_sem_count", "semester_id", "count"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    semester_id: Mapped[str] = mapped_column(String(32), index=True)
+    module_a: Mapped[str] = mapped_column(String(64), index=True)
+    module_b: Mapped[str] = mapped_column(String(64), index=True)
+    count: Mapped[int] = mapped_column(Integer, default=1)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
+# =============================================================================
+# Kiểm duyệt: bình luận học phần và từ khóa cấm (Brief A3, D-A6)
+# =============================================================================
+class ModuleComment(Base):
+    """Bình luận học phần từ sinh viên (Brief A3, D-A6).
+    Mặc định status='pending' (chế độ pre-moderation), chỉ status='approved' mới hiện công khai.
+    """
+
+    __tablename__ = "module_comments"
+    __table_args__ = (
+        Index("ix_module_comments_module_status", "module_code", "status"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    module_code: Mapped[str] = mapped_column(String(64), index=True)
+    anon_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+    student_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    body: Mapped[str] = mapped_column(Text)
+    rating: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    status: Mapped[str] = mapped_column(String(16), default="pending", server_default="pending", index=True)  # pending | approved | rejected | hidden
+    flag_reasons: Mapped[list[str] | None] = mapped_column(JsonType, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+    moderated_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    moderated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    moderation_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class BannedTerm(Base):
+    """Từ khóa cấm trong nội dung bình luận / góp ý (Brief A3).
+    severity='block': từ chối ngay (HTTP 422).
+    severity='flag': gắn cờ chuyển vào hàng đợi kiểm duyệt.
+    """
+
+    __tablename__ = "banned_terms"
+    __table_args__ = (
+        UniqueConstraint("term", name="uq_banned_terms_term"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    term: Mapped[str] = mapped_column(String(128), unique=True, index=True)
+    severity: Mapped[str] = mapped_column(String(16), default="flag", server_default="flag")  # flag | block
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+# =============================================================================
+# Tài khoản và phiên quản trị (Brief A6, D-A2, D-A3)
+# =============================================================================
+class AdminUser(Base):
+    """Tài khoản quản trị viên hệ thống (Brief A6)."""
+
+    __tablename__ = "admin_users"
+    __table_args__ = (
+        UniqueConstraint("email", name="uq_admin_users_email"),
+        Index("ix_admin_users_role", "role"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    email: Mapped[str] = mapped_column(String(256), index=True)
+    password_hash: Mapped[str] = mapped_column(String(256))
+    role: Mapped[str] = mapped_column(String(32), default="admin", server_default="admin")  # admin | moderator | data_editor
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=sa.true())
+    failed_attempts: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    sessions: Mapped[list[AdminSession]] = relationship(back_populates="user", cascade="all, delete-orphan")
+
+
+class AdminSession(Base):
+    """Phiên đăng nhập quản trị viên (Brief A6)."""
+
+    __tablename__ = "admin_sessions"
+    __table_args__ = (
+        Index("ix_admin_sessions_token_hash", "token_hash"),
+        Index("ix_admin_sessions_user_id", "user_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("admin_users.id", ondelete="CASCADE"))
+    token_hash: Mapped[str] = mapped_column(String(128))
+    csrf_token_hash: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    expires_at: Mapped[datetime] = mapped_column(UTCDateTime())
+    ip_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    user: Mapped[AdminUser] = relationship(back_populates="sessions")

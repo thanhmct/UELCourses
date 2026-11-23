@@ -1,0 +1,22 @@
+# Brief R1 — Rà soát toàn bộ sau loạt B6h…A0 (Gemini tự kiểm lỗi)
+
+Chỉ đọc/sửa file, TUYỆT ĐỐI không chạy lệnh shell, không commit. Mục tiêu: không còn lỗi cú pháp/kiểu/logic do nhiều lần sửa chồng nhau.
+
+1. Đọc danh sách lỗi kiểm tra tự động mới nhất ở `scripts/agent_briefs/_errors/` (file mới nhất theo tên; có thể trống nếu đã sạch) và sửa hết.
+2. Rà thủ công các file đã bị nhiều brief cùng sửa (ưu tiên): `web/src/components/ProgramFilterBar.tsx`, `web/src/components/TimetableGrid.tsx`, `web/src/app/timetable/page.tsx`, `web/src/app/modules/page.tsx`, `web/src/app/modules/[code]/page.tsx`, `web/src/app/programs/page.tsx`, `web/src/app/programs/[id]/page.tsx`, `web/src/app/equivalents/page.tsx`, `web/src/app/venues/page.tsx`, `web/src/app/planner/page.tsx`, `web/src/components/FacetFilter.tsx`, `web/src/components/SemesterPicker.tsx`, `web/src/components/Header.tsx`, `web/src/app/admin/**`, `web/src/i18n/vi.ts`, `web/src/i18n/en.ts`, `api/app/routers/modules.py`, `api/app/services/faculty_names.py`, `api/app/cli.py`, `api/app/admin/**`, `api/app/models.py`, `api/migrations/versions/*` (chuỗi `down_revision` liền mạch, không có hai head).
+   Tìm và sửa: thẻ JSX mở/đóng lệch, ngoặc thừa/thiếu, khai báo trùng biến (`const x` hai lần), import trùng/không dùng/thiếu, khóa i18n trùng hoặc thiếu ở một trong hai ngôn ngữ, component/hàm bị định nghĩa hai lần, đoạn code cũ còn sót sau khi thay bằng component mới (vd banner CTĐT cũ song song `ProgramFilterBar`, bảng "Đổi lớp" cũ, danh sách Phòng học dạng ngày), test tham chiếu chuỗi/giao diện đã bỏ, migration lệch model.
+3. Kiểm tra nhất quán các yêu cầu đã chốt (không đảo ngược): "Một ngày" (không còn "Một lần"); không có khối cảnh báo chữ ở Thời khóa biểu (chỉ đỏ + ⚠ + popup khi hover); nút "Đổi" mở pop-up `ProgramProfileDialog` (không điều hướng); Phòng học dạng lưới tháng; bộ chọn học kỳ dạng ô Kỳ 1/2/3; `/admin` dùng `require_admin_dev` hoặc đăng nhập thật (A0) — không route admin nào mở công khai ở production.
+4. Ghi báo cáo vào cuối `docs/HANDOFF.md` mục "Rà soát R1": danh sách lỗi đã sửa theo file.
+
+Chủ dự án (Claude) sẽ chạy `npx tsc --noEmit`, `npx vitest run`, pytest, `alembic check` sau đó.
+
+## BỔ SUNG W27 (chủ dự án yêu cầu): bỏ thẻ "CTĐT CỦA BẠN" ở trong trang
+Thẻ CTĐT nay chỉ nằm trên thanh trên (Header, bản compact). `ProgramFilterBar` có prop `showCard` (mặc định true); các trang Học phần, Tương đương, Thời khóa biểu, Kế hoạch đã truyền `showCard={false}` nên trong trang chỉ còn bộ chuyển Ngành chính/Ngành 2/Cả hai và số kết quả (thẻ vẫn hiện khi có `?program=` ghi đè). KHÔNG đảo ngược việc này. Việc cần làm: cập nhật các test còn tìm thẻ/ban ghi/nút Đổi/Bỏ lọc trong trang (`web/src/app/modules/__tests__/profileFilterSync.test.tsx`, `web/src/app/equivalents/__tests__/page.test.tsx`, và test khác nếu có) cho đúng: kiểm tra thẻ ở Header (render `Header` hoặc `ProgramFilterBar compact`), còn test component `ProgramFilterBar` thì truyền `showCard` mặc định. Ngoài ra sửa các test đang đỏ khác (admin A1, modules/[code] B7, programs W25) và lỗi kiểu `modules/[code]/__tests__/page.test.tsx:204` (`page` không có trong `Paged<ModuleSummary>`).
+
+## BỔ SUNG W29 (chủ dự án chỉ định tay): ghi đè khoa/bộ môn theo file
+`api/seed/faculty_overrides.tsv` (cột code, faculty, department, ghi_chu; UTF-8, phân cách tab) là danh sách môn do chủ dự án chỉ định khoa/bộ môn, ƯU TIÊN CAO NHẤT (cao hơn đề cương, môn tương ứng Anh↔Việt, tiền tố mã). Việc cần làm:
+1. `fix-module-faculty` (api/app/cli.py + api/app/services/faculty_names.py) và `audit-faculty` phải đọc file này: môn có trong file thì giữ đúng giá trị đó (kết luận "chỉ định tay"), không bao giờ ghi đè; cập nhật lại `search_text`. Cũng áp dụng khi import lại dữ liệu (importer không được xóa các giá trị này).
+2. Thêm "Phòng Bảo đảm chất lượng" và "Phòng Đào tạo" vào danh sách khoa chuẩn (`faculty_canonical.tsv` / hàm chuẩn hóa) để không bị coi là tên lạ/"cần xem lại", và để bộ lọc Khoa liệt kê chúng cùng loại với các khoa.
+3. Test pytest: chạy fix-module-faculty với một môn có đề cương nhưng nằm trong file ghi đè → giữ nguyên giá trị của file; bộ lọc facet có "Phòng Bảo đảm chất lượng".
+
+LƯU Ý W27: các lần sửa chồng nhau đã làm MẤT thuộc tính `showCard={false}` ở modules/page.tsx và equivalents/page.tsx một lần. Kiểm tra lại cuối cùng: cả 4 trang (modules, equivalents, timetable, planner) phải truyền `showCard={false}` cho ProgramFilterBar; không được bỏ.

@@ -15,8 +15,8 @@ export interface TreeGroup {
 export function groupDocs(docs: RegulationDoc[]): TreeGroup[] {
   const topics = new Map<string, Map<string, RegulationDoc[]>>();
   for (const d of docs) {
-    const t = d.topic || "Khác";
-    const l = d.issuer_level || "Chưa phân loại";
+    const t = d.topic || "__other__";
+    const l = d.issuer_level || "__unclassified__";
     if (!topics.has(t)) topics.set(t, new Map());
     const lv = topics.get(t)!;
     lv.set(l, [...(lv.get(l) ?? []), d]);
@@ -48,6 +48,7 @@ export function DocTree({ docs, active, onOpen }: { docs: RegulationDoc[]; activ
     });
     return groupDocs(list);
   }, [docs, q, filter]);
+  const groupLabel = (value: string) => value === "__other__" ? t("common.other") : value === "__unclassified__" ? t("dt.unclassified") : value;
 
   return (
     <div className="space-y-2 text-sm">
@@ -65,13 +66,13 @@ export function DocTree({ docs, active, onOpen }: { docs: RegulationDoc[]; activ
         {groups.map((g) => (
           <li key={g.topic} role="treeitem" aria-expanded={!collapsed[g.topic]} aria-selected={false}>
             <button className="flex w-full items-center gap-1 text-left text-xs font-semibold uppercase tracking-wide text-slate-500" onClick={() => setCollapsed((c) => ({ ...c, [g.topic]: !c[g.topic] }))}>
-              <span className="w-3">{collapsed[g.topic] ? "▸" : "▾"}</span>{g.topic}
+              <span className="w-3">{collapsed[g.topic] ? "▸" : "▾"}</span>{groupLabel(g.topic)}
             </button>
             {!collapsed[g.topic] && (
               <ul className="ml-2 mt-1 space-y-1 border-l border-slate-200 pl-2 dark:border-slate-700" role="group">
                 {g.levels.map((lv) => (
                   <li key={lv.level}>
-                    <p className="text-[11px] text-slate-400">{lv.level}</p>
+                    <p className="text-[11px] text-slate-400">{groupLabel(lv.level)}</p>
                     <ul className="space-y-0.5">
                       {lv.docs.map((d) => {
                         const b = effectiveBadge(d);

@@ -1,0 +1,53 @@
+﻿### tsc (web)
+src/app/modules/[code]/__tests__/page.test.tsx(8,29): error TS2305: Module '"@/lib/types"' has no exported member 'ModuleList'.
+src/app/modules/[code]/__tests__/page.test.tsx(98,19): error TS2769: No overload matches this call.
+  Overload 1 of 4, '(object: { moduleFacets: () => Promise<ApiResult<ModuleFacets>>; health: () => Promise<ApiResult<{ status: string; }>>; semesters: () => Promise<...>; ... 22 more ...; checkProgram: (id: string, req: { ...; }) => Promise<...>; }, key: "program" | ... 24 more ... | "checkProgram"): Mock<...>', gave the following error.
+    Argument of type '"moduleReviews"' is not assignable to parameter of type '"program" | "ask" | "semesters" | "moduleFacets" | "health" | "modules" | "outline" | "module" | "classes" | "equivalents" | "equivalent" | "venues" | "feedback" | "regulations" | ... 11 more ... | "checkProgram"'.
+  Overload 2 of 4, '(object: { moduleFacets: () => Promise<ApiResult<ModuleFacets>>; health: () => Promise<ApiResult<{ status: string; }>>; semesters: () => Promise<...>; ... 22 more ...; checkProgram: (id: string, req: { ...; }) => Promise<...>; }, key: never): never', gave the following error.
+    Argument of type '"moduleReviews"' is not assignable to parameter of type 'never'.
+src/app/modules/[code]/__tests__/page.test.tsx(98,54): error TS2345: Argument of type 'any' is not assignable to parameter of type 'never'.
+src/app/modules/[code]/__tests__/page.test.tsx(211,7): error TS2353: Object literal may only specify known properties, and 'total' does not exist in type 'ApiResult<ModuleFacets>'.
+src/app/programs/[id]/__tests__/page.test.tsx(39,55): error TS2322: Type 'null' is not assignable to type 'CheckResult'.
+
+
+### vitest (web)
+[31mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[39m[1m[41m Failed Tests 18 [49m[22m[31mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[39m
+[41m[1m FAIL [22m[49m src/app/equivalents/__tests__/page.test.tsx[2m > [22mBrief W13: Trang Hß╗ìc phß║ºn t╞░╞íng ─æ╞░╞íng chß╗ë hiß╗çn c├íc m├┤n trong CT─ÉT ─æang lß╗ìc[2m > [22m6. Bß║Ñm n├║t 'Bß╗Å lß╗ìc CT─ÉT' -> Trß╗ƒ vß╗ü hiß╗ân thß╗ï to├án bß╗Ö
+[31m[1mTestingLibraryElementError[22m[39m: Unable to find an accessible element with the role "button" and name `/Bß╗Å lß╗ìc CT─ÉT/i`
+[90m [2mΓ¥»[22m Object.getElementError node_modules/@testing-library/dom/dist/config.js:[2m37:19[22m[39m
+[41m[1m FAIL [22m[49m src/app/modules/__tests__/profileFilterSync.test.tsx[2m > [22mW6 & W11: Profile filter banner text and real-time synchronization[2m > [22mBrief W16: n├║t ─Éß╗òi mß╗ƒ hß╗Öp thoß║íi pop-up (role=dialog) ngay tr├¬n trang, URL kh├┤ng ─æß╗òi, l╞░u xong cß║¡p nhß║¡t thanh lß╗ìc kh├┤ng reload
+[31m[1mTestingLibraryElementError[22m[39m: Found multiple elements with the text: /C├┤ng nghß╗ç t├ái ch├¡nh/i
+[41m[1m FAIL [22m[49m src/app/programs/__tests__/page.test.tsx[2m > [22mBrief W25: Thiß║┐t lß║¡p lß║íi hß╗ç thß╗æng lß╗ìc trang Ch╞░╞íng tr├¼nh ─æ├áo tß║ío (CT─ÉT)[2m > [22m2. Mß║╖c ─æß╗ïnh chß╗ë hiß╗ân thß╗ï CT─ÉT cß╗ºa ng╞░ß╗¥i d├╣ng: c├│ ch╞░╞íng tr├¼nh K24414 ΓåÆ mß║╖c ─æß╗ïnh chß╗ë duy nhß║Ñt mß╗Öt thß║╗ 'C├┤ng nghß╗ç t├ái ch├¡nh'
+[31m[1mTestingLibraryElementError[22m[39m: Found multiple elements with the text: /C├┤ng nghß╗ç t├ái ch├¡nh/i
+[41m[1m FAIL [22m[49m src/app/programs/__tests__/page.test.tsx[2m > [22mBrief W25: Thiß║┐t lß║¡p lß║íi hß╗ç thß╗æng lß╗ìc trang Ch╞░╞íng tr├¼nh ─æ├áo tß║ío (CT─ÉT)[2m > [22m3. N├║t 'Xem tß║Ñt cß║ú CT─ÉT' nß║▒m TRONG khß╗æi lß╗ìc (within khß╗æi form/region t├¼m ch╞░╞íng tr├¼nh); bß║Ñm ΓåÆ hiß╗çn tß║Ñt cß║ú CT─ÉT tß╗½ mock, bß╗Ö lß╗ìc vß╗ü mß║╖c ─æß╗ïnh
+[31m[1mTestingLibraryElementError[22m[39m: Found multiple elements with the text: /Quß║ún trß╗ï kinh doanh/i
+[41m[1m FAIL [22m[49m src/app/programs/__tests__/page.test.tsx[2m > [22mBrief W25: Thiß║┐t lß║¡p lß║íi hß╗ç thß╗æng lß╗ìc trang Ch╞░╞íng tr├¼nh ─æ├áo tß║ío (CT─ÉT)[2m > [22m4. Bß║Ñm 'Chß╗ë CT─ÉT cß╗ºa t├┤i' ΓåÆ quay lß║íi chß║┐ ─æß╗Ö mß║╖c ─æß╗ïnh chß╗ë hiß╗ân thß╗ï CT─ÉT cß╗ºa ng╞░ß╗¥i d├╣ng
+[31m[1mTestingLibraryElementError[22m[39m: Unable to find an accessible element with the role "button" and name "Xem tß║Ñt cß║ú CT─ÉT"
+[90m [2mΓ¥»[22m Object.getElementError node_modules/@testing-library/dom/dist/config.js:[2m37:19[22m[39m
+[41m[1m FAIL [22m[49m src/app/programs/__tests__/page.test.tsx[2m > [22mBrief W25: Thiß║┐t lß║¡p lß║íi hß╗ç thß╗æng lß╗ìc trang Ch╞░╞íng tr├¼nh ─æ├áo tß║ío (CT─ÉT)[2m > [22m5. G├╡ t├¼m kiß║┐m khi ß╗ƒ chß║┐ ─æß╗Ö mß║╖c ─æß╗ïnh ('chß╗ë CT─ÉT cß╗ºa t├┤i') ΓåÆ tß╗▒ chuyß╗ân sang xem tß║Ñt cß║ú
+[31m[1mTestingLibraryElementError[22m[39m: Found multiple elements with the text of: T├¼m ch╞░╞íng tr├¼nh
+[90m [2mΓ¥»[22m Object.getElementError node_modules/@testing-library/dom/dist/config.js:[2m37:19[22m[39m
+[90m [2mΓ¥»[22m getElementError node_modules/@testing-library/dom/dist/query-helpers.js:[2m20:35[22m[39m
+[90m [2mΓ¥»[22m getMultipleElementsFoundError node_modules/@testing-library/dom/dist/query-helpers.js:[2m23:10[22m[39m
+[41m[1m FAIL [22m[49m src/app/programs/__tests__/page.test.tsx[2m > [22mBrief W25: Thiß║┐t lß║¡p lß║íi hß╗ç thß╗æng lß╗ìc trang Ch╞░╞íng tr├¼nh ─æ├áo tß║ío (CT─ÉT)[2m > [22m6. T├¼m kiß║┐m theo tß╗½ viß║┐t tß║»t (HTTQL) hoß║╖c m├ú CT─ÉT kh├┤ng ph├ón biß╗çt hoa th╞░ß╗¥ng
+[31m[1mTestingLibraryElementError[22m[39m: Unable to find an accessible element with the role "button" and name "Xem tß║Ñt cß║ú CT─ÉT"
+[90m [2mΓ¥»[22m Object.getElementError node_modules/@testing-library/dom/dist/config.js:[2m37:19[22m[39m
+[41m[1m FAIL [22m[49m src/app/programs/__tests__/page.test.tsx[2m > [22mBrief W25: Thiß║┐t lß║¡p lß║íi hß╗ç thß╗æng lß╗ìc trang Ch╞░╞íng tr├¼nh ─æ├áo tß║ío (CT─ÉT)[2m > [22m7. Song ng├ánh: c├│ ng├ánh 2 ΓåÆ mß║╖c ─æß╗ïnh hiß╗çn 2 thß║╗ vß╗¢i nh├ún Ng├ánh ch├¡nh / Ng├ánh 2
+[31m[1mTestingLibraryElementError[22m[39m: Found multiple elements with the text: /C├┤ng nghß╗ç t├ái ch├¡nh/i
+[41m[1m FAIL [22m[49m src/app/programs/__tests__/page.test.tsx[2m > [22mBrief W25: Thiß║┐t lß║¡p lß║íi hß╗ç thß╗æng lß╗ìc trang Ch╞░╞íng tr├¼nh ─æ├áo tß║ío (CT─ÉT)[2m > [22m8. Ch╞░a c├│ ch╞░╞íng tr├¼nh ΓåÆ hiß╗ân thß╗ï to├án bß╗Ö CT─ÉT, k├¿m gß╗úi ├╜ chß╗ìn ch╞░╞íng tr├¼nh v├á kh├┤ng c├│ n├║t 'Chß╗ë CT─ÉT cß╗ºa t├┤i'
+[31m[1mTestingLibraryElementError[22m[39m: Unable to find an element with the text: /C├┤ng nghß╗ç t├ái ch├¡nh/i. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+[41m[1m FAIL [22m[49m src/app/programs/__tests__/page.test.tsx[2m > [22mBrief W25: Thiß║┐t lß║¡p lß║íi hß╗ç thß╗æng lß╗ìc trang Ch╞░╞íng tr├¼nh ─æ├áo tß║ío (CT─ÉT)[2m > [22m9. Hß╗ù trß╗ú giao diß╗çn tiß║┐ng Anh (EN): nh├ún n├║t, ti├¬u ─æß╗ü v├á sß╗æ l╞░ß╗úng hiß╗ân thß╗ï tiß║┐ng Anh
+[31m[1mTestingLibraryElementError[22m[39m: Unable to find an element with the text: 1 programmes. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+[90m [2mΓ¥»[22m Object.getElementError node_modules/@testing-library/dom/dist/config.js:[2m37:19[22m[39m
+[41m[1m FAIL [22m[49m src/app/programs/__tests__/page.test.tsx[2m > [22mBrief W25: Thiß║┐t lß║¡p lß║íi hß╗ç thß╗æng lß╗ìc trang Ch╞░╞íng tr├¼nh ─æ├áo tß║ío (CT─ÉT)[2m > [22m10. ─Éß╗òi ch╞░╞íng tr├¼nh qua profile ΓåÆ danh s├ích mß║╖c ─æß╗ïnh cß║¡p nhß║¡t ngay lß║¡p tß╗⌐c
+[31m[1mTestingLibraryElementError[22m[39m: Found multiple elements with the text: /C├┤ng nghß╗ç t├ái ch├¡nh/i
+[41m[1m FAIL [22m[49m src/app/modules/[code]/__tests__/page.test.tsx[2m > [22mBrief B7: Hiß╗ân thß╗ï li├¬n kß║┐t PDF ─æß╗ü c╞░╞íng tr├¬n trang chi tiß║┐t v├á danh s├ích theo ng├┤n ngß╗»[2m > [22m1. Trang chi tiß║┐t c├│ cß║ú 2 link (BKB4060) hiß╗ân thß╗ï cß║ú 2 n├║t tiß║┐ng Viß╗çt v├á English ß╗ƒ giao diß╗çn tiß║┐ng Viß╗çt
+[41m[1m FAIL [22m[49m src/app/modules/[code]/__tests__/page.test.tsx[2m > [22mBrief B7: Hiß╗ân thß╗ï li├¬n kß║┐t PDF ─æß╗ü c╞░╞íng tr├¬n trang chi tiß║┐t v├á danh s├ích theo ng├┤n ngß╗»[2m > [22m2. Trang chi tiß║┐t c├│ cß║ú 2 link (BKB4060) hiß╗ân thß╗ï cß║ú 2 n├║t ß╗ƒ giao diß╗çn tiß║┐ng Anh
+[41m[1m FAIL [22m[49m src/app/modules/[code]/__tests__/page.test.tsx[2m > [22mBrief B7: Hiß╗ân thß╗ï li├¬n kß║┐t PDF ─æß╗ü c╞░╞íng tr├¬n trang chi tiß║┐t v├á danh s├ích theo ng├┤n ngß╗»[2m > [22m3. Trang chi tiß║┐t chß╗ë c├│ link tiß║┐ng Viß╗çt hiß╗ân thß╗ï n├║t ─æ╞ín theo ng├┤n ngß╗»
+[41m[1m FAIL [22m[49m src/app/modules/[code]/__tests__/page.test.tsx[2m > [22mBrief B7: Hiß╗ân thß╗ï li├¬n kß║┐t PDF ─æß╗ü c╞░╞íng tr├¬n trang chi tiß║┐t v├á danh s├ích theo ng├┤n ngß╗»[2m > [22m4. Trang chi tiß║┐t chß╗ë c├│ link tiß║┐ng Anh hiß╗ân thß╗ï n├║t ─æ╞ín d├╣ng link tiß║┐ng Anh
+[41m[1m FAIL [22m[49m src/app/modules/[code]/__tests__/page.test.tsx[2m > [22mBrief B7: Hiß╗ân thß╗ï li├¬n kß║┐t PDF ─æß╗ü c╞░╞íng tr├¬n trang chi tiß║┐t v├á danh s├ích theo ng├┤n ngß╗»[2m > [22m5. Trang chi tiß║┐t kh├┤ng c├│ link ─æß╗ü c╞░╞íng th├¼ kh├┤ng hiß╗ân thß╗ï n├║t li├¬n kß║┐t n├áo
+[41m[1m FAIL [22m[49m src/app/modules/[code]/__tests__/page.test.tsx[2m > [22mBrief B7: Hiß╗ân thß╗ï li├¬n kß║┐t PDF ─æß╗ü c╞░╞íng tr├¬n trang chi tiß║┐t v├á danh s├ích theo ng├┤n ngß╗»[2m > [22m6. Trang danh s├ích hß╗ìc phß║ºn (/modules) chß╗ìn outline_url hoß║╖c outline_url_en theo ng├┤n ngß╗»
+[41m[1m FAIL [22m[49m src/app/modules/[code]/__tests__/page.test.tsx[2m > [22mBrief B7: Hiß╗ân thß╗ï li├¬n kß║┐t PDF ─æß╗ü c╞░╞íng tr├¬n trang chi tiß║┐t v├á danh s├ích theo ng├┤n ngß╗»[2m > [22m7. Trang chi tiß║┐t hß╗ìc phß║ºn (/modules/[code]) c├│ n├║t BackButton quay lß║íi danh s├ích hß╗ìc phß║ºn
+[31m[1mError[22m: The property "moduleReviews" is not defined on the object.[39m
+[2m      Tests [22m [1m[31m18 failed[39m[22m[2m | [22m[1m[32m364 passed[39m[22m[90m (382)[39m
+

@@ -1,8 +1,8 @@
 """Tests for program tracks resolution, contextual views (English track 'E' vs standard),
 and multi-program filtering."""
 
-from app.models import Module, ModuleRelation, Program, ProgramModule
-from app.services.program_tracks import parse_track_identifier
+from app.models import ClassSection, Module, ModuleRelation, Program, ProgramModule
+from app.services.program_tracks import clear_valid_groups_cache, parse_track_identifier
 
 
 def test_parse_track_identifier():
@@ -13,6 +13,30 @@ def test_parse_track_identifier():
     assert parse_track_identifier("K26409A") == ("K26409", "A", False)
     assert parse_track_identifier("K23406H") == ("K23406", "H", False)
     assert parse_track_identifier("K24416T") == ("K24416", "T", False)
+
+
+def test_hidden_agu_module_is_kept_in_db_but_excluded_from_public_catalog(client, db):
+    visible = Module(code="BCS1001", name="Tin học", credits=3, search_text="tin hoc")
+    hidden = Module(code="COS101", name="Tin học đại cương (AGU)", credits=3, search_text="tin hoc agu")
+    program = Program(id="K26401", name="Kinh tế", cohort="K26")
+    db.add_all([visible, hidden, program])
+    db.flush()
+    db.add_all([
+        ProgramModule(program_id=program.id, module_code=visible.code, required=True),
+        ProgramModule(program_id=program.id, module_code=hidden.code, required=True),
+        ModuleRelation(program_id=program.id, source=hidden.code, target=visible.code, type="prereq"),
+    ])
+    db.commit()
+    assert db.get(Module, "COS101").is_hidden
+    assert client.get("/api/modules?degree=all&q=agu").json()["total"] == 0
+    assert client.get("/api/module-facets?q=agu").json()["total"] == 0
+    assert client.get("/api/modules/COS101").status_code == 404
+    assert client.get("/api/modules/COS101/tree").status_code == 404
+    assert client.get("/api/modules/COS101/classes").status_code == 404
+    detail = client.get("/api/programs/K26401").json()
+    assert [module["code"] for block in detail["blocks"] for module in block["modules"]] == ["BCS1001"]
+    graph = client.get("/api/programs/K26401/graph").json()
+    assert [node["code"] for node in graph["nodes"]] == ["BCS1001"]
 
 
 def test_program_track_resolution_and_mapping(client, db):
@@ -53,8 +77,10 @@ def test_program_track_resolution_and_mapping(client, db):
     db.add_all([m1, m1_e, m2_no_cp, m3_already_e])
 
     # Setup synthetic program K26409 (canonical base in DB)
+    clear_valid_groups_cache()
     prog = Program(id="K26409", name="Kiểm toán Khóa 26", cohort="K26", faculty="Khoa Kế toán - Kiểm toán")
-    db.add(prog)
+    cs = ClassSection(class_code="261BIM502201", module_code="BIM5022", student_groups=["K26409E"])
+    db.add_all([prog, cs])
     db.flush()
 
     pm1 = ProgramModule(
@@ -170,10 +196,12 @@ def test_program_track_resolution_and_mapping(client, db):
 
 
 def test_modules_filter_single_and_repeated_program_ids(client, db):
+    clear_valid_groups_cache()
     # Setup two programs: K26409 (primary, will be viewed in E track) and K24406 (secondary)
     p1 = Program(id="K26409", name="Kiểm toán K26", cohort="K26")
     p2 = Program(id="K24406", name="HTTTQL K24", cohort="K24")
-    db.add_all([p1, p2])
+    cs = ClassSection(class_code="261BIM502201", module_code="BIM5022", student_groups=["K26409E"])
+    db.add_all([p1, p2, cs])
 
     m_base = Module(code="BIM5022", name="HTTT Base", credits=3, counterpart_code="EIM5022", language_track="vi")
     m_e = Module(code="EIM5022", name="HTTT E", credits=3, counterpart_code="BIM5022", language_track="en")

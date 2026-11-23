@@ -1,1 +1,1 @@
-"""UELCourses backend (FastAPI)."""
+"""UELPATH backend (FastAPI)."""

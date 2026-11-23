@@ -36,7 +36,11 @@ def split_sentences(text: str) -> list[str]:
         line = collapse_ws(line)
         if not line:
             continue
-        for s in re.split(r"(?<=[.;:])\s+(?=[A-ZĐÀ-Ỹa-zđ0-9])", line):
+        label = re.match(r"^(\d{1,2}\.|[a-zđ]\))\s+", line)
+        start = label.end() if label else 0
+        sentences = re.split(r"(?<=[.;:])\s+(?=[A-ZĐÀ-Ỹa-zđ0-9])", line[start:])
+        sentences[0] = line[:start] + sentences[0]
+        for s in sentences:
             s = s.strip()
             if s:
                 units.append(s)
@@ -89,9 +93,10 @@ def compare(index: RagIndex, topic: str, cohorts: list[str], today: date | None 
     rows: list[dict[str, Any]] = []
     warnings: list[str] = []
     picks: dict[str, tuple[Chunk, float] | None] = {}
+    regulations = [d for d in index.docs if d.source_type != "handbook"]
 
     for c in cohorts_n:
-        scope, scope_warn = cohort_scope(index.docs, c, today)
+        scope, scope_warn = cohort_scope(regulations, c, today)
         warnings += [f"Khóa {c}: {w}" for w in scope_warn]
         hits = index.search(topic, top_k=10, doc_ids=[d.doc_id for d in scope]) if scope else []
         hits = [h for h in hits if h.coverage >= 0.4]

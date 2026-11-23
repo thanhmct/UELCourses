@@ -1,0 +1,72 @@
+﻿LOI MOI do brief W18_facets_by_program gay ra (chi sua nhung loi nay):
+tsc|src/app/modules/page.tsx|TS2304
+tsc|src/app/modules/page.tsx|TS7006
+vitest|src/components/__tests__/equivalentsHover.test.tsx > EquivalentsHover > bß║Ñm chip bß║¡t v├á tß║»t popover (m├án h├¼nh cß║úm ß╗⌐ng)
+vitest|src/components/__tests__/moduleFilters.test.tsx > ModulesPage Filters and Placeholders > handles filter interactions: activating facets enables reset, and reset clears facets and faculty search while preserving module search and program context
+vitest|src/components/__tests__/moduleFilters.test.tsx > ModulesPage Filters and Placeholders > updates count note by context: program vs dual programs (song ng├ánh)
+
+=== Chi tiet day du (chi de tham khao, loi khac khong thuoc brief nay thi BO QUA) ===
+### tsc (web)
+src/app/modules/[code]/__tests__/page.test.tsx(204,7): error TS2353: Object literal may only specify known properties, and 'page' does not exist in type 'Paged<ModuleSummary>'.
+src/app/modules/page.tsx(212,48): error TS2304: Cannot find name 'ModuleFacets'.
+src/app/modules/page.tsx(447,51): error TS7006: Parameter 'i' implicitly has an 'any' type.
+src/app/modules/page.tsx(695,78): error TS7006: Parameter 'x' implicitly has an 'any' type.
+
+
+### vitest (web)
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ» Failed Tests 19 ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+ FAIL  src/components/__tests__/equivalentsHover.test.tsx > EquivalentsHover > bß║Ñm chip bß║¡t v├á tß║»t popover (m├án h├¼nh cß║úm ß╗⌐ng)
+TestingLibraryElementError: Unable to find an element with the text: TOA1002. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+ Γ¥» Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ FAIL  src/components/__tests__/moduleFilters.test.tsx > ModulesPage Filters and Placeholders > handles filter interactions: activating facets enables reset, and reset clears facets and faculty search while preserving module search and program context
+TestingLibraryElementError: Found multiple elements with the role "checkbox" and name `/Kinh tß║┐/i`
+ FAIL  src/components/__tests__/moduleFilters.test.tsx > ModulesPage Filters and Placeholders > updates count note by context: program vs dual programs (song ng├ánh)
+TestingLibraryElementError: Unable to find an element with the text: Sß╗æ l╞░ß╗úng trong c├íc ch╞░╞íng tr├¼nh ─æang lß╗ìc. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+ FAIL  src/app/modules/__tests__/profileFilterSync.test.tsx > W6 & W11: Profile filter banner text and real-time synchronization > Brief W16: n├║t ─Éß╗òi mß╗ƒ hß╗Öp thoß║íi pop-up (role=dialog) ngay tr├¬n trang, URL kh├┤ng ─æß╗òi, l╞░u xong cß║¡p nhß║¡t thanh lß╗ìc kh├┤ng reload
+TestingLibraryElementError: Found multiple elements with the text: /C├┤ng nghß╗ç t├ái ch├¡nh/i
+ FAIL  src/app/programs/__tests__/page.test.tsx > Brief W25: Thiß║┐t lß║¡p lß║íi hß╗ç thß╗æng lß╗ìc trang Ch╞░╞íng tr├¼nh ─æ├áo tß║ío (CT─ÉT) > 2. Mß║╖c ─æß╗ïnh chß╗ë hiß╗ân thß╗ï CT─ÉT cß╗ºa ng╞░ß╗¥i d├╣ng: c├│ ch╞░╞íng tr├¼nh K24414 ΓåÆ mß║╖c ─æß╗ïnh chß╗ë duy nhß║Ñt mß╗Öt thß║╗ 'C├┤ng nghß╗ç t├ái ch├¡nh'
+AssertionError: expected <option ΓÇª(1)></option> to be null
+ FAIL  src/app/programs/__tests__/page.test.tsx > Brief W25: Thiß║┐t lß║¡p lß║íi hß╗ç thß╗æng lß╗ìc trang Ch╞░╞íng tr├¼nh ─æ├áo tß║ío (CT─ÉT) > 3. N├║t 'Xem tß║Ñt cß║ú CT─ÉT' nß║▒m TRONG khß╗æi lß╗ìc (within khß╗æi form/region t├¼m ch╞░╞íng tr├¼nh); bß║Ñm ΓåÆ hiß╗çn tß║Ñt cß║ú CT─ÉT tß╗½ mock, bß╗Ö lß╗ìc vß╗ü mß║╖c ─æß╗ïnh
+TestingLibraryElementError: Found multiple elements with the text: /Hß╗ç thß╗æng th├┤ng tin quß║ún l├╜/i
+ FAIL  src/app/programs/__tests__/page.test.tsx > Brief W25: Thiß║┐t lß║¡p lß║íi hß╗ç thß╗æng lß╗ìc trang Ch╞░╞íng tr├¼nh ─æ├áo tß║ío (CT─ÉT) > 4. Bß║Ñm 'Chß╗ë CT─ÉT cß╗ºa t├┤i' ΓåÆ quay lß║íi chß║┐ ─æß╗Ö mß║╖c ─æß╗ïnh chß╗ë hiß╗ân thß╗ï CT─ÉT cß╗ºa ng╞░ß╗¥i d├╣ng
+TestingLibraryElementError: Found multiple elements with the text: /Hß╗ç thß╗æng th├┤ng tin quß║ún l├╜/i
+ FAIL  src/app/programs/__tests__/page.test.tsx > Brief W25: Thiß║┐t lß║¡p lß║íi hß╗ç thß╗æng lß╗ìc trang Ch╞░╞íng tr├¼nh ─æ├áo tß║ío (CT─ÉT) > 5. G├╡ t├¼m kiß║┐m khi ß╗ƒ chß║┐ ─æß╗Ö mß║╖c ─æß╗ïnh ('chß╗ë CT─ÉT cß╗ºa t├┤i') ΓåÆ tß╗▒ chuyß╗ân sang xem tß║Ñt cß║ú
+AssertionError: expected <option ΓÇª(1)></option> to be null
+ FAIL  src/app/programs/__tests__/page.test.tsx > Brief W25: Thiß║┐t lß║¡p lß║íi hß╗ç thß╗æng lß╗ìc trang Ch╞░╞íng tr├¼nh ─æ├áo tß║ío (CT─ÉT) > 6. T├¼m kiß║┐m theo tß╗½ viß║┐t tß║»t (HTTQL) hoß║╖c m├ú CT─ÉT kh├┤ng ph├ón biß╗çt hoa th╞░ß╗¥ng
+TestingLibraryElementError: Found multiple elements with the text: /Hß╗ç thß╗æng th├┤ng tin quß║ún l├╜/i
+ FAIL  src/app/programs/__tests__/page.test.tsx > Brief W25: Thiß║┐t lß║¡p lß║íi hß╗ç thß╗æng lß╗ìc trang Ch╞░╞íng tr├¼nh ─æ├áo tß║ío (CT─ÉT) > 7. Song ng├ánh: c├│ ng├ánh 2 ΓåÆ mß║╖c ─æß╗ïnh hiß╗çn 2 thß║╗ vß╗¢i nh├ún Ng├ánh ch├¡nh / Ng├ánh 2
+AssertionError: expected <option ΓÇª(1)></option> to be null
+ FAIL  src/app/programs/__tests__/page.test.tsx > Brief W25: Thiß║┐t lß║¡p lß║íi hß╗ç thß╗æng lß╗ìc trang Ch╞░╞íng tr├¼nh ─æ├áo tß║ío (CT─ÉT) > 8. Ch╞░a c├│ ch╞░╞íng tr├¼nh ΓåÆ hiß╗ân thß╗ï to├án bß╗Ö CT─ÉT, k├¿m gß╗úi ├╜ chß╗ìn ch╞░╞íng tr├¼nh v├á kh├┤ng c├│ n├║t 'Chß╗ë CT─ÉT cß╗ºa t├┤i'
+TestingLibraryElementError: Found multiple elements with the text: /Hß╗ç thß╗æng th├┤ng tin quß║ún l├╜/i
+ FAIL  src/app/programs/__tests__/page.test.tsx > Brief W25: Thiß║┐t lß║¡p lß║íi hß╗ç thß╗æng lß╗ìc trang Ch╞░╞íng tr├¼nh ─æ├áo tß║ío (CT─ÉT) > 9. Hß╗ù trß╗ú giao diß╗çn tiß║┐ng Anh (EN): nh├ún n├║t, ti├¬u ─æß╗ü v├á sß╗æ l╞░ß╗úng hiß╗ân thß╗ï tiß║┐ng Anh
+TestingLibraryElementError: Found multiple elements with the text: /Hß╗ç thß╗æng th├┤ng tin quß║ún l├╜/i
+ FAIL  src/app/programs/__tests__/page.test.tsx > Brief W25: Thiß║┐t lß║¡p lß║íi hß╗ç thß╗æng lß╗ìc trang Ch╞░╞íng tr├¼nh ─æ├áo tß║ío (CT─ÉT) > 10. ─Éß╗òi ch╞░╞íng tr├¼nh qua profile ΓåÆ danh s├ích mß║╖c ─æß╗ïnh cß║¡p nhß║¡t ngay lß║¡p tß╗⌐c
+AssertionError: expected <option ΓÇª(1)></option> to be null
+ FAIL  src/app/modules/[code]/__tests__/page.test.tsx > Brief B7: Hiß╗ân thß╗ï li├¬n kß║┐t PDF ─æß╗ü c╞░╞íng tr├¬n trang chi tiß║┐t v├á danh s├ích theo ng├┤n ngß╗» > 1. Trang chi tiß║┐t c├│ cß║ú 2 link (BKB4060) hiß╗ân thß╗ï cß║ú 2 n├║t tiß║┐ng Viß╗çt v├á English ß╗ƒ giao diß╗çn tiß║┐ng Viß╗çt
+TestingLibraryElementError: Unable to find role="link" and name `/Tiß║┐ng Viß╗çt/`
+ FAIL  src/app/modules/[code]/__tests__/page.test.tsx > Brief B7: Hiß╗ân thß╗ï li├¬n kß║┐t PDF ─æß╗ü c╞░╞íng tr├¬n trang chi tiß║┐t v├á danh s├ích theo ng├┤n ngß╗» > 2. Trang chi tiß║┐t c├│ cß║ú 2 link (BKB4060) hiß╗ân thß╗ï cß║ú 2 n├║t ß╗ƒ giao diß╗çn tiß║┐ng Anh
+TestingLibraryElementError: Unable to find role="link" and name `/Tiß║┐ng Viß╗çt/`
+ FAIL  src/app/modules/[code]/__tests__/page.test.tsx > Brief B7: Hiß╗ân thß╗ï li├¬n kß║┐t PDF ─æß╗ü c╞░╞íng tr├¬n trang chi tiß║┐t v├á danh s├ích theo ng├┤n ngß╗» > 3. Trang chi tiß║┐t chß╗ë c├│ link tiß║┐ng Viß╗çt hiß╗ân thß╗ï n├║t ─æ╞ín theo ng├┤n ngß╗»
+TestingLibraryElementError: Unable to find role="link" and name `/─Éß╗ü c╞░╞íng \(PDF\)/`
+ FAIL  src/app/modules/[code]/__tests__/page.test.tsx > Brief B7: Hiß╗ân thß╗ï li├¬n kß║┐t PDF ─æß╗ü c╞░╞íng tr├¬n trang chi tiß║┐t v├á danh s├ích theo ng├┤n ngß╗» > 4. Trang chi tiß║┐t chß╗ë c├│ link tiß║┐ng Anh hiß╗ân thß╗ï n├║t ─æ╞ín d├╣ng link tiß║┐ng Anh
+TestingLibraryElementError: Unable to find role="link" and name `/─Éß╗ü c╞░╞íng \(PDF\)/`
+ FAIL  src/app/modules/[code]/__tests__/page.test.tsx > Brief B7: Hiß╗ân thß╗ï li├¬n kß║┐t PDF ─æß╗ü c╞░╞íng tr├¬n trang chi tiß║┐t v├á danh s├ích theo ng├┤n ngß╗» > 5. Trang chi tiß║┐t kh├┤ng c├│ link ─æß╗ü c╞░╞íng th├¼ kh├┤ng hiß╗ân thß╗ï n├║t li├¬n kß║┐t n├áo
+TestingLibraryElementError: Unable to find an element with the text: NOLINK99. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+ FAIL  src/app/modules/[code]/__tests__/page.test.tsx > Brief B7: Hiß╗ân thß╗ï li├¬n kß║┐t PDF ─æß╗ü c╞░╞íng tr├¬n trang chi tiß║┐t v├á danh s├ích theo ng├┤n ngß╗» > 7. Trang chi tiß║┐t hß╗ìc phß║ºn (/modules/[code]) c├│ n├║t BackButton quay lß║íi danh s├ích hß╗ìc phß║ºn
+TestingLibraryElementError: Unable to find role="link" and name "Quay lß║íi danh s├ích hß╗ìc phß║ºn"
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ» Unhandled Errors ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+Error: [vitest] No "useRouter" export is defined on the "next/navigation" mock. Did you forget to return it from "vi.mock"?
+ Γ¥» VitestMocker.createError node_modules/vitest/dist/chunks/index.C7Nn66Gy.js:68:17
+Error: [vitest] No "useRouter" export is defined on the "next/navigation" mock. Did you forget to return it from "vi.mock"?
+ Γ¥» VitestMocker.createError node_modules/vitest/dist/chunks/index.C7Nn66Gy.js:68:17
+Error: [vitest] No "useRouter" export is defined on the "next/navigation" mock. Did you forget to return it from "vi.mock"?
+ Γ¥» VitestMocker.createError node_modules/vitest/dist/chunks/index.C7Nn66Gy.js:68:17
+Error: [vitest] No "useRouter" export is defined on the "next/navigation" mock. Did you forget to return it from "vi.mock"?
+ Γ¥» VitestMocker.createError node_modules/vitest/dist/chunks/index.C7Nn66Gy.js:68:17
+Error: [vitest] No "useRouter" export is defined on the "next/navigation" mock. Did you forget to return it from "vi.mock"?
+ Γ¥» VitestMocker.createError node_modules/vitest/dist/chunks/index.C7Nn66Gy.js:68:17
+Error: [vitest] No "useRouter" export is defined on the "next/navigation" mock. Did you forget to return it from "vi.mock"?
+ Γ¥» VitestMocker.createError node_modules/vitest/dist/chunks/index.C7Nn66Gy.js:68:17
+      Tests  19 failed | 376 passed (395)
+     Errors  6 errors
+

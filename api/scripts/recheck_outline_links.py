@@ -16,7 +16,7 @@ def check(url):
     target = f'https://docs.google.com/document/d/{match.group(1)}/export?format=pdf' if match else f'https://drive.google.com/uc?export=download&id={fid.group(1)}' if fid else url
     result = {'url':url,'checked_url':target}
     try:
-        with urllib.request.urlopen(urllib.request.Request(target,headers={'User-Agent':'UELCourse-outline-downloader/1.0'}),timeout=40) as response:
+        with urllib.request.urlopen(urllib.request.Request(target,headers={'User-Agent':'UELPATH-outline-downloader/1.0'}),timeout=40) as response:
             body = response.read()
             result['content_type'] = response.headers.get('Content-Type','')
             if body.startswith(b'%PDF-'):

@@ -12,6 +12,31 @@ export function allModules(p: ProgramDetail): (ProgramModule & { block: string }
   return p.blocks.flatMap((b) => b.modules.map((m) => ({ ...m, block: b.name })));
 }
 
+export interface TermGroup {
+  /** Thứ tự kỳ trong CTĐT (1, 2, …); null = chưa phân học kỳ. */
+  order: number | null;
+  /** "2024-2025-1" hoặc null. */
+  semester: string | null;
+  modules: (ProgramModule & { block: string })[];
+  credits: number;
+}
+
+/** Học phần BẮT BUỘC của CTĐT, nhóm theo học kỳ gợi ý (kỳ sớm trước; nhóm "chưa phân học kỳ" ở cuối). */
+export function requiredByTerm(p: ProgramDetail): TermGroup[] {
+  const groups = new Map<string, TermGroup>();
+  for (const m of allModules(p)) {
+    if (!m.required) continue;
+    const order = m.suggested_order ?? null;
+    const key = order === null ? "none" : String(order);
+    let g = groups.get(key);
+    if (!g) groups.set(key, (g = { order, semester: order === null ? null : m.suggested_semester ?? null, modules: [], credits: 0 }));
+    g.modules.push(m);
+    g.credits += m.credits || 0;
+  }
+  for (const g of groups.values()) g.modules.sort((a, b) => a.code.localeCompare(b.code));
+  return [...groups.values()].sort((a, b) => (a.order ?? Infinity) - (b.order ?? Infinity));
+}
+
 /** Normalise codes coming from raw fields like " TATC" or "KT48, KT49". */
 export function splitCodes(v?: string | string[] | null): string[] {
   if (!v) return [];

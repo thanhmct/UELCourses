@@ -20,7 +20,7 @@ def test_bm25_basic():
 
 
 def test_search_accentless_and_filter(index):
-    hits = index.search("toi da bao nhieu tin chi", top_k=3, doc_ids=["QC-DT-2023-MAU"])
+    hits = index.search("dang ky toi da bao nhieu tin chi trong hoc ky", top_k=3, doc_ids=["QC-DT-2023-MAU"])
     assert hits and all(h.chunk.doc_id == "QC-DT-2023-MAU" for h in hits)
     assert hits[0].chunk.chunk_id == "QC-DT-2023-MAU:D5:K3"
     assert index.search("anything", doc_ids=["nope"]) == []

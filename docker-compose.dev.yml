@@ -7,7 +7,7 @@ services:
       - "5432:5432"   # để xem DB bằng DBeaver/pgAdmin khi dev
 
   api:
-    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--no-access-log"]
     user: root        # tránh lỗi quyền ghi khi mount thư mục từ Windows
     environment:
       WATCHFILES_FORCE_POLLING: "true"   # reload hoạt động với ổ đĩa Windows mount vào
@@ -17,7 +17,11 @@ services:
       - /app/.venv-rag
       - apidata:/app/data
 
+  # `web` (Next dev) chỉ chạy khi cần: `docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile web up web`.
+  # Khi dev bình thường, giao diện chạy trong `workspace` (cổng 3001) hoặc server Next trên máy (cổng 3000);
+  # không để `web` tự tạo kẻo tranh cổng 3000 và để lại container "Created" vô dụng.
   web:
+    profiles: ["web"]
     build:
       target: dev
     environment:
@@ -47,6 +51,9 @@ services:
       CORS_ORIGINS: http://localhost:3000,http://localhost:3001
       LLM_PROVIDER: ${LLM_PROVIDER:-none}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      CODEX_API_KEY: ${CODEX_API_KEY:-}
+      CODEX_MODEL: ${CODEX_MODEL:-}
+      CODEX_BASE_URL: ${CODEX_BASE_URL:-}
       NEXT_TELEMETRY_DISABLED: "1"
     volumes:
       - .:/workspace

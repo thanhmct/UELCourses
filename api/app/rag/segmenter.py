@@ -27,6 +27,13 @@ KEM_THEO_RE = re.compile(r"kèm\s+theo\s+(?:Quyết\s+định|Thông\s+tư)\s+s�
 PLACE_DATE_RE = re.compile(r"(?:Thành\s+phố|TP\.|Tp\.|Hà\s+Nội)[^,]*,\s*ngày", re.IGNORECASE)
 DATE_RE = re.compile(r"ngày\s+(\d{1,2})\s+tháng\s+(\d{1,2})\s+năm\s+(\d{4})", re.IGNORECASE)
 
+MAX_CHUNK_CHARS = 1400
+CHUNK_OVERLAP_CHARS = 180
+_APPENDIX_RE = re.compile(
+    r"(?:(?<=\./\.)\s*(?:\d+\s+)?)?(?P<label>(?:DANH\s+MỤC\s+CÁC\s+)?PHỤ\s+LỤC(?:\s+[IVXLCDM\d]+)?)\b",
+    re.IGNORECASE,
+)
+
 
 @dataclass
 class ParsedDocument:
@@ -198,42 +205,101 @@ def segment(pages: list[tuple[int, str]] | str) -> ParsedDocument:
 
 
 def build_chunks(doc: RegulationDoc, parsed: ParsedDocument) -> list[Chunk]:
-    """One chunk per Khoản (points included); articles without clauses become one chunk."""
+    """Build bounded verbatim retrieval windows while preserving their legal locator."""
     chunks: list[Chunk] = []
     seen: set[str] = set()
+
+    def split_windows(text: str) -> list[str]:
+        """Return overlapping substrings no longer than MAX_CHUNK_CHARS."""
+        if len(text) <= MAX_CHUNK_CHARS:
+            return [text]
+        windows: list[str] = []
+        start = 0
+        while start < len(text):
+            hard_end = min(len(text), start + MAX_CHUNK_CHARS)
+            end = hard_end
+            if hard_end < len(text):
+                floor = start + MAX_CHUNK_CHARS // 2
+                candidates = [
+                    text.rfind("\n", floor, hard_end),
+                    text.rfind(". ", floor, hard_end),
+                    text.rfind("; ", floor, hard_end),
+                    text.rfind(" ", floor, hard_end),
+                ]
+                boundary = max(candidates)
+                if boundary >= floor:
+                    end = boundary + (0 if text[boundary] == "\n" else 1)
+            window = text[start:end].strip()
+            if window:
+                windows.append(window)
+            if end >= len(text):
+                break
+            next_start = max(start + 1, end - CHUNK_OVERLAP_CHARS)
+            while next_start > start and next_start < len(text) and not text[next_start - 1].isspace():
+                next_start += 1
+            start = min(next_start, end)
+        return windows
+
+    def sections(text: str) -> list[tuple[str, str, str | None]]:
+        """Detach an annex accidentally appended to the final clause."""
+        if len(text) <= MAX_CHUNK_CHARS:
+            return [("clause", text, None)]
+        marker = _APPENDIX_RE.search(text)
+        if marker is None or marker.start() < 20:
+            return [("clause", text, None)]
+        main = text[:marker.start()].rstrip()
+        appendix = text[marker.start():].lstrip()
+        out = [("clause", main, None)] if main else []
+        out.append(("appendix", appendix, " ".join(marker.group("label").split()).title()))
+        return out
 
     def make(article: Article, clause: Clause | None, text: str, page: int | None, suffix: str) -> None:
         if not text.strip():
             return
-        cid = f"{doc.doc_id}:{article.key}{suffix}"
-        base, k = cid, 2
-        while cid in seen:
-            cid = f"{base}#{k}"
-            k += 1
-        seen.add(cid)
         head_parts = [p for p in (article.chapter, article.section) if p]
         head_parts.append(f"Điều {article.article}. {article.title}".strip())
-        chunks.append(Chunk(
-            chunk_id=cid,
-            doc_id=doc.doc_id,
-            text=text,
-            decision_no=doc.decision_no,
-            title=doc.title,
-            article=article.article,
-            article_title=article.title,
-            clause=(clause.clause or None) if clause else None,
-            point=None,
-            heading=" > ".join(head_parts),
-            chapter=article.chapter,
-            section=article.section,
-            effective_from=doc.effective_from,
-            effective_to=doc.effective_to,
-            status=doc.status,
-            applies_to_cohorts=list(doc.applies_to_cohorts),
-            page=page,
-            points=[{"point": p.point, "text": p.text} for p in clause.points] if clause else [],
-            part=article.part,
-        ))
+        base_id = f"{doc.doc_id}:{article.key}{suffix}"
+        for chunk_type, section_text, appendix_label in sections(text):
+            for window_part, window in enumerate(split_windows(section_text), 1):
+                extra = ""
+                if chunk_type == "appendix":
+                    extra += f":A{window_part}"
+                elif window_part > 1:
+                    extra += f":P{window_part}"
+                cid = base_id + extra
+                base, k = cid, 2
+                while cid in seen:
+                    cid = f"{base}#{k}"
+                    k += 1
+                seen.add(cid)
+                heading = list(head_parts)
+                if appendix_label:
+                    heading.append(appendix_label)
+                chunks.append(Chunk(
+                    chunk_id=cid,
+                    doc_id=doc.doc_id,
+                    text=window,
+                    decision_no=doc.decision_no,
+                    title=doc.title,
+                    article=article.article,
+                    article_title=article.title,
+                    clause=(clause.clause or None) if clause else None,
+                    point=None,
+                    heading=" > ".join(heading),
+                    chapter=article.chapter,
+                    section=article.section,
+                    effective_from=doc.effective_from,
+                    effective_to=doc.effective_to,
+                    status=doc.status,
+                    applies_to_cohorts=list(doc.applies_to_cohorts),
+                    page=page,
+                    points=[{"point": p.point, "text": p.text} for p in clause.points if p.text in window]
+                    if clause else [],
+                    part=article.part,
+                    chunk_type=chunk_type,
+                    window_part=window_part,
+                    appendix_label=appendix_label,
+                ))
 
     for art in parsed.articles:
         if not art.clauses:

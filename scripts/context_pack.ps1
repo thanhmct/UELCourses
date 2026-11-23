@@ -18,7 +18,7 @@ function Add-File([string]$title, [string]$path) {
 $sb = New-Object System.Text.StringBuilder
 function Add([string]$s) { [void]$sb.AppendLine($s) }
 
-Add "# CONTEXT PACK — UELCourses (tạo lúc $(Get-Date -Format 'yyyy-MM-dd HH:mm'))"
+Add "# CONTEXT PACK — UELPATH (tạo lúc $(Get-Date -Format 'yyyy-MM-dd HH:mm'))"
 Add "> Dán toàn bộ file này vào đầu cuộc trò chuyện. Sau đó nói rõ việc bạn muốn làm tiếp. Không chứa token hay dữ liệu cá nhân."
 Add (Add-File 'Quy tắc chung' 'AGENTS.md')
 Add (Add-File 'Trạng thái bàn giao' 'docs\HANDOFF.md')
