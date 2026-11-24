@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import Any, Callable
 
-from .intent import OUT_OF_SCOPE, expand_forum, focus_question, forum_redirect
+from .intent import OUT_OF_SCOPE, expand_forum, focus_question, followup_cue, forum_redirect, maybe_elliptical, with_context
 from .completion import checked_quotes, complete, parse_clarify
 from .handbook import SOURCE_LABEL, SUMMARY_WARNING, citation_label
 from .index import Hit, RagIndex
@@ -257,7 +257,12 @@ def _citation_warnings(index: RagIndex, citations: list[dict[str, Any]], today: 
     for doc_id in dict.fromkeys(c["doc_id"] for c in citations):
         doc = index.docs_by_id.get(doc_id)
         if doc and doc.source_type != "handbook":
+            where = "; ".join(dict.fromkeys(
+                locator(c.get("article"), c.get("clause"), c.get("point")) for c in citations
+                if c["doc_id"] == doc_id and c.get("article")))
             for w in validity_warnings(doc, today, docs_by_id=index.docs_by_id):
+                if doc.metadata_unverified and w.startswith(f"{doc.title}: cần đối chiếu lại") and where:
+                    w = w.rstrip(".") + f". Bạn hãy tự kiểm tra tại {where} của văn bản gốc."
                 if w not in out:
                     out.append(w)
     return out
@@ -365,12 +370,13 @@ def _handbook_window(chunk: Chunk, query: str, index: RagIndex) -> tuple[Chunk, 
 
 
 def answer_extractive(index: RagIndex, question: str, cohort: str | None = None, today: date | None = None,
-                      top_k: int = 3, *, retrieval: RetrievalResult | None = None) -> dict[str, Any]:
+                      top_k: int = 3, *, retrieval: RetrievalResult | None = None,
+                      scoped: bool = False) -> dict[str, Any]:
     today = today or date.today()
     question = (question or "").strip()
     if not question:
         return {"answer": REFUSAL, "citations": [], "warnings": ["Câu hỏi trống."], "mode": "extractive", "found": False}
-    if not regulation_scope(question):
+    if not scoped and not regulation_scope(question):
         return {"answer": REFUSAL, "citations": [], "warnings": [], "mode": "extractive", "found": False}
     rr = retrieval or retrieve(index, question, cohort, today, top_k)
     warnings = list(rr.warnings)
@@ -384,7 +390,7 @@ def answer_extractive(index: RagIndex, question: str, cohort: str | None = None,
         if h.chunk.source_type == "handbook":
             citation_chunk, quote = _handbook_window(h.chunk, question, index)
         else:
-            quote = (pt["text"] if pt else h.chunk.text)[:MAX_QUOTE].rstrip()
+            quote = (pt["text"] if pt else h.chunk.text)[:SCOPED_MAX_QUOTE if scoped else MAX_QUOTE].rstrip()
         if not quote or source_blocked(quote):
             continue
         citations.append(make_citation(index, citation_chunk, quote, pt["point"] if pt else None, _final(h)))
@@ -410,7 +416,12 @@ def answer_extractive(index: RagIndex, question: str, cohort: str | None = None,
     if summaries and not top.get("source_label"):
         answer += f"\n\n{SOURCE_LABEL} — " + "; ".join(summaries) + "."
 
-    citations = citations[:1]
+    if scoped:  # the user chose the document: show several verbatim passages instead of one
+        related = []
+        citations = citations[:top_k]
+        answer = "\n\n".join(f"{c['label']}\n{c['quote']}" if c.get("label") else c["quote"] for c in citations)
+    else:
+        citations = citations[:1]
     warnings += _citation_warnings(index, citations, today)
     if not _question_cohort(question, cohort):
         cohort_sets = {tuple(index.docs_by_id[c["doc_id"]].applies_to_cohorts) for c in citations
@@ -431,12 +442,13 @@ def verify_llm_output(raw: str, hits: list[Hit]) -> tuple[bool, str, list[tuple[
 
 def answer_llm(index: RagIndex, question: str, cohort: str | None = None, today: date | None = None,
                provider: LLMProvider | None = None, top_k: int = 3, context_k: int = 6, *,
-               reserve: Callable[[], bool] | None = None, profile: Profile | None = None) -> dict[str, Any]:
+               reserve: Callable[[], bool] | None = None, profile: Profile | None = None,
+               retrieval: RetrievalResult | None = None, scoped: bool = False, lang: str = "vi") -> dict[str, Any]:
     today = today or date.today()
-    if not regulation_scope(question):
+    if not scoped and not regulation_scope(question):
         return answer_extractive(index, question, cohort, today, top_k)
-    rr = retrieve(index, question, cohort, today, top_k)
-    base = answer_extractive(index, question, cohort, today, top_k, retrieval=rr)
+    rr = retrieval or retrieve(index, question, cohort, today, top_k)
+    base = answer_extractive(index, question, cohort, today, top_k, retrieval=rr, scoped=scoped)
     if not base["found"]:
         return base
     provider = provider or get_provider()
@@ -452,11 +464,17 @@ def answer_llm(index: RagIndex, question: str, cohort: str | None = None, today:
     study_profile = dict(profile or {})
     if effective_cohort and re.fullmatch(r"K\d{2}", effective_cohort):
         study_profile["cohort"] = effective_cohort
+    if lang == "en":
+        study_profile["answer_language"] = "English"
+    extra = (SCOPED_PROMPT if scoped else "") + (ENGLISH_PROMPT if lang == "en" else "")
+    llm_out: dict[str, Any] = {}
     quotes, reason = complete(question, sources, f"regulations:{index.version}:{effective_cohort}",
-                              provider, reserve, profile=study_profile or None)
+                              provider, reserve, profile=study_profile or None, system_extra=extra,
+                              max_sources=6 if scoped else None, out=llm_out,
+                              max_quote=SCOPED_MAX_QUOTE if scoped else MAX_QUOTE)
     if quotes is None and (clarification := parse_clarify(reason)) is not None:
         text, options = clarification
-        return _clarify("question", text, options) | {"provider": provider.name}
+        return _clarify("question", text, options) | {"provider": getattr(provider, "used", None) or provider.name}
     if quotes is None:
         if reason in _LLM_REJECTED:
             # The model read the retrieved passages and found no verifiable answer. On the eval set the
@@ -471,7 +489,7 @@ def answer_llm(index: RagIndex, question: str, cohort: str | None = None, today:
             answer = UNSURE + (f"\n\nCó thể liên quan: {names}." if names else "")
             return {"answer": answer, "citations": [], "related": related, "warnings": base["warnings"],
                     "mode": "llm", "found": False, "abstained": True, "abstain_reason": reason,
-                    "provider": provider.name}
+                    "provider": getattr(provider, "used", None) or provider.name}
         return base | {"llm_fallback": True, "fallback_reason": reason}
     quotes = sorted(quotes, key=lambda pair: chunks[pair[0]].source_type == "handbook")
     if all(chunks[key].source_type == "handbook" for key, _ in quotes) and not base["citations"][0].get("source_label"):
@@ -482,10 +500,34 @@ def answer_llm(index: RagIndex, question: str, cohort: str | None = None, today:
                                   + _citation_warnings(index, citations, today)))
     answer = "\n\n".join(f"{c['source_label']} — {c['label']}\n{c['quote']}" if c.get("source_label")
                          else c["quote"] for c in citations)
-    return {"answer": answer, "citations": citations,
-            "warnings": warnings, "mode": "llm", "found": True, "provider": provider.name}
+    if scoped:
+        # Quotes can be long clauses; they are shown once, as the citations, under a one-line lead.
+        where = "; ".join(dict.fromkeys(
+            f"{locator(c['article'], c['clause'], c['point'])} ({doc_label(index.docs_by_id[c['doc_id']])})".strip()
+            for c in citations if c["doc_id"] in index.docs_by_id))
+        answer = "Nội dung trong văn bản bạn đã chọn" + (f": {where}" if where else "") + ". Trích dẫn nguyên văn ở bên dưới."
+    result = {"answer": answer, "citations": citations,
+              "warnings": warnings, "mode": "llm", "found": True,
+              "provider": getattr(provider, "used", None) or provider.name}
+    if lang == "en" and llm_out.get("summary"):
+        # English question -> English answer only. The Vietnamese quotes stay as the cited source (citations).
+        result["answer"] = llm_out["summary"]
+        result["answer_lang"] = "en"
+    return result
 
 
+SCOPED_MAX_QUOTE = 1400  # a whole clause with its list of conditions fits (chunks are at most ~1400 characters)
+SCOPED_PROMPT = (
+    " Người dùng đã chọn riêng văn bản trong nguồn và muốn hỏi chi tiết về văn bản đó: chỉ dùng các đoạn được "
+    "cung cấp (đều thuộc văn bản đã chọn), kể cả khi câu hỏi không nhắc tên văn bản. Trả lời đầy đủ hơn: nêu "
+    "mọi khoản, điều kiện, ngoại lệ liên quan trực tiếp, tối đa 3 trích dẫn, mỗi trích dẫn là một đoạn liền mạch."
+)
+ENGLISH_PROMPT = (
+    " Người dùng hỏi bằng tiếng Anh (study_profile.answer_language là English; câu hỏi trong JSON đã được dịch "
+    "sang tiếng Việt để tìm kiếm): trường answer viết bằng tiếng Anh, 2-4 câu, nêu đủ điều kiện, con số, "
+    "thời hạn có trong các trích dẫn và không thêm điều gì ngoài nguồn. Trường quote luôn giữ nguyên "
+    "tiếng Việt đúng như trong nguồn."
+)
 CLARIFY_COHORT = "Quy định này khác nhau giữa các khóa. Bạn thuộc khóa nào?"
 
 
@@ -556,11 +598,75 @@ def _english_outcome(index: RagIndex, question: str, cohort: str | None, today: 
 
 def ask(index: RagIndex, question: str, cohort: str | None = None, mode: str | None = None,
         today: date | None = None, provider: LLMProvider | None = None, top_k: int = 3, *,
-        reserve: Callable[[], bool] | None = None, profile: Profile | None = None) -> dict[str, Any]:
+        reserve: Callable[[], bool] | None = None, profile: Profile | None = None,
+        doc_ids: list[str] | None = None, lang: str | None = None,
+        previous: list[str] | None = None) -> dict[str, Any]:
+    if not doc_ids and forum_redirect(question) is None:
+        from .scoped import english_in_scope, is_english
+        from .understand import needs_understanding, understand
+        english = is_english(question, lang)
+        # English without any study vocabulary is refused below before any upstream call.
+        if needs_understanding(question, previous, english) and not (english and not english_in_scope(question)):
+            provider = provider or get_provider()
+            understood = understand(provider, question, previous, reserve)
+            if understood is not None:
+                result = _ask_understood(index, understood, cohort, mode, today, provider, top_k, reserve, profile,
+                                         english)
+                return _english_messages(result) if english else result
+    # Rule-based path: clean questions, tagged documents, or the understanding step is unavailable.
+    if previous and not doc_ids and (followup_cue(question) or maybe_elliptical(question)):
+        # A follow-up ("Còn học kỳ hè thì sao?", "Vậy nó có được miễn học không?") only means something with the
+        # earlier questions. The model makes it standalone; without it the earlier questions are simply prefixed.
+        from .scoped import rewrite_followup
+        question = (rewrite_followup(provider or get_provider(), question, previous, reserve)
+                    or (with_context(question, previous) if followup_cue(question) else question))
+    if doc_ids:  # the student tagged documents: answer from them only, in more detail
+        from .scoped import ask_in_documents
+        return ask_in_documents(index, question, doc_ids, cohort, mode, today, provider, max(top_k, 4),
+                                reserve=reserve, profile=profile, lang=lang)
     # Forum phrasing: route non-regulation requests to the right page, expand abbreviations for retrieval.
     if (redirect := forum_redirect(question)) is not None:
         return redirect
-    question = focus_question(expand_forum(question))
+    from .scoped import english_in_scope, is_english, translate_question
+    english = is_english(question, lang)
+    provider = provider or get_provider()
+    if english and not english_in_scope(question):
+        return _english_messages({"answer": OUT_OF_SCOPE, "citations": [], "warnings": [], "mode": "out_of_scope",
+                                  "found": False})
+    if english:
+        # Retrieval and the scope gate are Vietnamese; the quotes stay Vietnamese and an English summary is added.
+        question = translate_question(provider, question, reserve) or question
+    result = _ask_regulations(index, focus_question(expand_forum(question)), cohort, mode, today, provider, top_k,
+                              reserve, profile, "en" if english else "vi")
+    return _english_messages(result) if english else result
+
+
+def _ask_understood(index: RagIndex, understood: Any, cohort: str | None, mode: str | None, today: date | None,
+                    provider: LLMProvider, top_k: int, reserve: Callable[[], bool] | None,
+                    profile: Profile | None, english: bool) -> dict[str, Any]:
+    out_of_scope = {"answer": OUT_OF_SCOPE, "citations": [], "warnings": [], "mode": "out_of_scope", "found": False}
+    if understood.intent == "unsafe":
+        return out_of_scope
+    if understood.clarify:
+        return _clarify("question", understood.clarify, understood.options) | {"understood": understood.query}
+    question = focus_question(expand_forum(understood.query))
+    # The intent never blocks a regulation answer: a confident match in the regulations still wins.
+    if understood.intent != "regulation" and not retrieve(index, question, cohort, today or date.today()).confident:
+        return out_of_scope | {"understood": understood.query}
+    result = _ask_regulations(index, question, cohort, mode, today, provider, top_k, reserve, profile,
+                              "en" if english else "vi")
+    if result.get("llm_fallback"):
+        # The model could not check the passages (provider error, budget). For a rewritten forum question the
+        # top extractive hit was off-topic in 4 of 4 real cases, so abstain instead of showing it as the answer.
+        result = {"answer": UNSURE, "citations": [], "related": result.get("citations", []),
+                  "warnings": result.get("warnings", []), "mode": "llm", "found": False, "abstained": True,
+                  "abstain_reason": result.get("fallback_reason")}
+    return result | {"understood": understood.query}
+
+
+def _ask_regulations(index: RagIndex, question: str, cohort: str | None, mode: str | None, today: date | None,
+                     provider: LLMProvider, top_k: int, reserve: Callable[[], bool] | None,
+                     profile: Profile | None, lang: str) -> dict[str, Any]:
     if not regulation_scope(question):
         return {"answer": OUT_OF_SCOPE, "citations": [], "warnings": [], "mode": "out_of_scope", "found": False}
     # Cheap, LLM-free check first: never spend an LLM call on a question we must clarify anyway.
@@ -568,7 +674,31 @@ def ask(index: RagIndex, question: str, cohort: str | None = None, mode: str | N
         return clarification
     if (outcome := _english_outcome(index, question, cohort, today or date.today(), profile)) is not None:
         return outcome
-    provider = provider or get_provider()
     if mode == "llm" or (mode is None and provider.available()):
-        return answer_llm(index, question, cohort, today, provider, top_k, reserve=reserve, profile=profile)
+        return answer_llm(index, question, cohort, today, provider, top_k, reserve=reserve, profile=profile,
+                          lang=lang)
     return answer_extractive(index, question, cohort, today, top_k)
+
+
+_ENGLISH_MESSAGES = (
+    (OUT_OF_SCOPE, "I only look up regulations, academic procedures and the student handbook (with verbatim "
+                   "quotes). Questions about course content, homework or personal experience are not supported; "
+                   "try asking about a specific rule, condition, deadline or procedure."),
+    (REFUSAL, "No matching regulation was found in the available documents. Try rephrasing the question or "
+              "contact the Department of Academic Affairs."),
+    (CLARIFY_COHORT, "This rule differs between cohorts. Which cohort are you in?"),
+)
+
+
+def _english_messages(result: dict[str, Any]) -> dict[str, Any]:
+    """Translate the fixed system messages; quotes stay in the original Vietnamese."""
+    text = result.get("answer", "")
+    for vi, en in _ENGLISH_MESSAGES:
+        if text == vi:
+            return result | {"answer": en} | ({"clarify": result["clarify"] | {"question": en}}
+                                              if result.get("clarify") else {})
+    if text.startswith(UNSURE):
+        related = text[len(UNSURE):].replace("Có thể liên quan:", "Possibly related:")
+        return result | {"answer": "I could not find a passage that directly answers this question, so no answer "
+                                   "is given. Try rephrasing or contact the Department of Academic Affairs." + related}
+    return result

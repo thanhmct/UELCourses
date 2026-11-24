@@ -68,6 +68,10 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("import-classes", help="Import JSON lớp học phần từ fetch_courses.py")
     p.add_argument("path")
     p.add_argument("--semester", help="Ép mã học kỳ, vd 2026-2027-1")
+    p = sub.add_parser("import-dkhp-csv", help="ETL idempotent: CSV cào Tra cứu học phần dkhp (bỏ qua tệp đã nạp, không tạo bản ghi trùng)")
+    p.add_argument("path")
+    p.add_argument("--force", action="store_true", help="Nạp lại dù sha256 đã có (vẫn upsert, không trùng)")
+    p.add_argument("--dry-run", action="store_true", help="Chỉ transform và báo cáo, không ghi DB")
     p = sub.add_parser("import-equivalents", help="Import JSON học phần tương đương")
     p.add_argument("path")
     p = sub.add_parser("import-uis-classes", help="Import Excel UIS danh sách LHP")
@@ -234,6 +238,12 @@ def main(argv: list[str] | None = None) -> int:
         with SessionLocal() as db:
             if args.cmd == "import-classes":
                 res = import_classes(db, extract_rows(_json(args.path)), semester=args.semester).model_dump()
+            elif args.cmd == "import-dkhp-csv":
+                from app.services.dkhp_csv_etl import load as load_dkhp_csv
+                res = load_dkhp_csv(db, _path(args.path), force=args.force, dry_run=args.dry_run)
+                if args.dry_run or res.get("status") == "already_loaded":
+                    print(json.dumps(res, ensure_ascii=False, default=str))
+                    return 0
             elif args.cmd == "import-equivalents":
                 res = import_equivalents(db, extract_rows(_json(args.path))).model_dump()
             elif args.cmd == "import-uis-classes":

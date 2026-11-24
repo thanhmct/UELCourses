@@ -42,6 +42,14 @@ services:
       CODEX_API_KEY: ${CODEX_API_KEY:-}
       CODEX_MODEL: ${CODEX_MODEL:-}
       CODEX_BASE_URL: ${CODEX_BASE_URL:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-}
+      GEMINI_BASE_URL: ${GEMINI_BASE_URL:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GROQ_MODEL: ${GROQ_MODEL:-}
+      LLM_IP_HOURLY_CAP: ${LLM_IP_HOURLY_CAP:-10}
+      LLM_IP_DAILY_CAP: ${LLM_IP_DAILY_CAP:-30}
+      LLM_DAILY_CALL_CAP: ${LLM_DAILY_CALL_CAP:-200}
     volumes:
       - apidata:/app/data
       - ./regulations:/regulations:ro

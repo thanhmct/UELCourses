@@ -41,11 +41,78 @@ _EXPANSIONS: list[tuple[re.Pattern[str], str]] = [(re.compile(p, _FLAGS), r) for
     (r"\bgv\b", "giảng viên"),
     (r"\bcvht\b", "cố vấn học tập"),
     (r"\b(?:lms|mooc)\b", "học trực tuyến"),
-    (r"\bđăng\s+kí\b", "đăng ký"),
+    (r"\bđăng\s+kí\b|\b[đd]ki\b|\b[đd]ăng\s?ki\b", "đăng ký"),
+    (r"\bq(?:s|su)\b", "quân sự"),
+    (r"\b(?:học|đi|kỳ|kì)\s+quân\s+sự\b(?!\s*\()", r"\g<0> (giáo dục quốc phòng an ninh)"),
+    (r"\bhki\s*(\d)\b", r"học kỳ \1"),
+    (r"\bhki\b", "học kỳ"),
     (r"\bk[ìi]\s+(?=\d|này|sau|tới|trước|hè|phụ)", "kỳ "),
     (r"\b(?:ko|k|hong|hông|khum|kh|hok)\b", "không"),
     (r"\b(?:đc|dc)\b", "được"),
     (r"\b(?:mn|mng)\b", "mọi người"),
+    # Unambiguous abbreviations mined from ~5,000 posts of the UEL student group (frequency order).
+    # Ambiguous ones ("bv", "sk", "đk", "tn", "tl") are left to the understanding step (understand.py).
+    (r"\bppnckh\b", "phương pháp nghiên cứu khoa học"),
+    (r"\bnckh\b", "nghiên cứu khoa học"),
+    (r"\bkthp\b", "kết thúc học phần"),
+    (r"\bksk\b", "khám sức khỏe"),
+    (r"\bbhyt\b", "bảo hiểm y tế"),
+    (r"\bkkht\b", "khuyến khích học tập"),
+    (r"\bcccd\b", "căn cước công dân"),
+    (r"\bmssv\b", "mã số sinh viên"),
+    (r"\bctsv\b", "công tác sinh viên"),
+    (r"\bccnn\b", "chứng chỉ ngoại ngữ"),
+    (r"\bkltn\b", "khóa luận tốt nghiệp"),
+    (r"\btttn\b", "thực tập tốt nghiệp"),
+    (r"\bgvhd\b", "giảng viên hướng dẫn"),
+    (r"\bgcn\b", "giấy chứng nhận"),
+    (r"\b[đd]hqg\b", "Đại học Quốc gia"),
+    (r"\bclb\b", "câu lạc bộ"),
+    (r"\bbcs\b", "ban cán sự"),
+    (r"\bc[đd]r\b", "chuẩn đầu ra"),
+    (r"\bct[đd]t\b", "chương trình đào tạo"),
+    (r"\bkq\b", "kết quả"),
+    (r"\bnmlh\b", "Nhập môn luật học"),
+    (r"\bktvm\b", "Kinh tế vi mô"),
+    (r"\bqth\b", "Quản trị học"),
+    (r"\bcnxhkh\b", "Chủ nghĩa xã hội khoa học"),
+    (r"\btthcm\b", "Tư tưởng Hồ Chí Minh"),
+    (r"\blsđ\b", "Lịch sử Đảng"),
+    (r"\bktct\b", "Kinh tế chính trị"),
+    (r"\bxstk\b", "Xác suất thống kê"),
+    (r"\bnlkt\b", "Nguyên lý kế toán"),
+    (r"\bkttc\b", "Kế toán tài chính"),
+    (r"\bcsdl\b", "Cơ sở dữ liệu"),
+    # English phrasing -> the Vietnamese wording of the regulations (scope gate and BM25 are Vietnamese).
+    (r"\b(?:register(?:ing)?|registration|enrol(?:l|ling|lment)?)\b", "đăng ký"),
+    (r"\b(?:withdraw(?:al|ing)?|drop(?:ping)?)\b", "rút"),
+    (r"\b(?:subjects?|courses?|modules?|classes)\b", "học phần"),
+    (r"\b(?:semesters?|terms?)\b", "học kỳ"),
+    (r"\bcredits?\b", "tín chỉ"),
+    (r"\b(?:maximum|max|at most|most)\b", "tối đa"),
+    (r"\b(?:minimum|min|at least)\b", "tối thiểu"),
+    (r"\bhow many\b", "bao nhiêu"),
+    (r"\b(?:graduat(?:e|ion|ing))\b", "tốt nghiệp"),
+    (r"\b(?:scholarships?)\b", "học bổng"),
+    (r"\b(?:tuition|fees?)\b", "học phí"),
+    (r"\b(?:regulations?|rules?|policy|policies)\b", "quy chế"),
+    (r"\b(?:requirements?|conditions?)\b", "điều kiện"),
+    (r"\b(?:deadline|time limit)\b", "thời hạn"),
+    (r"\b(?:exams?|examinations?|finals?)\b", "thi kết thúc học phần"),
+    (r"\b(?:retake|re-?study|repeat)\b", "học lại"),
+    (r"\b(?:gpa|grade point average)\b", "điểm trung bình tích lũy (GPA)"),
+    (r"\b(?:english (?:requirement|certificate|output standard)|ielts|toeic)\b", "chuẩn đầu ra tiếng Anh"),
+    (r"\b(?:suspend(?:ed)?|leave of absence|deferment)\b", "bảo lưu"),
+    (r"\b(?:dormitory|dorm)\b", "ký túc xá"),
+    (r"\b(?:sem)\b", "học kỳ"),
+    (r"\b(?:training|conduct|discipline) (?:scores?|points?|results?)\b", "điểm rèn luyện (kết quả rèn luyện)"),
+    (r"\b(?:academic|school) years?\b", "năm học"),
+    (r"\b(?:evaluat(?:e|ed|es|ion|ing)|assess(?:ed|ment|ing)?)\b", "đánh giá"),
+    (r"\b(?:every|each|per)\b", "mỗi"),
+    (r"\b(?:is|are|was|were|be|been|do|does|did|the|of|to|or|and|in|on|for|what|which|can|could|should|"
+     r"how|long|much|one|there|any)\b", " "),
+    (r"\b(?:certificates?|certification)\b", "chứng chỉ"),
+    (r"\b(?:valid(?:ity)?|expir(?:e|es|ed|y|ation))\b", "thời hạn"),
 )]
 
 
@@ -72,7 +139,7 @@ def expand_forum(text: str) -> str:
 
 _QUESTION_CUE = re.compile(
     r"\?|\b(?:không|sao|nào|bao nhiêu|mấy|khi nào|ở đâu|thế nào|như nào|ra sao|được không|có phải|"
-    r"có được|có bị|phải làm gì|bao lâu|hay không)\b", re.IGNORECASE)
+    r"có được|có bị|phải làm gì|bao lâu|hay không|hỏi về|thắc mắc|nên (?:đăng ký|học|làm))\b", re.IGNORECASE)
 FOCUS_MIN_CHARS = 160
 
 
@@ -82,6 +149,10 @@ def focus_question(text: str) -> str:
         return text
     parts = [p.strip(" -–•\t") for p in re.split(r"(?<=[.?!])\s+|\n+", text) if p.strip(" -–•\t")]
     asking = [p for p in parts if _QUESTION_CUE.search(p)]
+    # The opening sentence usually names the topic ("về việc đăng ký học phần tự chọn …"), even when the
+    # greeting cue ("cho em hỏi") was stripped from it.
+    if asking and parts[0] not in asking and len(parts[0]) >= 15:
+        asking.insert(0, parts[0])
     focused = " ".join(asking) if asking else text
     return focused if len(focused) >= 12 else text
 
@@ -91,7 +162,8 @@ def _fold(text: str) -> str:
 
 
 _MARKET = re.compile(
-    r"\b(?:pass|thanh ly|ban lai|mua lai|can mua|muon mua|tim mua|gom don|order)\b|"
+    r"\b(?:pass\s+(?:lai|sach|giao trinh|tai lieu|do|ao|dong phuc|de)|thanh ly|ban lai|mua lai|can mua|muon mua|"
+    r"tim mua|gom don|order)\b|"
     r"\b(?:mua|ban)\b.{0,40}\b(?:sach|giao trinh|tai lieu|ao|dong phuc|do dung)\b"
 )
 _MATERIALS = re.compile(
@@ -141,6 +213,37 @@ def forum_redirect(question: str) -> dict[str, Any] | None:
             return {"answer": message, "citations": [], "warnings": [], "mode": "redirect", "found": False,
                     "redirect": {"kind": kind, "href": href}}
     return None
+
+
+_FOLLOWUP_START = re.compile(
+    r"^\s*(?:còn|vậy|thế|thì|và|nữa|nếu vậy|như vậy|trường hợp (?:đó|này)|and|then|so|also|what about|"
+    r"how about|what if|how so)\b", _FLAGS)
+_ANAPHORA = re.compile(r"\b(?:nó|cái đó|điều đó|việc đó|như thế|họ|it|them|they|those)\b", _FLAGS)
+FOLLOWUP_MAX_TERMS = 4
+
+
+def _term_count(text: str) -> int:
+    from .textnorm import content_terms
+    return len(content_terms(text))
+
+
+def followup_cue(question: str) -> bool:
+    """The question leans on an earlier one: a connective opener ("Còn…", "And…") or a pronoun in a short question."""
+    return bool(_FOLLOWUP_START.match(question)
+                or (_ANAPHORA.search(question) and _term_count(question) <= FOLLOWUP_MAX_TERMS))
+
+
+def maybe_elliptical(question: str) -> bool:
+    """Too short to stand alone, so a miss is worth one retry with the earlier questions as context."""
+    return _term_count(question) <= FOLLOWUP_MAX_TERMS
+
+
+def with_context(question: str, previous: list[str] | None) -> str:
+    """Prefix the last earlier questions so retrieval and the model see the topic the follow-up refers to."""
+    earlier = [p.strip() for p in (previous or [])[-2:] if p and p.strip()]
+    if not earlier:
+        return question
+    return " ".join([*earlier, question])[:1500]
 
 
 OUT_OF_SCOPE = ("Mình chỉ tra cứu quy chế, thủ tục học vụ và thông tin trong sổ tay sinh viên (kèm trích dẫn "

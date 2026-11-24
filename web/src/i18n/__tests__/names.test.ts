@@ -196,12 +196,56 @@ describe("facultyName / departmentName", () => {
   });
   it("Luật khác Luật Kinh tế", () => {
     expect(facultyName("Khoa Luật", "en")).toBe("Faculty of Law");
-    expect(facultyName("Luật Kinh tế", "en")).toBe("Faculty of Business Law");
+    expect(facultyName("Luật Kinh tế", "en")).toBe("Faculty of Economic Law");
   });
   it("bộ môn và đơn vị không phải bộ môn", () => {
     expect(departmentName("Bộ môn Tài chính", "en")).toBe("Department of Finance");
-    expect(departmentName("Phòng Đào tạo", "en")).toBe("Academic Affairs Office");
+    expect(departmentName("Phòng Đào tạo", "en")).toBe("Department of Academic Affairs");
     expect(facultyName("Phòng Bảo đảm chất lượng", "en")).toBe("Department of Quality Assurance");
+  });
+
+  it.each([
+    ["Phòng Hành chính", "Department of Administration"],
+    ["Phòng Nhân sự", "Department of Human Resources"],
+    ["Phòng Bảo đảm chất lượng", "Department of Quality Assurance"],
+    ["Phòng Tuyển sinh và Công tác sinh viên", "Department of Admissions and Student Affairs"],
+    ["Phòng Đào tạo", "Department of Academic Affairs"],
+    ["Phòng Khoa học và Công nghệ", "Department of Science and Technology"],
+    ["Phòng Hợp tác phát triển", "Department of Cooperation and Development"],
+    ["Phòng Quản trị tài sản", "Department of Asset Management"],
+    ["Phòng Tài chính", "Department of Finance"],
+    ["Phòng Công nghệ thông tin", "Department of Information Technology"],
+    ["Phòng Truyền thông", "Department of Communication"],
+    ["Phòng Pháp chế", "Department of Legal Affairs"],
+    ["Khoa Kinh tế", "Faculty of Economics"],
+    ["Khoa Kinh tế đối ngoại", "Faculty of International Economic Relations"],
+    ["Khoa Tài chính - Ngân hàng", "Faculty of Finance and Banking"],
+    ["Khoa Kế toán - Kiểm toán", "Faculty of Accounting and Auditing"],
+    ["Khoa Hệ thống thông tin", "Faculty of Information Systems"],
+    ["Khoa Quản trị kinh doanh", "Faculty of Business Administration"],
+    ["Khoa Luật", "Faculty of Law"],
+    ["Khoa Luật Kinh tế", "Faculty of Economic Law"],
+    ["Khoa Toán kinh tế", "Faculty of Economic Mathematics"],
+    ["Viện Quốc tế UEL", "The International Institute of UEL"],
+    ["Thư viện", "Library"],
+    ["Viện Nghiên cứu phát triển công nghệ ngân hàng ĐHQG-HCM", "Institute for Development and Research in Banking Technology VNUHCM"],
+    ["Viện Pháp luật Quốc tế và so sánh", "Institute of International and Comparative Law"],
+    ["Công ty TNHH MTV Kinh tế – Luật", "Economics and Law Co., Ltd"],
+    ["Công đoàn", "Trade Union"],
+    ["Đoàn Thanh niên - Hội Sinh viên", "Youth Union"],
+  ])("dùng tên tiếng Anh chính thức UEL: %s", (vi, en) => {
+    expect(facultyName(vi, "en")).toBe(en);
+  });
+
+  it.each([
+    ["Academic Affairs Office", "Department of Academic Affairs"],
+    ["Quality Assurance Office", "Department of Quality Assurance"],
+    ["Faculty of Business Law", "Faculty of Economic Law"],
+    ["Faculty of Mathematical Economics", "Faculty of Economic Mathematics"],
+    ["UEL International Institute", "The International Institute of UEL"],
+  ])("chuẩn hóa faculty_en cũ ở đầu vào: %s", (legacy, official) => {
+    expect(facultyName({ faculty: "Đơn vị", faculty_en: legacy }, "en")).toBe(official);
+    expect(facultyName(legacy, "en")).toBe(official);
   });
   it("giá trị lạ và giao diện VI giữ nguyên; rỗng trả chuỗi rỗng", () => {
     expect(facultyName("Khoa Chưa Biết", "en")).toBe("Khoa Chưa Biết");
@@ -234,7 +278,7 @@ describe("facultyName / departmentName", () => {
       department: "Bộ môn Toán kinh tế",
     };
     expect(facultyName(modWithDept as ModuleSummary, "vi")).toBe("Khoa Toán kinh tế");
-    expect(facultyName(modWithDept as ModuleSummary, "en")).toBe("Faculty of Mathematical Economics");
+    expect(facultyName(modWithDept as ModuleSummary, "en")).toBe("Faculty of Economic Mathematics");
   });
 });
 

@@ -213,7 +213,7 @@ describe("Brief A1 & PLAN_ADMIN Mục 8: Admin Shell, Login, Layout & Overview",
 
       const adminLink = await screen.findByRole("link", { name: "Quản trị" });
       expect(adminLink).toBeInTheDocument();
-      expect(adminLink).toHaveAttribute("href", "/admin");
+      expect(adminLink).toHaveAttribute("href", "http://localhost:3100/admin");
     });
 
     it("ẩn liên kết 'Quản trị' khi API quản trị trả về lỗi hoặc 404", async () => {

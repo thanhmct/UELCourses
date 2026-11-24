@@ -15,6 +15,7 @@ from __future__ import annotations
 import csv
 import io
 import re
+import unicodedata
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
@@ -36,7 +37,7 @@ from app.models import (
     OutlineScheduleItem,
     OutlineSection,
 )
-from app.services.faculty_names import SEED_OVERRIDES_TSV, canonical_faculty_vi
+from app.services.faculty_names import SEED_OVERRIDES_TSV, canonical_faculty_vi, is_year_or_cohort_label
 from app.services.lineage import file_sha256
 from app.services.outline_parse import (
     _KINDS,
@@ -118,6 +119,34 @@ def extract_docx_content(docx_source: str | Path | BinaryIO) -> tuple[str, list[
     return full_text, tables_data
 
 
+def _is_faculty_label(raw_label: str) -> bool:
+    """Nhãn bảng có phải 'Khoa' (đơn vị quản lý) không.
+
+    Không dùng `fold()` ở đây: bỏ dấu sẽ biến 'Khóa học' (khóa/niên khóa) thành 'khoa hoc'
+    và bị nhận nhầm là khoa. 'Khoa học' không dấu cũng bị loại vì gần như luôn là 'Khóa học'.
+    """
+    s = unicodedata.normalize("NFC", raw_label or "").strip().lower()
+    if "faculty" in s:
+        return True
+    return bool(re.match(r"^khoa\b(?!\s*h[oọ]c)", s))
+
+
+def _faculty_from_header(full_text: str) -> str | None:
+    """Tên khoa ở tiêu đề trang ('KHOA QTKD', 'KHOA QUẢN TRỊ KINH DOANH'); chỉ nhận nếu ánh xạ được khoa chuẩn."""
+    head = full_text[:2500]
+    # Điểm dừng: bắt đầu phần bộ môn, chú thích đánh số '[2]', hoặc hết dòng/ô.
+    stop = r"(?=[ \t]+B[ỘO][ \t]+M[ÔO]N|[ \t]+DEPARTMENT\b|[ \t]*\[\d+\]|[\n\t|]|$)"
+    for prefix, pattern in (
+        ("KHOA ", r"\bKHOA[ \t]+(.{2,80}?)" + stop),
+        ("FACULTY OF ", r"\bFACULTY[ \t]+OF[ \t]+(.{2,80}?)" + stop),
+    ):
+        for m in re.finditer(pattern, head):
+            canon = canonical_faculty_vi(prefix + m.group(1).strip())
+            if canon:
+                return canon
+    return None
+
+
 def _extract_general_from_tables(tables: list[list[list[str]]]) -> dict[str, str]:
     """Bổ sung trích xuất thông tin chung từ các bảng dạng 2 cột (Nhãn: Giá trị)."""
     info: dict[str, str] = {}
@@ -141,8 +170,9 @@ def _extract_general_from_tables(tables: list[list[list[str]]]) -> dict[str, str
                     m = re.search(r"\d+(?:[.,]\d+)?", val)
                     if m:
                         info.setdefault("credits", m.group(0).replace(",", "."))
-                elif "khoa" in label or "faculty" in label:
-                    info.setdefault("faculty", val)
+                elif _is_faculty_label(row[0]):
+                    if not is_year_or_cohort_label(val):
+                        info.setdefault("faculty", val)
                 elif "bo mon" in label or "department" in label:
                     info.setdefault("department", val)
                 elif "giang vien" in label or "lecturer" in label or "instructor" in label:
@@ -182,6 +212,12 @@ def parse_docx_document(docx_source: str | Path | BinaryIO, target_code: str | N
             course["credits"] = float(tab_info["credits"])
         except ValueError:
             pass
+
+    # Năm/khóa ('2023', '2023-2027', 'K25', '5') không phải tên khoa: bỏ, rồi thử lấy từ tiêu đề trang.
+    if is_year_or_cohort_label(course.get("faculty")):
+        course["faculty"] = None
+    if doc_type.startswith("syllabus") and not course.get("faculty"):
+        course["faculty"] = _faculty_from_header(full_text)
 
     # Ghi đè mã học phần bằng target_code (không tin placeholder BEE40XX trong file)
     if target_code:
@@ -411,6 +447,71 @@ def import_docx_outlines(
     if not dry_run:
         db.commit()
 
+    return stats
+
+
+def repair_year_like_outline_faculty(
+    db: Session,
+    base_dir: Path,
+    *,
+    dry_run: bool = False,
+) -> dict[str, Any]:
+    """Sửa các dòng `outline_courses.faculty` bị lưu nhầm năm/khóa ('2023', '2023-2027', 'K25', '5').
+
+    Đọc lại đúng file Word nguồn của từng dòng bằng bộ đọc đã sửa và chỉ cập nhật cột `faculty`
+    (không đụng cột khác, không đụng bảng `modules`). `base_dir` là thư mục `data/outlines_master`
+    (cùng gốc với `outline_documents.rel_path`). Dòng không có file nguồn thì giữ nguyên và được báo cáo.
+    """
+    rows = db.execute(
+        select(OutlineCourse, OutlineDocument.rel_path, OutlineDocument.source_format)
+        .join(OutlineDocument, OutlineDocument.id == OutlineCourse.document_id)
+        .where(OutlineCourse.faculty.is_not(None))
+    ).all()
+
+    stats: dict[str, Any] = {
+        "bad_rows": 0,
+        "fixed": 0,
+        "cleared_no_faculty_found": 0,
+        "missing_source": 0,
+        "not_docx": 0,
+        "errors": 0,
+        "samples": [],
+        "problems": [],
+    }
+    for oc, rel_path, source_format in rows:
+        if not is_year_or_cohort_label(oc.faculty):
+            continue
+        stats["bad_rows"] += 1
+        old = oc.faculty
+        code = oc.course_code_norm or ""
+
+        if source_format != "docx" or not rel_path or not rel_path.lower().endswith(".docx"):
+            stats["not_docx"] += 1
+            stats["problems"].append(f"{code}: không phải file Word ({rel_path})")
+            continue
+        src = base_dir / rel_path
+        if not src.is_file():
+            stats["missing_source"] += 1
+            stats["problems"].append(f"{code}: thiếu file nguồn {rel_path}")
+            continue
+        try:
+            new_fac = parse_docx_document(src, target_code=code or None)["course"].get("faculty") or None
+        except Exception as e:  # noqa: BLE001 - báo cáo từng file, không dừng cả đợt
+            stats["errors"] += 1
+            stats["problems"].append(f"{code}: lỗi đọc {src.name}: {e}")
+            continue
+
+        if new_fac:
+            stats["fixed"] += 1
+        else:
+            stats["cleared_no_faculty_found"] += 1
+        if len(stats["samples"]) < 12:
+            stats["samples"].append(f"{code}: {old!r} -> {new_fac!r}")
+        if not dry_run:
+            oc.faculty = new_fac
+
+    if not dry_run:
+        db.commit()
     return stats
 
 

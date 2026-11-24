@@ -53,7 +53,7 @@ def post_analytics_events(
     """Tiếp nhận lô sự kiện ẩn danh (tối đa 50 sự kiện/lô):
     - Không yêu cầu đăng nhập.
     - Bỏ qua khi DNT = '1' hoặc analytics bị tắt.
-    - Rate limit 10/s/anon_id, 600/min/IP (429).
+    - Rate limit 300/min/anon_id, 3000/min/IP (429).
     - Cắt query 64 ký tự, kiểm tra regex program_code, bỏ trường lạ.
     - Không lưu IP, user-agent.
     """

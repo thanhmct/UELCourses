@@ -266,14 +266,40 @@ function GateLabel({ x, y, children }: { x: number; y: number; children: ReactNo
   );
 }
 
-function RoadLabels({ lang }: { lang: Lang }) {
+interface RoadHintState {
+  text: string;
+  left: number;
+  top: number;
+}
+
+function RoadLabels({
+  lang,
+  onHint,
+  onLeave,
+}: {
+  lang: Lang;
+  onHint: (text: string, pointer: { clientX: number; clientY: number }) => void;
+  onLeave: () => void;
+}) {
   return (
-    <g pointerEvents="none">
+    <g>
       {CAMPUS_ROAD_LABELS.map((road) => {
-        const name = lang === "en" ? road.nameEn : road.nameVi;
+        // Road names stay in Vietnamese; English UI shows the translation only on hover.
+        const name = road.nameVi;
+        const hint = lang === "en" && road.nameEn !== road.nameVi ? road.nameEn : null;
         const width = name.length * 8 + 14;
         return (
-          <g key={`${road.x}-${road.y}`} transform={`translate(${road.x} ${road.y}) rotate(${road.rotate})`}>
+          <g
+            key={`${road.x}-${road.y}`}
+            transform={`translate(${road.x} ${road.y}) rotate(${road.rotate})`}
+            pointerEvents={hint ? "all" : "none"}
+            className={hint ? "cursor-help" : undefined}
+            data-road-hint={hint ?? undefined}
+            aria-label={hint ? `${name} (${hint})` : undefined}
+            onPointerEnter={hint ? (event) => onHint(hint, event) : undefined}
+            onPointerMove={hint ? (event) => onHint(hint, event) : undefined}
+            onPointerLeave={hint ? onLeave : undefined}
+          >
             <rect
               x={-width / 2}
               y={-14}
@@ -308,6 +334,7 @@ export function CampusMap({ target, onPick, className = "", fill = false }: Camp
   } | null>(null);
   const suppressPick = useRef(false);
   const [hoverCard, setHoverCard] = useState<HoverCardState | null>(null);
+  const [roadHint, setRoadHint] = useState<RoadHintState | null>(null);
   const placeViewBox = zoomedPlace ? zoomViewBox(zoomedPlace) : CAMPUS_MAP_FULL_VIEW;
   const viewBox = manualViewBox ?? placeViewBox;
   const viewRect = parseViewBox(viewBox);
@@ -429,6 +456,16 @@ export function CampusMap({ target, onPick, className = "", fill = false }: Camp
     });
   };
 
+  const showRoadHint = (text: string, pointer: { clientX: number; clientY: number }) => {
+    const mapBounds = mapRef.current?.getBoundingClientRect();
+    if (!mapBounds || dragState.current) return;
+    setRoadHint({
+      text,
+      left: clamp(pointer.clientX - mapBounds.left + 12, 8, Math.max(8, mapBounds.width - 160)),
+      top: clamp(pointer.clientY - mapBounds.top + 14, 8, Math.max(8, mapBounds.height - 40)),
+    });
+  };
+
   return (
     <div
       ref={mapRef}
@@ -527,7 +564,7 @@ export function CampusMap({ target, onPick, className = "", fill = false }: Camp
           {...{ decoding: "async" }}
         />
         <g data-map-layer="campus" data-zoom={manualViewBox ? "manual" : zoomedPlace ?? "full"}>
-          <RoadLabels lang={lang} />
+          <RoadLabels lang={lang} onHint={showRoadHint} onLeave={() => setRoadHint(null)} />
 
           {(Object.entries(CAMPUS_AREA_RECTS) as [CampusAreaPlace, CampusMapRect][]).map(([place, rect]) => (
             <PlaceGroup
@@ -604,6 +641,17 @@ export function CampusMap({ target, onPick, className = "", fill = false }: Camp
           </g>
         </g>
       </svg>
+
+      {roadHint && !dragging && (
+        <div
+          role="tooltip"
+          data-road-tooltip
+          className="pointer-events-none absolute z-20 whitespace-nowrap rounded-lg border-2 border-brand-700 bg-white px-3 py-1 text-[15px] font-bold leading-tight text-slate-900 shadow-md"
+          style={{ left: roadHint.left, top: roadHint.top }}
+        >
+          {roadHint.text}
+        </div>
+      )}
 
       {hoverCard && (
         <div

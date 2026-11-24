@@ -3,6 +3,13 @@ ADD00031	Phòng Bảo đảm chất lượng	Bộ môn Ngoại ngữ	chủ dự 
 ADD00032	Phòng Bảo đảm chất lượng	Bộ môn Ngoại ngữ	chủ dự án chỉ định 2026-11-23
 ADD00033	Phòng Bảo đảm chất lượng	Bộ môn Ngoại ngữ	chủ dự án chỉ định 2026-11-23
 ADD00034	Phòng Bảo đảm chất lượng	Bộ môn Ngoại ngữ	chủ dự án chỉ định 2026-11-23
+BAA00003	Phòng Đào tạo	Phòng Đào tạo	chủ dự án chỉ định 2026-11-24
+BAA00006	Phòng Đào tạo	Phòng Đào tạo	chủ dự án chỉ định 2026-11-24
+BAA00007	Phòng Đào tạo	Phòng Đào tạo	chủ dự án chỉ định 2026-11-24
+BAA00101	Phòng Đào tạo	Phòng Đào tạo	chủ dự án chỉ định 2026-11-24 (nhóm lý luận chính trị)
+BAA00102	Phòng Đào tạo	Phòng Đào tạo	chủ dự án chỉ định 2026-11-24 (nhóm lý luận chính trị)
+BAA00103	Phòng Đào tạo	Phòng Đào tạo	chủ dự án chỉ định 2026-11-24 (nhóm lý luận chính trị)
+BAA00104	Phòng Đào tạo	Phòng Đào tạo	chủ dự án chỉ định 2026-11-24 (nhóm lý luận chính trị)
 BAA00021	Phòng Đào tạo	Phòng Đào tạo	chủ dự án chỉ định 2026-11-23
 BAA00022	Phòng Đào tạo	Phòng Đào tạo	chủ dự án chỉ định 2026-11-23
 BAA00030	Phòng Đào tạo	Phòng Đào tạo	chủ dự án chỉ định 2026-11-23
@@ -12,6 +19,9 @@ BDG1004	Phòng Đào tạo	Phòng Đào tạo	chủ dự án chỉ định 2026-
 BDG1005	Phòng Đào tạo	Phòng Đào tạo	chủ dự án chỉ định 2026-11-22
 BDG1008	Phòng Đào tạo	Phòng Đào tạo	chủ dự án chỉ định 2026-11-22
 BDG1010	Phòng Đào tạo	Phòng Đào tạo	chủ dự án chỉ định 2026-11-22
+BDG1012	Phòng Đào tạo	Phòng Đào tạo	chủ dự án chỉ định 2026-11-24
+BDG1013	Phòng Đào tạo	Phòng Đào tạo	chủ dự án chỉ định 2026-11-24
+BDG1014	Phòng Đào tạo	Phòng Đào tạo	chủ dự án chỉ định 2026-11-24
 EDG1017	Phòng Bảo đảm chất lượng	Phòng Bảo đảm chất lượng	chủ dự án chỉ định 2026-11-22 (nhóm ngoại ngữ)
 EDG1018	Phòng Bảo đảm chất lượng	Phòng Bảo đảm chất lượng	chủ dự án chỉ định 2026-11-22 (nhóm ngoại ngữ)
 EDG1019	Phòng Bảo đảm chất lượng	Phòng Bảo đảm chất lượng	chủ dự án chỉ định 2026-11-22 (nhóm ngoại ngữ)
@@ -30,3 +40,16 @@ EDG1031	Phòng Bảo đảm chất lượng	Phòng Bảo đảm chất lượng	
 EDG1032	Phòng Bảo đảm chất lượng	Phòng Bảo đảm chất lượng	chủ dự án chỉ định 2026-11-22 (nhóm ngoại ngữ)
 EDG1034	Phòng Bảo đảm chất lượng	Phòng Bảo đảm chất lượng	chủ dự án chỉ định 2026-11-22 (nhóm ngoại ngữ)
 EDG1035	Phòng Bảo đảm chất lượng	Phòng Bảo đảm chất lượng	chủ dự án chỉ định 2026-11-22 (nhóm ngoại ngữ)
+MAU4007	Khoa Kế toán - Kiểm toán		chủ dự án chỉ định 2026-11-24 (theo tiền tố, thạc sĩ)
+MBB4011	Khoa Quản trị kinh doanh		chủ dự án chỉ định 2026-11-24 (theo tiền tố, thạc sĩ)
+MFF4013	Khoa Tài chính - Ngân hàng		chủ dự án chỉ định 2026-11-24 (theo tiền tố, thạc sĩ)
+MFF4018	Khoa Tài chính - Ngân hàng		chủ dự án chỉ định 2026-11-24 (theo tiền tố, thạc sĩ)
+MFF4020	Khoa Tài chính - Ngân hàng		chủ dự án chỉ định 2026-11-24 (theo tiền tố, thạc sĩ)
+MKB4017	Khoa Luật Kinh tế		chủ dự án chỉ định 2026-11-24 (theo tiền tố, thạc sĩ)
+MKB4019	Khoa Luật Kinh tế		chủ dự án chỉ định 2026-11-24 (theo tiền tố, thạc sĩ)
+MKB4028	Khoa Luật Kinh tế		chủ dự án chỉ định 2026-11-24 (theo tiền tố, thạc sĩ)
+MKB4030	Khoa Luật Kinh tế		chủ dự án chỉ định 2026-11-24 (theo tiền tố, thạc sĩ)
+MKB4031	Khoa Luật Kinh tế		chủ dự án chỉ định 2026-11-24 (theo tiền tố, thạc sĩ)
+MKT4011	Khoa Luật Kinh tế		chủ dự án chỉ định 2026-11-24 (theo tiền tố, thạc sĩ)
+MKT4029	Khoa Luật Kinh tế		chủ dự án chỉ định 2026-11-24 (theo tiền tố, thạc sĩ)
+MRB4016	Khoa Kinh tế đối ngoại		chủ dự án chỉ định 2026-11-24 (theo tiền tố, thạc sĩ)

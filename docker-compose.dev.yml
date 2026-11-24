@@ -11,6 +11,8 @@ services:
     user: root        # tránh lỗi quyền ghi khi mount thư mục từ Windows
     environment:
       WATCHFILES_FORCE_POLLING: "true"   # reload hoạt động với ổ đĩa Windows mount vào
+      CORS_ORIGINS: "http://localhost:3000,http://localhost:3100"
+      ADMIN_DEV_OPEN: ${ADMIN_DEV_OPEN:-false}   # chỉ dev: vào /admin không cần đăng nhập
     volumes:
       - ./api:/app
       - /app/.venv          # không dùng venv Windows bên trong container
@@ -48,12 +50,17 @@ services:
       REGULATIONS_DIR: /workspace/regulations
       RAW_DATA_DIR: /workspace/data/raw
       AUTO_SEED: "false"
-      CORS_ORIGINS: http://localhost:3000,http://localhost:3001
+      CORS_ORIGINS: http://localhost:3000,http://localhost:3001,http://localhost:3100
       LLM_PROVIDER: ${LLM_PROVIDER:-none}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       CODEX_API_KEY: ${CODEX_API_KEY:-}
       CODEX_MODEL: ${CODEX_MODEL:-}
       CODEX_BASE_URL: ${CODEX_BASE_URL:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-}
+      GEMINI_BASE_URL: ${GEMINI_BASE_URL:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GROQ_MODEL: ${GROQ_MODEL:-}
       NEXT_TELEMETRY_DISABLED: "1"
     volumes:
       - .:/workspace

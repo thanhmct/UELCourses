@@ -24,11 +24,12 @@
       "cải thiện điểm",
       "tốt nghiệp"
     ],
-    "source_url": "https://pdt.uel.edu.vn/van-ban-quy-che-828/quyet-dinh-so-2261-qd-dhktl-ngay-04-thang-09-nam-2025-cua-hieu-truong-truong-dai-hoc-kinh-te-luat-ban-hanh-quy-che-dao-tao-trinh-do-dai-hoc-ap-dung-cho-khoa-tuyen-sinh-tu-thang-09-nam-2025",
+    "source_url": "https://drive.google.com/file/d/1hUM1fQq0CKI0W0ZpoLsqIYp-UcqtGBGn/view?usp=drive_link",
     "file": "manual/uel-qcdt-2261-2025.txt",
     "verified": false,
     "ocr_transcript": true,
-    "notes": "Chép lại từ ảnh chụp màn hình bản xem Google Drive, chưa đối chiếu bản gốc. Quyết định có hiệu lực từ ngày ký 04/09/2025 và áp dụng cho các khóa tuyển sinh từ tháng 09/2025 (K25 trở đi). Điều 45 quy định QĐ 1268/2022 và QĐ 118/2024 tiếp tục áp dụng cho các khóa tuyển sinh trước tháng 09/2025."
+    "notes": "Chép lại từ ảnh chụp màn hình bản xem Google Drive, chưa đối chiếu bản gốc. Quyết định có hiệu lực từ ngày ký 04/09/2025 và áp dụng cho các khóa tuyển sinh từ tháng 09/2025 (K25 trở đi). Điều 45 quy định QĐ 1268/2022 và QĐ 118/2024 tiếp tục áp dụng cho các khóa tuyển sinh trước tháng 09/2025.",
+    "page_url": "https://pdt.uel.edu.vn/van-ban-quy-che-828/quyet-dinh-so-2261-qd-dhktl-ngay-04-thang-09-nam-2025-cua-hieu-truong-truong-dai-hoc-kinh-te-luat-ban-hanh-quy-che-dao-tao-trinh-do-dai-hoc-ap-dung-cho-khoa-tuyen-sinh-tu-thang-09-nam-2025"
   },
   {
     "doc_id": "uel-qcdt-1268-2022",
@@ -209,7 +210,9 @@
     "status": "active",
     "superseded_by": null,
     "supersedes": null,
-    "applies_to_cohorts": ["all"],
+    "applies_to_cohorts": [
+      "all"
+    ],
     "topics": [
       "chuẩn đầu ra ngoại ngữ",
       "tốt nghiệp"
@@ -783,7 +786,10 @@
     "superseded_by": null,
     "supersedes": null,
     "applies_to_cohorts": null,
-    "topics": ["trợ cấp xã hội", "xác nhận khuyết tật"],
+    "topics": [
+      "trợ cấp xã hội",
+      "xác nhận khuyết tật"
+    ],
     "source_url": null,
     "file": null,
     "verified": false,
@@ -801,7 +807,10 @@
     "superseded_by": null,
     "supersedes": null,
     "applies_to_cohorts": null,
-    "topics": ["giám định y khoa", "trợ cấp xã hội"],
+    "topics": [
+      "giám định y khoa",
+      "trợ cấp xã hội"
+    ],
     "source_url": null,
     "file": null,
     "verified": false,
@@ -819,7 +828,10 @@
     "superseded_by": null,
     "supersedes": null,
     "applies_to_cohorts": null,
-    "topics": ["trợ cấp xã hội", "xác nhận khuyết tật"],
+    "topics": [
+      "trợ cấp xã hội",
+      "xác nhận khuyết tật"
+    ],
     "source_url": null,
     "file": null,
     "verified": false,
@@ -837,7 +849,9 @@
     "superseded_by": null,
     "supersedes": null,
     "applies_to_cohorts": null,
-    "topics": ["y tế trường học"],
+    "topics": [
+      "y tế trường học"
+    ],
     "source_url": null,
     "file": null,
     "verified": false,
@@ -855,7 +869,10 @@
     "superseded_by": null,
     "supersedes": null,
     "applies_to_cohorts": null,
-    "topics": ["khám sức khỏe", "khám bệnh chữa bệnh"],
+    "topics": [
+      "khám sức khỏe",
+      "khám bệnh chữa bệnh"
+    ],
     "source_url": null,
     "file": null,
     "verified": false,
@@ -873,7 +890,11 @@
     "superseded_by": null,
     "supersedes": null,
     "applies_to_cohorts": null,
-    "topics": ["ký túc xá", "mức thu", "lệ phí phòng ở"],
+    "topics": [
+      "ký túc xá",
+      "mức thu",
+      "lệ phí phòng ở"
+    ],
     "source_url": null,
     "file": null,
     "verified": false,
@@ -891,7 +912,10 @@
     "superseded_by": null,
     "supersedes": null,
     "applies_to_cohorts": null,
-    "topics": ["điểm rèn luyện", "ban cán sự lớp"],
+    "topics": [
+      "điểm rèn luyện",
+      "ban cán sự lớp"
+    ],
     "source_url": null,
     "file": null,
     "verified": false,
@@ -909,7 +933,9 @@
     "superseded_by": null,
     "supersedes": null,
     "applies_to_cohorts": null,
-    "topics": ["cố vấn học tập"],
+    "topics": [
+      "cố vấn học tập"
+    ],
     "source_url": null,
     "file": null,
     "verified": false,
@@ -927,7 +953,9 @@
     "superseded_by": null,
     "supersedes": null,
     "applies_to_cohorts": null,
-    "topics": ["sinh viên tài năng"],
+    "topics": [
+      "sinh viên tài năng"
+    ],
     "source_url": null,
     "file": null,
     "verified": false,
@@ -945,7 +973,11 @@
     "superseded_by": null,
     "supersedes": null,
     "applies_to_cohorts": null,
-    "topics": ["bảo trợ xã hội", "trợ cấp xã hội", "miễn học phí"],
+    "topics": [
+      "bảo trợ xã hội",
+      "trợ cấp xã hội",
+      "miễn học phí"
+    ],
     "source_url": null,
     "file": null,
     "verified": false,
@@ -963,7 +995,10 @@
     "superseded_by": null,
     "supersedes": null,
     "applies_to_cohorts": null,
-    "topics": ["hỗ trợ chi phí học tập", "dân tộc thiểu số"],
+    "topics": [
+      "hỗ trợ chi phí học tập",
+      "dân tộc thiểu số"
+    ],
     "source_url": null,
     "file": null,
     "verified": false,
@@ -981,7 +1016,10 @@
     "superseded_by": null,
     "supersedes": null,
     "applies_to_cohorts": null,
-    "topics": ["trợ cấp xã hội", "sinh viên hộ nghèo"],
+    "topics": [
+      "trợ cấp xã hội",
+      "sinh viên hộ nghèo"
+    ],
     "source_url": null,
     "file": null,
     "verified": false,
@@ -999,7 +1037,10 @@
     "superseded_by": null,
     "supersedes": null,
     "applies_to_cohorts": null,
-    "topics": ["khung năng lực ngoại ngữ", "chương trình tiếng Anh"],
+    "topics": [
+      "khung năng lực ngoại ngữ",
+      "chương trình tiếng Anh"
+    ],
     "source_url": null,
     "file": null,
     "verified": false,
@@ -1017,7 +1058,10 @@
     "superseded_by": null,
     "supersedes": null,
     "applies_to_cohorts": null,
-    "topics": ["người có công", "miễn học phí"],
+    "topics": [
+      "người có công",
+      "miễn học phí"
+    ],
     "source_url": null,
     "file": null,
     "verified": false,
@@ -1039,10 +1083,11 @@
       "giảng dạy bằng tiếng Anh",
       "chương trình dạy và học bằng tiếng Anh"
     ],
-    "source_url": "https://pdt.uel.edu.vn/van-ban-quy-che-828/qd-so-1286-qd-dhktl-quy-dinh-giang-day-chuyen-mon-bang-tieng-anh",
+    "source_url": "https://drive.google.com/file/d/1EH7n3tQFNn6U_qgvne454KstH9jBbsw2/view",
     "file": null,
     "verified": false,
-    "notes": "Có trong mục Văn bản - Quy chế của pdt.uel.edu.vn (trang 2). Trang chỉ gắn link Google Drive (https://drive.google.com/file/d/1EH7n3tQFNn6U_qgvne454KstH9jBbsw2/view); không tải vì không phải domain .edu.vn/.gov.vn. Số QĐ lấy từ tiêu đề trang, không có ngày; nhiều khả năng là văn bản cũ (thứ tự gần cuối danh sách, cùng nhóm với QĐ 789/2017). Cần SV/khoa cung cấp file để biết nội dung, hiệu lực."
+    "notes": "Có trong mục Văn bản - Quy chế của pdt.uel.edu.vn (trang 2). Trang chỉ gắn link Google Drive (https://drive.google.com/file/d/1EH7n3tQFNn6U_qgvne454KstH9jBbsw2/view); không tải vì không phải domain .edu.vn/.gov.vn. Số QĐ lấy từ tiêu đề trang, không có ngày; nhiều khả năng là văn bản cũ (thứ tự gần cuối danh sách, cùng nhóm với QĐ 789/2017). Cần SV/khoa cung cấp file để biết nội dung, hiệu lực.",
+    "page_url": "https://pdt.uel.edu.vn/van-ban-quy-che-828/qd-so-1286-qd-dhktl-quy-dinh-giang-day-chuyen-mon-bang-tieng-anh"
   },
   {
     "doc_id": "uel-ctdt-tienganh-642-dhqg-2023",
@@ -1392,11 +1437,12 @@
       "chứng chỉ",
       "tốt nghiệp"
     ],
-    "source_url": "https://pdt.uel.edu.vn/van-ban-quy-che-828/quyet-dinh-so-370-qd-dhktl-ngay-04-thang-04-nam-2025-cua-hieu-truong-truong-dai-hoc-kinh-te-luat-ve-viec-ban-hanh-quy-che-quan-ly-van-bang-chung-chi",
+    "source_url": "https://drive.google.com/file/d/18y2ZU97J3LOk_5NYnOnNcfp9rl6j4gri/view?usp=sharing",
     "file": "manual/uel-vanbang-370-2025.txt",
     "verified": false,
     "ocr_transcript": true,
-    "notes": "Chép lại từ ảnh chụp màn hình bản xem Google Drive, chưa đối chiếu bản gốc. Ảnh ghi ngày 04/04/2023; Quyết định có hiệu lực kể từ ngày ký và thay thế QĐ 339/QĐ-ĐHKTL ngày 31/12/2019. Áp dụng chung cho người học, không theo khóa. URL Phòng Đào tạo ghi nhầm năm 2025 trong slug/tiêu đề."
+    "notes": "Chép lại từ ảnh chụp màn hình bản xem Google Drive, chưa đối chiếu bản gốc. Ảnh ghi ngày 04/04/2023; Quyết định có hiệu lực kể từ ngày ký và thay thế QĐ 339/QĐ-ĐHKTL ngày 31/12/2019. Áp dụng chung cho người học, không theo khóa. URL Phòng Đào tạo ghi nhầm năm 2025 trong slug/tiêu đề.",
+    "page_url": "https://pdt.uel.edu.vn/van-ban-quy-che-828/quyet-dinh-so-370-qd-dhktl-ngay-04-thang-04-nam-2025-cua-hieu-truong-truong-dai-hoc-kinh-te-luat-ve-viec-ban-hanh-quy-che-quan-ly-van-bang-chung-chi"
   },
   {
     "doc_id": "uel-trogiang-142-2019",

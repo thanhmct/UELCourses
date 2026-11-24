@@ -36,6 +36,8 @@ ALLOWED_EVENT_TYPES: set[str] = {
     "filter_use",
     "program_set",
     "ics_export",
+    "timetable_export_xlsx",
+    "timetable_export_csv",
     "share_link",
 } | CHAT_EVENT_TYPES
 
@@ -46,35 +48,54 @@ ANON_UUID = re.compile(r"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}", re.IGNORE
 _anon_rate_window: dict[str, list[float]] = {}
 _ip_rate_window: dict[str, list[float]] = {}
 
+# In-memory cache for valid module codes
+_valid_modules_cache: set[str] = set()
+_valid_modules_last_refresh: float = 0.0
+MODULE_CACHE_TTL = 300.0  # 5 minutes
+
 
 def reset_rate_limits() -> None:
-    """Xóa bộ đệm rate-limit (dùng cho unit test)."""
+    """Xóa bộ đệm rate-limit và cache module (dùng cho unit test)."""
+    global _valid_modules_cache, _valid_modules_last_refresh
     _anon_rate_window.clear()
     _ip_rate_window.clear()
+    _valid_modules_cache.clear()
+    _valid_modules_last_refresh = 0.0
+
+
+def get_valid_module_codes(db: Session, force_refresh: bool = False) -> set[str]:
+    """Lấy tập mã học phần hợp lệ từ bảng modules có cache bộ nhớ và làm mới định kỳ."""
+    global _valid_modules_cache, _valid_modules_last_refresh
+    now = time.time()
+    if force_refresh or not _valid_modules_cache or (now - _valid_modules_last_refresh > MODULE_CACHE_TTL):
+        rows = db.execute(select(Module.code)).all()
+        _valid_modules_cache = {r[0].upper() for r in rows if r[0]}
+        _valid_modules_last_refresh = now
+    return _valid_modules_cache
 
 
 def check_rate_limits(anon_id: str, ip: str, batch_size: int) -> None:
     """Kiểm tra giới hạn tốc độ:
-    - 10 sự kiện / giây / anon_id
-    - 600 sự kiện / phút / IP
+    - 300 sự kiện / phút / anon_id
+    - 3000 sự kiện / phút / IP
     Trả 429 nếu vượt ngưỡng.
     """
     now = time.time()
 
-    # 1. Anon ID (1.0s window)
-    anon_history = [t for t in _anon_rate_window.get(anon_id, []) if now - t < 1.0]
-    if len(anon_history) + batch_size > 10:
+    # 1. Anon ID (60.0s window)
+    anon_history = [t for t in _anon_rate_window.get(anon_id, []) if now - t < 60.0]
+    if len(anon_history) + batch_size > 300:
         raise HTTPException(
             status_code=429,
-            detail="Quá giới hạn gửi sự kiện: tối đa 10 sự kiện/giây trên mỗi anon_id",
+            detail="Quá giới hạn gửi sự kiện: tối đa 300 sự kiện/phút trên mỗi anon_id",
         )
 
     # 2. IP (60.0s window)
     ip_history = [t for t in _ip_rate_window.get(ip, []) if now - t < 60.0]
-    if len(ip_history) + batch_size > 600:
+    if len(ip_history) + batch_size > 3000:
         raise HTTPException(
             status_code=429,
-            detail="Quá giới hạn gửi sự kiện: tối đa 600 sự kiện/phút trên mỗi IP",
+            detail="Quá giới hạn gửi sự kiện: tối đa 3000 sự kiện/phút trên mỗi IP",
         )
 
     anon_history.extend([now] * batch_size)
@@ -133,7 +154,12 @@ def record_events(
 
         module_code = item.get("module_code")
         if module_code and isinstance(module_code, str):
-            module_code = module_code.strip()[:64] or None
+            clean_m = module_code.strip().upper()[:64]
+            valid_codes = get_valid_module_codes(db)
+            if clean_m in valid_codes:
+                module_code = clean_m
+            else:
+                module_code = None
         else:
             module_code = None
 
@@ -465,7 +491,15 @@ def get_trend_modules(
         AnalyticsEvent.event_type.in_(["timetable_add", "planner_add", "module_view"]),
     ]
     if semester:
-        base_conds.append(AnalyticsEvent.semester_id == semester)
+        base_conds.append(
+            or_(
+                AnalyticsEvent.semester_id == semester,
+                and_(
+                    AnalyticsEvent.event_type.in_(["module_view", "planner_add"]),
+                    AnalyticsEvent.semester_id.is_(None),
+                ),
+            )
+        )
     if program:
         base_conds.append(AnalyticsEvent.program_code.like(f"{program}%"))
 
@@ -585,7 +619,7 @@ def get_trend_pairs(
     """Cặp môn thường được xếp chung thời khóa biểu."""
     q = select(AnalyticsPair)
     if semester:
-        q = q.where(AnalyticsPair.semester_id == semester)
+        q = q.where(or_(AnalyticsPair.semester_id == semester, AnalyticsPair.semester_id.is_(None)))
     if module:
         q = q.where(or_(AnalyticsPair.module_a == module, AnalyticsPair.module_b == module))
 

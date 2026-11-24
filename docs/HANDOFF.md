@@ -6,9 +6,21 @@
 
 | AI | Bắt đầu | Vùng đang sửa |
 |---|---|---|
+| Codex | 2026-11-24 | Tách web student/admin theo port; middleware, CORS, test và cấu hình chạy |
+| Antigravity (N2) | 2026-11-24 | Brief N2: sửa analytics reliability (services, routers, web analytics queue, TKB tracking, admin trends) |
 
 ## Đang làm dở và bước tiếp theo
 
+- **N1 tên tiếng Anh đơn vị UEL (Codex, 24/11) — XONG CODE, CHỜ KIỂM DB/ENDPOINT.** Canonical seed khớp 28/28 tên trong `data/processed/uel_en_units.html` (12 phòng + 10 đơn vị đào tạo + 6 đơn vị khác), giữ 5 tên cũ làm alias đầu vào; audit ở `data/processed/unit_names_en_audit.md`. Claude khởi động lại API rồi chạy `Invoke-RestMethod 'http://localhost:8000/api/modules?size=100' | Select-Object -ExpandProperty items | Select-Object faculty,faculty_en -Unique` và `./scripts/dev.ps1 psql -c "SELECT faculty, count(*) FROM modules GROUP BY faculty ORDER BY faculty;"`; không cần migration/ghi DB. Pytest nhóm brief qua 121/121, Vitest tên đơn vị qua 75/75, TypeScript sạch. Toàn Vitest qua 843/845; 2 lỗi ngoài N1 ở `ChatPopup.test.tsx` do kỳ vọng chữ ký `api.ask` cũ.
+
+- **Export CSV/XLSX Thời khóa biểu (Antigravity, 24/11) — ĐÃ XONG CODE & TEST.**
+  - Thêm 2 tùy chọn xuất tệp "Excel (.xlsx)" và "CSV (.csv)" vào menu Tải xuống (Download) của Thời khóa biểu (`/timetable`).
+  - Định dạng chuẩn xác 9 cột theo mẫu: `Faculty`, `Course code` (mã lớp học phần, vd: `242TOA100101`), `Course name`, `Credit`, `Schedule (GMT+7)` (định dạng `Monday, 07:00 AM - 11:00 AM`), `Classroom`, `Start - End date\n(dd/mm/yyyy)`, `Lecturer`, `Lecturer's email form database`.
+  - Bộ tạo OOXML / XLSX thuần TypeScript (`web/src/lib/timetableExport.ts`) tương thích chuẩn ECMA-376 ZIP_STORED, không phụ thuộc thư viện bên ngoài nặng nề; hỗ trợ định dạng UTF-8 BOM cho CSV.
+  - Tích hợp trích xuất email giảng viên từ đề cương (`api/app/services/outline_email.py`, trả qua API `ModuleSummary` & `ClassSectionOut`).
+  - Kiểm chứng lệnh: `npm --prefix web test -- src/lib/__tests__/timetableExport.test.ts src/app/timetable/__tests__/timetable.test.tsx` (56 passed), `web\node_modules\.bin\tsc.cmd --noEmit --project web/tsconfig.json` (0 lỗi), `api\.venv\Scripts\python.exe -m pytest -q -p no:cacheprovider --ignore=api/tests/rag api/tests/test_module_lecturer_email.py` (2 passed).
+
+- **Chat quy chế: gắn thẻ văn bản + tiếng Anh (Claude, 24/11).** `/` chọn văn bản → chip "Đang hỏi trong" (tối đa 3); các câu sau gửi `doc_ids` → `api/app/rag/scoped.py` chỉ truy xuất trong văn bản đó (bỏ ngưỡng coverage), LLM thấy tối đa 6 đoạn, trích dẫn tối đa 3 (mỗi đoạn ≤ 1400 ký tự). Câu hỏi tiếng Anh (nhận theo nội dung câu, hoặc `lang=en` khi không dấu): dịch sang tiếng Việt để tìm (1 lượt LLM, có cache), trả thêm `summary` tiếng Anh do AI viết, UI gắn nhãn "chưa kiểm chứng"; căn cứ vẫn là trích dẫn nguyên văn tiếng Việt. Câu tiếng Anh ngoài phạm vi/tấn công bị chặn trước, không tốn lượt LLM. Free tier: Gemini `gemini-3.1-flash-lite` → Groq `openai/gpt-oss-120b`, trần 200 lượt/ngày, cache 24 giờ. Còn thiếu: đo Precision riêng cho chế độ gắn thẻ; thông báo hệ thống (làm rõ khóa…) chưa dịch sang tiếng Anh.
 - **RAG R10 Precision (Claude, 23/11) — đã nạp PostgreSQL** (sao lưu `truoc-rag-r10`). LLM mặc định `gpt-6-sol` (`CODEX_MODEL`). Chế độ LLM trên 110 câu: Precision chặt 97,73% (KTC95% 92,1–99,4%), mọi trích dẫn 98,86%, được trả lời 95,65%, nguyên văn 100%, ngoài phạm vi 18/18. Extractive (PostgreSQL): Precision chặt 85,87%. Còn thiếu: bộ eval ≥ 300 câu để khẳng định 95% (hiện 110), Recall cho r03 và q370_01 (đoạn đúng không vào ngữ cảnh), h26_03. Đo lại LLM: nạp `LLM_PROVIDER`/`CODEX_*` từ `.env` rồi `api\.venv\Scripts\python.exe -X utf8 api/tests/rag/eval/run_eval.py --today 2026-11-23 --mode llm` (tốn phí, không dùng trong pytest). Venv host phải đúng `requirements.txt` (pypdf 7.1.1), nếu không văn bản PDF lệch container. R8/R9 đã nạp PostgreSQL.
 
 - **X5/X6 Codex tạm dừng trước ghi DB (23/11 15:05):** dry-run D3/D4/D5/D6/D7, X6 audit và Bước E đã xong; số/đường dẫn nằm trong `data/processed/ledger_x5.md`. Docker pipe bị từ chối nên `db_backup.ps1` không chạy được; không nạp thật. Tiếp tục: khôi phục quyền Docker → `python -m pip install xlrd==2.0.1` trong container nếu thiếu → `./scripts/db_backup.ps1 -Tag truoc-d3-x5` → chạy lại `python -m app.cli import-ctdt-files --dry-run`; chỉ nạp khi 3 `.xls` đọc được, 101 đích không lặp và K25422/K26422 đều 60 môn. Test code mới: `cd api; .venv\Scripts\python.exe -m pytest -q -p no:cacheprovider --basetemp=.pytest-x5-report tests/test_x6_audit.py tests/test_db_consolidated_report.py` (4 qua).
@@ -59,6 +71,8 @@
 - Bản gốc sổ tay K26 và QĐ 2261/2025, 370/2025. Quyền tải đề cương còn thiếu và thời điểm phát khảo sát.
 
 ## Kiểm chứng gần nhất (chi tiết ở HISTORY)
+
+- 2026-11-24 Codex N1: đối chiếu tự động 28 tên canonical với 28 tên duy nhất trong bản lưu trang Units chính thức, chênh lệch 0, không trùng VI/EN. Đã cập nhật seed/API/web, alias cũ, 28 cặp test VI↔EN và phân biệt Phòng/Bộ môn Tài chính. Pytest 121/121, Vitest mục tiêu 75/75, TypeScript 0 lỗi; toàn Vitest 843/845 với 2 lỗi ChatPopup ngoài N1. Báo cáo: `data/processed/unit_names_en_audit.md`.
 
 - 2026-11-23 Codex: đã nạp bản ký số QĐ 1390 (31 đoạn) và lập chỉ mục lại Sổ tay K26 sau khi sửa dòng điểm bị nhận nhầm là tiêu đề. PostgreSQL chỉ cập nhật hai mã văn bản, sao lưu `data/backups/db_20261123_truoc-qd1390.dump` đã qua `pg_restore -l` và đối chiếu dung lượng. PDF thật ở `regulations/raw/uel-cdr-ngoaingu-1390-2025.pdf` (gitignore). Để nạp lại sau khi sao lưu: `docker compose -f docker-compose.yml -f docker-compose.dev.yml exec -T api python scripts/ingest_regulations.py --publish-db --doc-id uel-cdr-ngoaingu-1390-2025 --doc-id uel-sotay-sv-k26`. API dev `8000` xác nhận “Bạn là ai?” tự giới thiệu và câu chuẩn tiếng Anh K26 dẫn QĐ 1390, Phụ lục IV, trang PDF 9, có đủ hai nhóm CTĐT. Kiểm thử pytest 63 ca liên quan (`tests/rag/test_rag_segmenter.py`, `test_handbook.py`, `test_rag_answer.py`, `test_chat_context.py`, `test_regulation_storage.py`, `test_ask_safety.py` trong `tests/rag/`), Vitest 22 ca chat/Quy chế và TypeScript qua.
 

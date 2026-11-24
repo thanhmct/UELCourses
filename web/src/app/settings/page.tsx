@@ -279,12 +279,12 @@ export default function SettingsPage() {
       <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
         <p className="min-w-0 wrap-anywhere text-xs text-slate-500">{t("settings.version", { v: APP_VERSION, api: API_URL })}</p>
         {adminAvailable && (
-          <Link
-            href="/admin"
+          <a
+            href={`${(process.env.NEXT_PUBLIC_ADMIN_URL || "http://localhost:3100").replace(/\/$/, "")}/admin`}
             className="text-xs text-slate-400 hover:text-brand-600 dark:hover:text-brand-400 underline transition-colors"
           >
             {t("settings.admin")}
-          </Link>
+          </a>
         )}
       </div>
     </div>

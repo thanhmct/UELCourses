@@ -40,6 +40,7 @@ export interface ModuleSummary extends ModuleRef {
   type: string;
   faculty?: string;
   faculty_en?: string | null;
+  lecturer_email?: string | null;
   /** mô tả học phần (từ DB hoặc đề cương) */
   description?: string | null;
   /** mô tả học phần bằng tiếng Anh (null/thiếu nếu chưa có) — giao diện EN dùng trường này, giao diện VI dùng `description` */
@@ -72,6 +73,8 @@ export interface ModuleSummary extends ModuleRef {
 export interface FacetCount {
   value: string;
   count: number;
+  /** Chỉ facet học kỳ: số học phần khác nhau (count = số lớp học phần). */
+  modules?: number;
 }
 
 export interface ModuleFacets {
@@ -140,6 +143,7 @@ export interface ClassSection {
   class_code: string;
   module_code: string;
   lecturer?: string;
+  lecturer_email?: string | null;
   quota?: number;
   start_date?: string;
   end_date?: string;
@@ -151,6 +155,7 @@ export interface ClassSection {
   registered?: number;
   available?: number;
   rooms?: string[];
+  schedule_raw?: string | null;
 }
 
 export interface Paged<T> {
@@ -284,8 +289,12 @@ export interface AskResponse {
   citations: Citation[];
   answer_id?: string;
   warnings: string[];
-  mode: "extractive" | "llm" | "clarify" | "context" | "intro";
+  mode: "extractive" | "llm" | "clarify" | "context" | "intro" | "scoped" | "out_of_scope" | "redirect";
   workspace_summary?: string;
+  /** "en" when the answer is the model's English reply to an English question (quotes stay Vietnamese). */
+  answer_lang?: "en";
+  /** Documents the question was restricted to (tagged with "/"). */
+  scope?: { doc_id: string; title: string; decision_no?: string }[];
   /** The assistant asks back before answering (unknown cohort or an ambiguous question). */
   clarify?: { kind: "cohort" | "question"; question: string; options: string[] };
   abstained?: boolean;

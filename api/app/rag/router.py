@@ -7,7 +7,7 @@ from __future__ import annotations
 import hmac
 from datetime import datetime, timedelta, timezone
 from functools import partial
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
@@ -37,6 +37,12 @@ class AskRequest(BaseModel):
 
 class RegulationAskRequest(AskRequest):
     context: ChatContext | None = None
+    # Documents the student tagged with "/" in the chat: answer only from them (max 3), in more detail.
+    doc_ids: list[Annotated[str, Field(min_length=1, max_length=120, pattern=r"^[\w.\-]+$")]] | None = Field(
+        None, max_length=3)
+    lang: Literal["vi", "en"] | None = None
+    # The student's last questions in this chat (oldest first), so a follow-up like "Còn học kỳ hè?" has a topic.
+    previous: list[Annotated[str, Field(min_length=1, max_length=500)]] | None = Field(None, max_length=2)
 
 
 class CompareRequest(BaseModel):
@@ -89,13 +95,14 @@ def ask_regulations(req: RegulationAskRequest, request: Request) -> JSONResponse
                   else "Mình là trợ lý UELPATH. Mình có thể tra quy chế học vụ kèm nguồn trích dẫn và trả lời về hồ sơ, thời khóa biểu hoặc kế hoạch bạn đã chọn.")
         return JSONResponse({"answer": answer, "found": True, "mode": "intro", "citations": [], "warnings": []},
                             headers={"Cache-Control": "no-store"})
-    direct, summary = workspace_answer(req.question, req.cohort, req.context)
+    direct, summary = workspace_answer(req.question, req.cohort, req.context) if not req.doc_ids else (None, None)
     if direct:
         return JSONResponse({"answer": direct, "found": True, "mode": "context", "citations": [], "warnings": []},
                             headers={"Cache-Control": "no-store"})
     try:
         profile = req.context.study_profile(req.cohort) if req.context else None
-        result = _svc().ask(req.question, req.cohort, req.mode, min(req.top_k, 3), reserve=_reserve(request), profile=profile)
+        result = _svc().ask(req.question, req.cohort, req.mode, min(req.top_k, 3), reserve=_reserve(request),
+                           profile=profile, doc_ids=req.doc_ids, lang=req.lang, previous=req.previous)
     except SQLAlchemyError:
         raise HTTPException(503, "Chưa đọc được dữ liệu quy chế.") from None
     if summary:

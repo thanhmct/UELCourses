@@ -28,7 +28,11 @@ export interface ChatConversation {
   id: string;
   cohort: string;
   messages: ChatMsg[];
+  /** Documents tagged with "/": later questions are answered only from them (max MAX_TAGGED). */
+  scope?: RegulationChatTarget[];
 }
+
+export const MAX_TAGGED = 3;
 
 interface SavedChat {
   status: ChatPopupStatus;
@@ -51,6 +55,9 @@ interface RegChatState extends SavedChat {
   openConversation: (id: string | null) => void;
   deleteConversation: (id: string) => void;
   ask: (question: string, overrideCohort?: string, target?: RegulationChatTarget) => Promise<void>;
+  /** Tag a document: the conversation continues inside it. Returns false when MAX_TAGGED is already reached. */
+  tagDocument: (target: RegulationChatTarget) => "ok" | "full" | "unindexed";
+  untagDocument: (id: string) => void;
 }
 
 export function activeConversation(state: SavedChat) {
@@ -93,6 +100,30 @@ export const useRegChat = create<RegChatState>()(
         conversations: s.conversations.filter((item) => item.id !== id),
       })),
 
+      tagDocument: (target) => {
+        if (target.indexed === false) return "unindexed";
+        const current = activeConversation(get());
+        const scope = current?.scope ?? [];
+        if (scope.some((item) => item.id === target.id)) return "ok";
+        if (scope.length >= MAX_TAGGED) return "full";
+        const id = current?.id ?? (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+        const name = target.number || target.title;
+        const notice: ChatMsg = { role: "ai", text: translate(useLang.getState().lang, "chat.scopeTagged", { name }) };
+        set((s) => ({
+          activeId: id,
+          conversations: [
+            { id, cohort: current?.cohort ?? "", messages: [...(current?.messages ?? []), notice], scope: [...scope, target] },
+            ...s.conversations.filter((item) => item.id !== id),
+          ],
+        }));
+        track("chat_tag_document", { query: target.id });
+        return "ok";
+      },
+      untagDocument: (docId) => set((s) => ({
+        conversations: s.conversations.map((item) => item.id === s.activeId && item.scope
+          ? { ...item, scope: item.scope.filter((target) => target.id !== docId) } : item),
+      })),
+
       ask: async (question: string, overrideCohort?: string, target?: RegulationChatTarget) => {
         const text = question.trim();
         const conversation = activeConversation(get());
@@ -113,7 +144,8 @@ export const useRegChat = create<RegChatState>()(
 
         set((s) => ({
           activeId: id,
-          conversations: [{ id, cohort, messages }, ...s.conversations.filter((item) => item.id !== id)],
+          conversations: [{ id, cohort, messages, ...(conversation?.scope?.length ? { scope: conversation.scope } : {}) },
+            ...s.conversations.filter((item) => item.id !== id)],
           pendingIds: [...s.pendingIds, id],
         }));
 
@@ -134,9 +166,21 @@ export const useRegChat = create<RegChatState>()(
           } else {
             const query = (lookupQuery !== null ? `Quy định về ${lookupQuery}` : effectiveQuestion).slice(0, 500);
             const context = chatContext(query, targetCohort);
-            const res = (await (context
-              ? api.ask(query, targetCohort || undefined, context)
-              : api.ask(query, targetCohort || undefined))).data;
+            const docIds = (conversation?.scope ?? []).map((item) => item.id);
+            // The server also recognises English by the question itself; the UI language only breaks ties.
+            // Earlier questions let the server resolve follow-ups such as "Còn học kỳ hè thì sao?".
+            const previous = (conversation?.messages ?? [])
+              .filter((item) => item.role === "user" && !item.error)
+              .slice(-2)
+              .map((item) => (item.clarifiedQuestion ?? item.text).slice(0, 500));
+            const options = docIds.length || lang === "en" || previous.length
+              ? { ...(docIds.length ? { docIds } : {}), ...(previous.length ? { previous } : {}), lang }
+              : undefined;
+            const res = (await (options
+              ? api.ask(query, targetCohort || undefined, context ?? undefined, options)
+              : context
+                ? api.ask(query, targetCohort || undefined, context)
+                : api.ask(query, targetCohort || undefined))).data;
             reply = { role: "ai", text: res.answer, res };
             if (!res.clarify && res.mode !== "context" && res.mode !== "intro") {
               track("chat_regulation", { query: res.citations[0]?.doc_id });

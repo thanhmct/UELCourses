@@ -425,6 +425,7 @@ export function SemesterFilterSquares({
           id: string;
           term: number;
           count: number;
+          modules?: number;
         }[];
       }
     >();
@@ -447,6 +448,7 @@ export function SemesterFilterSquares({
         id: item.value,
         term: termNum,
         count: item.count,
+        modules: item.modules,
       });
     }
 
@@ -503,7 +505,7 @@ export function SemesterFilterSquares({
               {group.yearLabel}
             </div>
             <div className="flex flex-wrap gap-1.5">
-              {group.terms.map(({ id, term, count }) => {
+              {group.terms.map(({ id, term, count, modules }) => {
                 const isSelected = values.includes(id);
                 const termStr = semesterShort({ term }, lang);
 
@@ -515,7 +517,13 @@ export function SemesterFilterSquares({
                     aria-checked={isSelected}
                     aria-label={semesterFull({ term, year: group.yearLabel }, lang)}
                     onClick={() => toggleSemester(id)}
-                    title={semesterFull({ term, year: group.yearLabel }, lang)}
+                    title={`${semesterFull({ term, year: group.yearLabel }, lang)}${
+                      modules != null
+                        ? lang === "en"
+                          ? ` — ${count} classes · ${modules} courses`
+                          : ` — ${count} lớp · ${modules} học phần`
+                        : ""
+                    }`}
                     className={`flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-focus ${
                       isSelected
                         ? "border-brand-600 bg-brand-600 font-semibold text-white shadow-xs"

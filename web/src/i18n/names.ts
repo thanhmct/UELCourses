@@ -54,29 +54,62 @@ function key(v: string, prefix: RegExp): string {
 
 const FACULTY_EN: Record<string, string> = {
   "khác / chưa rõ khoa": "Other / Unknown faculty",
+  "phòng hành chính": "Department of Administration",
+  "phòng nhân sự": "Department of Human Resources",
+  "phòng bảo đảm chất lượng": "Department of Quality Assurance",
+  "bảo đảm chất lượng": "Department of Quality Assurance",
+  "phòng tuyển sinh và công tác sinh viên": "Department of Admissions and Student Affairs",
+  "phòng tuyển sinh and công tác sinh viên": "Department of Admissions and Student Affairs",
+  "phòng đào tạo": "Department of Academic Affairs",
+  "đào tạo": "Department of Academic Affairs",
+  "phòng khoa học và công nghệ": "Department of Science and Technology",
+  "phòng khoa học and công nghệ": "Department of Science and Technology",
+  "phòng hợp tác phát triển": "Department of Cooperation and Development",
+  "phòng quản trị tài sản": "Department of Asset Management",
+  "phòng tài chính": "Department of Finance",
+  "phòng công nghệ thông tin": "Department of Information Technology",
+  "phòng truyền thông": "Department of Communication",
+  "phòng pháp chế": "Department of Legal Affairs",
   "quản trị kinh doanh": "Faculty of Business Administration",
   "hệ thống thông tin": "Faculty of Information Systems",
   "tài chính - ngân hàng": "Faculty of Finance and Banking",
   "tài chính and ngân hàng": "Faculty of Finance and Banking",
   "kinh tế": "Faculty of Economics",
-  "toán kinh tế": "Faculty of Mathematical Economics",
+  "toán kinh tế": "Faculty of Economic Mathematics",
   "kinh tế đối ngoại": "Faculty of International Economic Relations",
   "kế toán - kiểm toán": "Faculty of Accounting and Auditing",
   "kế toán and kiểm toán": "Faculty of Accounting and Auditing",
   "luật": "Faculty of Law",
-  "luật kinh tế": "Faculty of Business Law",
+  "luật kinh tế": "Faculty of Economic Law",
   "trường đại học kinh tế - luật": "University of Economics and Law",
-  "phòng đào tạo": "Academic Affairs Office",
-  "phòng bảo đảm chất lượng": "Department of Quality Assurance",
-  "bảo đảm chất lượng": "Department of Quality Assurance",
-  "viện quốc tế uel": "UEL International Institute",
+  "viện quốc tế uel": "The International Institute of UEL",
+  "thư viện": "Library",
+  "viện nghiên cứu phát triển công nghệ ngân hàng đhqg-hcm": "Institute for Development and Research in Banking Technology VNUHCM",
+  "viện pháp luật quốc tế và so sánh": "Institute of International and Comparative Law",
+  "viện pháp luật quốc tế and so sánh": "Institute of International and Comparative Law",
+  "công ty tnhh mtv kinh tế - luật": "Economics and Law Co., Ltd",
+  "công đoàn": "Trade Union",
+  "đoàn thanh niên - hội sinh viên": "Youth Union",
   "trung tâm ngoại ngữ - tin học": "Center for Foreign Languages and Informatics",
   "bộ môn ngoại ngữ": "Department of Foreign Languages",
   "ngoại ngữ": "Department of Foreign Languages",
   "lý luận chính trị": "Department of Political Theory",
   "giáo dục thể chất": "Department of Physical Education",
-  "đào tạo": "Academic Affairs Office",
 };
+
+const LEGACY_UNIT_EN: Record<string, string> = {
+  "academic affairs office": "Department of Academic Affairs",
+  "quality assurance office": "Department of Quality Assurance",
+  "quality assurance and testing center": "Department of Quality Assurance",
+  "faculty of business law": "Faculty of Economic Law",
+  "faculty of mathematical economics": "Faculty of Economic Mathematics",
+  "uel international institute": "The International Institute of UEL",
+};
+
+function canonicalEnglishUnitName(value: string): string {
+  const trimmed = value.trim();
+  return LEGACY_UNIT_EN[trimmed.toLowerCase()] ?? trimmed;
+}
 
 const DEPARTMENT_EN: Record<string, string> = {
   "tài chính": "Department of Finance",
@@ -226,7 +259,7 @@ export function facultyName(
   // Khi giao diện EN:
   // 1. Ưu tiên faculty_en do API trả về nếu có
   if (facEn && facEn.trim() && !/^(unknown|unknown faculty)$/i.test(facEn.trim())) {
-    return facEn.trim();
+    return canonicalEnglishUnitName(facEn);
   }
 
   if (!fac || /^(chưa rõ|chưa rõ khoa|unknown)$/i.test(fac)) {
@@ -235,7 +268,7 @@ export function facultyName(
 
   // 2. Tra cứu trong bảng ánh xạ FACULTY_EN / DEPARTMENT_EN
   const k = key(fac, /^khoa\s+/i);
-  return FACULTY_EN[k] ?? DEPARTMENT_EN[k] ?? fac;
+  return canonicalEnglishUnitName(FACULTY_EN[k] ?? DEPARTMENT_EN[k] ?? fac);
 }
 
 /**
@@ -270,11 +303,11 @@ export function departmentName(
 
   // Khi EN:
   if (deptEn && deptEn.trim() && !/^(unknown|unknown department)$/i.test(deptEn.trim())) {
-    return deptEn.trim();
+    return canonicalEnglishUnitName(deptEn);
   }
 
   const k = key(dept, /^bộ môn\s+/i);
-  return DEPARTMENT_EN[k] ?? FACULTY_EN[key(dept, /^khoa\s+/i)] ?? dept;
+  return canonicalEnglishUnitName(DEPARTMENT_EN[k] ?? FACULTY_EN[key(dept, /^khoa\s+/i)] ?? dept);
 }
 
 /**

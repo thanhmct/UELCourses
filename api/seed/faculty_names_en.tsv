@@ -1,16 +1,20 @@
 en	vi
-Faculty of Finance and Banking	Khoa Tài chính - Ngân hàng
-Faculty of Business Administration	Khoa Quản trị kinh doanh
-Faculty of Information Systems	Khoa Hệ thống thông tin
-Faculty of Economics	Khoa Kinh tế
-Faculty of Mathematical Economics	Khoa Toán kinh tế
-Faculty of International Economic Relations	Khoa Kinh tế đối ngoại
-Faculty of Accounting and Auditing	Khoa Kế toán - Kiểm toán
-Faculty of Law	Khoa Luật
+Faculty of Finance & Banking	Khoa Tài chính - Ngân hàng
+Faculty of Accounting & Auditing	Khoa Kế toán - Kiểm toán
+School of Law	Khoa Luật
 Faculty of Business Law	Khoa Luật Kinh tế
-University of Economics and Law	Trường Đại học Kinh tế - Luật
+Faculty of Mathematical Economics	Khoa Toán kinh tế
 Academic Affairs Office	Phòng Đào tạo
+Quality Assurance Office	Phòng Bảo đảm chất lượng
+Quality Assurance and Testing Center	Phòng Bảo đảm chất lượng
 UEL International Institute	Viện Quốc tế UEL
+Administration Office	Phòng Hành chính
+Administrative Office	Phòng Hành chính
+Human Resources Office	Phòng Nhân sự
+Finance Office	Phòng Tài chính
+Asset Management Office	Phòng Quản trị tài sản
+Communications Office	Phòng Truyền thông
+Legal Affairs Office	Phòng Pháp chế
 Center for Foreign Languages and Informatics	Trung tâm Ngoại ngữ - Tin học
 Department of Foreign Languages	Bộ môn Ngoại ngữ
 Department of Finance	Bộ môn Tài chính
@@ -35,16 +39,13 @@ Department of Civil Law	Bộ môn Luật Dân sự
 Department of Administrative and State Law	Bộ môn Luật Hành chính - Nhà nước
 FACULTY OF FINANCE AND BANKING	Khoa Tài chính - Ngân hàng
 DEPARTMENT OF FINANCE	Bộ môn Tài chính
-Faculty of Finance & Banking	Khoa Tài chính - Ngân hàng
-Faculty of Accounting & Auditing	Khoa Kế toán - Kiểm toán
-School of Law	Khoa Luật
 BANKING AND FINANCE	Khoa Tài chính - Ngân hàng
 ACCOUNTING – AUDITING	Khoa Kế toán - Kiểm toán
 ECONOMIC MATHEMATICS	Khoa Toán kinh tế
+MATHEMATICAL ECONOMICS	Khoa Toán kinh tế
 ECONOMIC RELATION	Khoa Kinh tế đối ngoại
 ECONOMIC RELATIONS	Khoa Kinh tế đối ngoại
 ECONOMIC LAW	Khoa Luật Kinh tế
-Faculty of Economic Law	Khoa Luật Kinh tế
 MIS	Khoa Hệ thống thông tin
 QTKD	Khoa Quản trị kinh doanh
 ADMINISTRATIVE LAW - STATE	Bộ môn Luật Hành chính - Nhà nước
@@ -64,3 +65,32 @@ Data Analytics	Bộ môn Phân tích dữ liệu
 MANAGEMENT INFORMATION	Bộ môn Hệ thống thông tin quản lý
 MANAGEMENT IS	Bộ môn Hệ thống thông tin quản lý
 Management Information Systems	Bộ môn Hệ thống thông tin quản lý
+Department of Administration	Phòng Hành chính
+Department of Human Resources	Phòng Nhân sự
+Department of Quality Assurance	Phòng Bảo đảm chất lượng
+Department of Admissions and Student Affairs	Phòng Tuyển sinh và Công tác sinh viên
+Department of Academic Affairs	Phòng Đào tạo
+Department of Science and Technology	Phòng Khoa học và Công nghệ
+Department of Cooperation and Development	Phòng Hợp tác phát triển
+Department of Asset Management	Phòng Quản trị tài sản
+Department of Finance	Phòng Tài chính
+Department of Information Technology	Phòng Công nghệ thông tin
+Department of Communication	Phòng Truyền thông
+Department of Legal Affairs	Phòng Pháp chế
+Faculty of Economics	Khoa Kinh tế
+Faculty of International Economic Relations	Khoa Kinh tế đối ngoại
+Faculty of Finance and Banking	Khoa Tài chính - Ngân hàng
+Faculty of Accounting and Auditing	Khoa Kế toán - Kiểm toán
+Faculty of Information Systems	Khoa Hệ thống thông tin
+Faculty of Business Administration	Khoa Quản trị kinh doanh
+Faculty of Law	Khoa Luật
+Faculty of Economic Law	Khoa Luật Kinh tế
+Faculty of Economic Mathematics	Khoa Toán kinh tế
+The International Institute of UEL	Viện Quốc tế UEL
+Library	Thư viện
+Institute for Development and Research in Banking Technology VNUHCM	Viện Nghiên cứu phát triển công nghệ ngân hàng ĐHQG-HCM
+Institute of International and Comparative Law	Viện Pháp luật Quốc tế và so sánh
+Economics and Law Co., Ltd	Công ty TNHH MTV Kinh tế – Luật
+Trade Union	Công đoàn
+Youth Union	Đoàn Thanh niên - Hội Sinh viên
+University of Economics and Law	Trường Đại học Kinh tế - Luật

@@ -1,4 +1,4 @@
-from app.rag.service import RegulationService
+﻿from app.rag.service import RegulationService
 from app.rag.user_context import ChatContext, workspace_answer
 
 
@@ -38,6 +38,36 @@ def test_regulation_question_keeps_workspace_summary_separate(client, monkeypatc
     answer = response.json()
     assert answer["mode"] == "extractive" and "9 tín chỉ" in answer["workspace_summary"]
     assert all("Phương án thời khóa biểu" not in cite["quote"] for cite in answer["citations"])
+
+
+class _RecordingService:
+    def __init__(self):
+        self.calls = []
+
+    def ask(self, question, *args, **kwargs):
+        self.calls.append((question, kwargs.get("previous")))
+        return {"answer": "x", "citations": [], "warnings": [], "mode": "llm", "found": True}
+
+
+def test_previous_questions_reach_the_service_and_are_capped(client, monkeypatch):
+    service = _RecordingService()
+    monkeypatch.setattr("app.rag.router.get_service", lambda: service)
+    body = {"question": "Còn học kỳ hè thì sao?", "cohort": "K26", "previous": ["Tối đa bao nhiêu tín chỉ một học kỳ?"]}
+    assert client.post("/api/regulations/ask", json=body).status_code == 200
+    assert service.calls == [("Còn học kỳ hè thì sao?", ["Tối đa bao nhiêu tín chỉ một học kỳ?"])]
+    assert client.post("/api/regulations/ask", json=body | {"previous": ["a", "b", "c"]}).status_code == 422
+    assert client.post("/api/regulations/ask", json=body | {"previous": ["x" * 501]}).status_code == 422
+
+
+def test_followup_cues():
+    from app.rag.intent import followup_cue, maybe_elliptical, with_context
+
+    for q in ("Còn học kỳ hè thì sao?", "Vậy nó có được miễn học không?", "And what rating does 75 get?"):
+        assert followup_cue(q), q
+    assert not followup_cue("Điểm rèn luyện từ 80 đến 89 được xếp loại gì?")
+    assert maybe_elliptical("Ai ghi biên bản?") and not maybe_elliptical(
+        "Điều kiện xét học bổng khuyến khích học tập năm nhất là gì?")
+    assert with_context("Còn hè?", ["a?", "b?", "c?"]) == "b? c? Còn hè?"
 
 
 def test_chat_context_limits_and_supports_plan_and_theme(client):

@@ -85,6 +85,7 @@ class ModuleSummary(BaseModel):
     outline_links: list[OutlineLinkOut] = Field(default_factory=list, description="Danh sách các link đề cương (loại bỏ trùng URL, bỏ URL rỗng)")
     final_assessment: str | None = Field(None, description="Hình thức thi cuối kỳ đã chuẩn hóa")
     head_lecturer: str | None = Field(None, description="Giảng viên phụ trách học phần")
+    lecturer_email: str | None = Field(None, description="Email giảng viên/phụ trách học phần từ đề cương/database")
     is_english: bool = False
     has_equivalents: bool = False
     offering_plan: list[OfferingPlanOut] = []
@@ -151,6 +152,7 @@ class ClassSectionOut(BaseModel):
     module_code: str
     semester: str | None = None
     lecturer: str | None = None
+    lecturer_email: str | None = Field(None, description="Email giảng viên/phụ trách từ đề cương/database")
     quota: int | None = None
     quota_min: int | None = None
     quota_max: int | None = None
@@ -422,6 +424,7 @@ class FeedbackStats(BaseModel):
 class FacetCount(BaseModel):
     value: str
     count: int
+    modules: int | None = None  # chỉ facet học kỳ: số học phần khác nhau (count = số lớp)
 
 
 class ModuleFacets(BaseModel):

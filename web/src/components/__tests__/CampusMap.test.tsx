@@ -180,11 +180,21 @@ describe("CampusMap", () => {
 
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "Auditorium" })).toBeInTheDocument();
-      expect(screen.getByText("Pioneer").parentElement?.querySelector("rect")).toBeInTheDocument();
-      expect(screen.getAllByText("Unity")).toHaveLength(2);
+      const pioneer = screen.getByText("Tiên Phong").parentElement;
+      expect(pioneer?.querySelector("rect")).toBeInTheDocument();
+      expect(pioneer).toHaveAttribute("data-road-hint", "Pioneer");
+      expect(screen.queryByText("Pioneer")).not.toBeInTheDocument();
+      expect(screen.getAllByText("Thống Nhất")).toHaveLength(2);
+      expect(screen.getByText("Fintech").parentElement).not.toHaveAttribute("data-road-hint");
       expect(screen.getByText("Đỗ Mười")).toBeInTheDocument();
-      expect(screen.queryByText(/Đường |Tiên Phong|\bStreet\b/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Đường |\bStreet\b/)).not.toBeInTheDocument();
     });
+
+    const pioneer = screen.getByText("Tiên Phong").parentElement as Element;
+    fireEvent.pointerEnter(pioneer, { clientX: 40, clientY: 40 });
+    expect(screen.getByText("Pioneer")).toHaveAttribute("data-road-tooltip");
+    fireEvent.pointerLeave(pioneer);
+    expect(screen.queryByText("Pioneer")).not.toBeInTheDocument();
   });
 
   it("shows a photo card only when the hovered place has a photo", () => {

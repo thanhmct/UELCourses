@@ -217,6 +217,38 @@ describe("W9: Cửa sổ chat pop-up Quy chế & Hỏi đáp AI", () => {
     expect(JSON.parse(localStorage.getItem("uelcourses-reg-chat")!).state.conversations).toEqual([]);
   });
 
+  it("gắn thẻ văn bản bằng / rồi hỏi chi tiết trong văn bản đó, hỏi tiếng Anh vẫn gửi đúng phạm vi", async () => {
+    vi.mocked(api.regulations).mockResolvedValue({ mock: false, data: [{
+      doc_id: "uel-qcdt-2261-2025", title: "Quy chế đào tạo trình độ đại học", decision_no: "2261/QĐ-ĐHKTL",
+      issued_date: "2025-08-01", effective_from: "", status: "active", applies_to_cohorts: [], file: "", indexed: true,
+    }] });
+    vi.mocked(api.ask).mockResolvedValueOnce({ mock: false, data: {
+      answer: "To be considered for graduation, students must meet all conditions.", found: true, mode: "llm",
+      warnings: [], citations: [], answer_lang: "en",
+    } });
+    render(<RegulationsChatPopup />);
+    fireEvent.click(screen.getByRole("button", { name: "Hỏi quy chế / AI" }));
+    fireEvent.click(screen.getByRole("button", { name: "/ Tra quy định" }));
+    fireEvent.click(await screen.findByRole("button", { name: /2261\/QĐ-ĐHKTL/ }));
+
+    // The document becomes a chip; no extra question is sent yet.
+    const chips = await screen.findByRole("group", { name: "Đang hỏi trong:" });
+    expect(within(chips).getByRole("link", { name: "2261/QĐ-ĐHKTL" })).toBeInTheDocument();
+    expect(api.ask).not.toHaveBeenCalled();
+    expect(screen.getByRole("textbox", { name: "Câu hỏi" })).toHaveAttribute("placeholder", "Hỏi chi tiết về văn bản đã chọn…");
+
+    fireEvent.change(screen.getByRole("textbox", { name: "Câu hỏi" }), { target: { value: "What are the graduation conditions?" } });
+    fireEvent.click(screen.getByRole("button", { name: "Gửi" }));
+    expect(await screen.findByText(/students must meet all conditions/)).toBeInTheDocument();
+    expect(screen.queryByText(/Tóm tắt tiếng Anh/)).not.toBeInTheDocument();
+    const [, , , options] = vi.mocked(api.ask).mock.calls.at(-1)!;
+    expect(options).toMatchObject({ docIds: ["uel-qcdt-2261-2025"] });
+
+    // Removing the chip returns to answering from all documents.
+    fireEvent.click(screen.getByRole("button", { name: "Bỏ chọn 2261/QĐ-ĐHKTL" }));
+    expect(screen.queryByRole("group", { name: "Đang hỏi trong:" })).not.toBeInTheDocument();
+  });
+
   it.each(["@BBA4001", "Đề cương BBA4001"])("không kích hoạt tra đề cương khi nhập '%s'", async (text) => {
     render(<RegulationsChatPopup />);
     fireEvent.click(screen.getByRole("button", { name: "Hỏi quy chế / AI" }));

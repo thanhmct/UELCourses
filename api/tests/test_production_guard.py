@@ -98,6 +98,7 @@ def test_production_allows_secure_config():
         env="production",
         session_secret="super-strong-random-key-for-session-uelcourses-2026",
         cors_origins="https://uelcourses.vercel.app, https://uelcourses.edu.vn",
+        admin_dev_open=False,  # không phụ thuộc ADMIN_DEV_OPEN trong .env của máy dev
     )
     # Không ném lỗi
     validate_production(settings)

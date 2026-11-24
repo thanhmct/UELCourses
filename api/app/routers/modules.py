@@ -61,6 +61,7 @@ from app.schemas import (
 from app.services.descriptions import normalize_description_line_breaks
 from app.services.faculty_names import canonical_faculty_vi, department_en, faculty_en
 from app.services.moderation import check_content
+from app.services.outline_email import get_module_lecturer_email
 from app.services.program_tracks import get_program_track_codes
 from app.services.text import search_tokens
 
@@ -334,27 +335,19 @@ def _summary(m: Module, has_eq: bool, plans: list[OfferingPlanOut], open_sems: l
              has_outline: bool = False, description: str | None = None, outline_url: str | None = None,
              description_en: str | None = None, outline_url_en: str | None = None,
              outline_links: list[OutlineLinkOut] | None = None,
-             outline_year: int | None = None, outline_year_fallback: bool = False) -> ModuleSummary:
+             outline_year: int | None = None, outline_year_fallback: bool = False,
+             lecturer_email: str | None = None) -> ModuleSummary:
     return ModuleSummary(code=m.code, name=m.name, name_en=m.name_en, credits=m.credits, type=m.type, faculty=m.faculty,
                          faculty_en=faculty_en(m.faculty), department=m.department, department_en=department_en(m.department),
                          description=description, description_en=description_en, outline_url=outline_url,
                          outline_url_en=outline_url_en, outline_links=outline_links or [],
-                         final_assessment=m.final_assessment, head_lecturer=m.head_lecturer,
+                         final_assessment=m.final_assessment, head_lecturer=m.head_lecturer, lecturer_email=lecturer_email,
                          is_english=bool(m.is_english) or m.language_track == "en", has_equivalents=has_eq,
                          offering_plan=plans, language_track=m.language_track or "vi", language_basis=m.language_basis,
                          is_talent_program=bool(m.is_talent_program), counterpart_code=m.counterpart_code,
                          open_semesters=open_sems or [], has_outline=has_outline,
                          outline_year=outline_year, outline_year_fallback=outline_year_fallback,
                          degree=m.degree or "dai_hoc", is_sample=m.is_sample)
-    return ModuleSummary(code=m.code, name=m.name, name_en=m.name_en, credits=m.credits, type=m.type, faculty=m.faculty,
-                         faculty_en=faculty_en(m.faculty), department=m.department, department_en=department_en(m.department),
-                         description=description, description_en=description_en, outline_url=outline_url,
-                         outline_url_en=outline_url_en, outline_links=outline_links or [],
-                         final_assessment=m.final_assessment, head_lecturer=m.head_lecturer,
-                         is_english=bool(m.is_english) or m.language_track == "en", has_equivalents=has_eq,
-                         offering_plan=plans, language_track=m.language_track or "vi", language_basis=m.language_basis,
-                         is_talent_program=bool(m.is_talent_program), counterpart_code=m.counterpart_code,
-                         open_semesters=open_sems or [], has_outline=has_outline, degree=m.degree or "dai_hoc", is_sample=m.is_sample)
 
 
 def _open_semesters(db: Session, codes: list[str]) -> dict[str, list[OpenSemester]]:
@@ -748,16 +741,21 @@ def module_facets(
     ).all()
     type_counts = [FacetCount(value=str(v).strip(), count=n) for v, n in type_rows if str(v).strip() and n > 0]
 
-    # 6. Semester (bỏ qua lọc semester, đếm distinct module)
+    # 6. Semester (bỏ qua lọc semester). Chỉ tính học phần ĐÃ MỞ LỚP (join class_sections).
+    # `count` = số lớp học phần (thống nhất cách đếm với Phòng Đào tạo); `modules` = số học phần khác nhau (= số dòng danh sách).
     c_sem = conds_except("semester")
     sem_rows = db.execute(
-        select(ClassSection.semester_id, func.count(func.distinct(ClassSection.module_code)))
+        select(
+            ClassSection.semester_id,
+            func.count(ClassSection.id),
+            func.count(func.distinct(ClassSection.module_code)),
+        )
         .join(Module, Module.code == ClassSection.module_code)
         .where(*c_sem, ClassSection.semester_id.is_not(None))
         .group_by(ClassSection.semester_id)
         .order_by(ClassSection.semester_id)
     ).all()
-    semester_counts = [FacetCount(value=str(s), count=n) for s, n in sem_rows if n > 0]
+    semester_counts = [FacetCount(value=str(s), count=n, modules=m) for s, n, m in sem_rows if n > 0]
 
     # 7. Outline (bỏ qua lọc has_outline)
     c_out = conds_except("has_outline")
@@ -878,12 +876,14 @@ def get_module(
             chosen_year = max(avail_years)
             fallback_year = False
 
+    lec_email = get_module_lecturer_email(db, m.code)
     outline_info = _outline_urls_for(db, [m.code], ctdt_year=chosen_year).get(m.code, _EMPTY_OUTLINE_INFO)
     base = _summary(m, bool(eqs), _plans_for(db, [m.code]).get(m.code, []), open_sems, has_outline,
                     description=vi, outline_url=outline_info.outline_url, description_en=en,
                     outline_url_en=outline_info.outline_url_en,
                     outline_links=outline_info.outline_links,
-                    outline_year=chosen_year, outline_year_fallback=fallback_year).model_dump()
+                    outline_year=chosen_year, outline_year_fallback=fallback_year,
+                    lecturer_email=lec_email).model_dump()
     base.pop("description", None)
 
     # Ô bắt buộc: required_in_programs, is_required_any, required
@@ -941,10 +941,10 @@ def get_module(
     )
 
 
-def class_to_out(cs: ClassSection) -> ClassSectionOut:
+def class_to_out(cs: ClassSection, lecturer_email: str | None = None) -> ClassSectionOut:
     return ClassSectionOut(
         class_code=cs.class_code, module_code=cs.module_code, semester=cs.semester_id,
-        lecturer=cs.lecturer, quota=cs.quota, quota_min=cs.quota_min, quota_max=cs.quota,
+        lecturer=cs.lecturer, lecturer_email=lecturer_email, quota=cs.quota, quota_min=cs.quota_min, quota_max=cs.quota,
         registered=cs.registered, available=cs.available, student_groups=cs.student_groups or [],
         cohorts=cs.cohorts or [], rooms=[ClassRoom(**r) for r in (cs.rooms or [])], notes=cs.notes or [],
         start_date=cs.start_date, end_date=cs.end_date, study_type=cs.study_type,
@@ -974,7 +974,8 @@ def list_module_classes(
     if cohort:  # lọc trong Python để giống nhau trên SQLite/PostgreSQL (cột JSON)
         c = cohort.strip().upper()
         classes = [cs for cs in classes if c in (cs.cohorts or [])]
-    return [class_to_out(cs) for cs in classes]
+    lec_email = get_module_lecturer_email(db, m.code)
+    return [class_to_out(cs, lecturer_email=lec_email) for cs in classes]
 
 
 # ---------------------------------------------------------------- đề cương chi tiết

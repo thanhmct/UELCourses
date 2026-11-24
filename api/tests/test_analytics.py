@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 import pytest
 from app.config import get_settings
-from app.models import AdminSetting, AnalyticsDaily, AnalyticsEvent, AnalyticsPair, ClassSection, Lesson, Module, RegulationDocument
+from app.models import AdminSetting, AnalyticsDaily, AnalyticsEvent, AnalyticsPair, ClassSection, Lesson, Module, RegulationDocument, Semester
 from app.services.analytics import (
     aggregate_analytics,
     purge_analytics,
@@ -20,6 +20,9 @@ def clean_rate_limits():
 
 def test_post_analytics_events_valid_batch(client, db):
     """Tiếp nhận lô sự kiện hợp lệ và ghi vào analytics_events, trả về 204."""
+    db.add(Module(code="BIM5001", name="Building Information Modeling", credits=3))
+    db.commit()
+
     payload = {
         "anon_id": "11111111-1111-4111-8111-111111111111",
         "events": [
@@ -55,6 +58,9 @@ def test_post_analytics_events_valid_batch(client, db):
 
 def test_post_analytics_filters_invalid_types_and_fields(client, db):
     """Bỏ qua type lạ và lọc dữ liệu sạch sẽ."""
+    db.add(Module(code="TOA1001", name="Toán cao cấp 1", credits=3))
+    db.commit()
+
     payload = {
         "anon_id": "22222222-2222-4222-8222-222222222222",
         "events": [
@@ -110,23 +116,164 @@ def test_post_analytics_cuts_query_and_validates_program_code(client, db):
     assert ev_prog.program_code == "K24404E"
 
 
-def test_post_analytics_rate_limit_429(client):
-    """Vượt quá 10 sự kiện/giây trên cùng 1 anon_id sẽ trả 429."""
+def test_post_analytics_rate_limit_429(client, db):
+    """Vượt quá 300 sự kiện/phút trên cùng 1 anon_id sẽ trả 429."""
     anon_id = "44444444-4444-4444-8444-444444444444"
-    # Gửi 10 sự kiện -> thành công (204)
-    res1 = client.post("/api/analytics/events", json={
-        "anon_id": anon_id,
-        "events": [{"type": "module_view", "module_code": f"M{i}"} for i in range(10)],
-    })
-    assert res1.status_code == 204
+    # Gửi 6 lô x 50 sự kiện = 300 sự kiện -> thành công (204)
+    for _ in range(6):
+        res1 = client.post("/api/analytics/events", json={
+            "anon_id": anon_id,
+            "events": [{"type": "search", "query": f"q_{i}"} for i in range(50)],
+        })
+        assert res1.status_code == 204
 
     # Gửi thêm ngay lập tức -> ném 429
     res2 = client.post("/api/analytics/events", json={
         "anon_id": anon_id,
-        "events": [{"type": "module_view", "module_code": "M_EXTRA"}],
+        "events": [{"type": "search", "query": "extra"}],
     })
     assert res2.status_code == 429
-    assert "tối đa 10 sự kiện/giây" in res2.json()["detail"]
+    assert "tối đa 300 sự kiện/phút" in res2.json()["detail"]
+
+
+def test_post_analytics_batch_over_10_saved(client, db):
+    """Lô > 10 sự kiện (ví dụ 20 sự kiện) vẫn được tiếp nhận và lưu trọn vẹn."""
+    anon_id = "44444444-aaaa-4444-8444-444444444444"
+    # Gửi lô 20 sự kiện trong 1 request duy nhất
+    res = client.post("/api/analytics/events", json={
+        "anon_id": anon_id,
+        "events": [{"type": "search", "query": f"search_{i}"} for i in range(20)],
+    })
+    assert res.status_code == 204
+    events = db.query(AnalyticsEvent).filter(AnalyticsEvent.anon_id == anon_id).all()
+    assert len(events) == 20
+
+
+def test_post_analytics_validates_module_code_cache(client, db):
+    """Kiểm module_code của sự kiện có tồn tại trong bảng modules để loại rác."""
+    db.add(Module(code="MOD_REAL", name="Môn Hợp Lệ", credits=3))
+    db.commit()
+
+    payload = {
+        "anon_id": "77777777-7777-4777-8777-777777777777",
+        "events": [
+            {
+                "type": "module_view",
+                "module_code": "MOD_REAL",
+            },
+            {
+                "type": "module_view",
+                "module_code": "MOD_GARBAGE_123",  # không tồn tại -> None
+            },
+        ],
+    }
+    res = client.post("/api/analytics/events", json=payload)
+    assert res.status_code == 204
+
+    events = db.query(AnalyticsEvent).filter(AnalyticsEvent.anon_id == "77777777-7777-4777-8777-777777777777").all()
+    assert len(events) == 2
+    ev_real = [e for e in events if e.module_code == "MOD_REAL"]
+    assert len(ev_real) == 1
+    ev_fake = [e for e in events if e.module_code is None]
+    assert len(ev_fake) == 1
+
+
+def test_trend_slots_has_data_with_class_code(db):
+    """Bản đồ nhiệt get_trend_slots có dữ liệu khi timetable_add có class_code."""
+    from app.services.analytics import get_trend_slots
+
+    sem = "2026-2027-1"
+    cls_code = "TEST_CLS_01"
+    mod_code = "TEST_MOD_01"
+
+    db.add(Semester(id=sem, name="HK1 2026-2027", year="2026-2027", term=1))
+    db.add(Module(code=mod_code, name="Môn Thử Nghiệm", credits=3))
+    cls = ClassSection(
+        module_code=mod_code,
+        class_code=cls_code,
+        semester_id=sem,
+    )
+    db.add(cls)
+    db.flush()
+
+    lesson = Lesson(
+        class_id=cls.id,
+        weekday=2,  # Thứ Hai
+        start_period=1,
+        end_period=3,
+    )
+    db.add(lesson)
+
+    # Thêm 5 anon_id khác nhau để vượt k-anonymity (>= 5)
+    for i in range(5):
+        db.add(AnalyticsEvent(
+            anon_id=f"slot_anon_{i}",
+            event_type="timetable_add",
+            module_code=mod_code,
+            class_code=cls_code,
+            semester_id=sem,
+        ))
+    db.commit()
+
+    slots = get_trend_slots(db, semester=sem)
+    assert len(slots) == 7 * 16  # 7 ngày x 16 tiết
+
+    # Tiết 1..3 ngày Thứ Hai (weekday=2) phải có count = 5
+    mon_p1 = [s for s in slots if s["weekday"] == 2 and s["period"] == 1][0]
+    assert mon_p1["count_raw"] == 5
+    assert mon_p1["count"] == 5
+
+    mon_p2 = [s for s in slots if s["weekday"] == 2 and s["period"] == 2][0]
+    assert mon_p2["count_raw"] == 5
+
+    # Tiết khác không có lịch -> count = 0
+    tue_p1 = [s for s in slots if s["weekday"] == 3 and s["period"] == 1][0]
+    assert tue_p1["count_raw"] == 0
+
+
+def test_trend_modules_preserves_module_view_when_filtering_semester(db):
+    """Khi lọc kỳ ở get_trend_modules, module_view với semester_id=None vẫn được chấp nhận."""
+    from app.services.analytics import get_trend_modules
+
+    sem = "2026-2027-1"
+    mod_code = "MOD_VIEW_TEST"
+    db.add(Module(code=mod_code, name="Môn Lọc Kỳ", credits=3))
+
+    # 5 anon thêm TKB đúng kỳ đó
+    for i in range(5):
+        db.add(AnalyticsEvent(
+            anon_id=f"tt_anon_{i}",
+            event_type="timetable_add",
+            module_code=mod_code,
+            semester_id=sem,
+        ))
+
+    # 5 anon xem môn (semester_id = None vì xem trang môn chung)
+    for i in range(5):
+        db.add(AnalyticsEvent(
+            anon_id=f"vw_anon_{i}",
+            event_type="module_view",
+            module_code=mod_code,
+            semester_id=None,
+        ))
+
+    # 5 anon thêm vào planner (semester_id = None)
+    for i in range(5):
+        db.add(AnalyticsEvent(
+            anon_id=f"pl_anon_{i}",
+            event_type="planner_add",
+            module_code=mod_code,
+            semester_id=None,
+        ))
+    db.commit()
+
+    results = get_trend_modules(db, semester=sem)
+    matched = [m for m in results if m["module_code"] == mod_code]
+    assert len(matched) == 1
+    m = matched[0]
+    assert m["timetable_adds"] == 5
+    assert m["views"] == 5
+    assert m["planner_adds"] == 5
 
 
 def test_post_analytics_disabled_ignored(client, monkeypatch, db):

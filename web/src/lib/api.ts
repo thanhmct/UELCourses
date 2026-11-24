@@ -582,11 +582,18 @@ export const api = {
     ),
 
   // Single answer mode: the server answers with verbatim quotes (LLM-checked when available).
-  ask: (question: string, cohort?: string, context?: ChatContext) =>
+  // `docIds`: documents the student tagged with "/" (answer only from them, in more detail); `lang`: UI language.
+  ask: (question: string, cohort?: string, context?: ChatContext,
+    options?: { docIds?: string[]; lang?: Lang; previous?: string[] }) =>
     withFallback<AskResponse>(
       "/api/regulations/ask",
       async () => (await loadRegulationMocks()).mockAsk(question, cohort),
-      { method: "POST", body: JSON.stringify({ question, cohort, context }) },
+      { method: "POST", body: JSON.stringify({
+        question, cohort, context,
+        ...(options?.docIds?.length ? { doc_ids: options.docIds } : {}),
+        ...(options?.lang ? { lang: options.lang } : {}),
+        ...(options?.previous?.length ? { previous: options.previous } : {}),
+      }) },
       undefined,
       ASK_TIMEOUT_MS,
     ),

@@ -11,6 +11,7 @@ const nextConfig: NextConfig = {
     // Keep the flag compile-time constant so production builds can discard mock imports.
     NEXT_PUBLIC_USE_MOCKS: process.env.NEXT_PUBLIC_USE_MOCKS || "false",
     NEXT_PUBLIC_APP_VERSION: pkg.version,
+    NEXT_PUBLIC_ADMIN_URL: process.env.NEXT_PUBLIC_ADMIN_URL || "http://localhost:3100",
   },
 };
 

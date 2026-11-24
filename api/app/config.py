@@ -38,7 +38,7 @@ class Settings(BaseSettings):
     # Thư mục chứa file Excel/JSON thật cho `seed` (mặc định DATA_DIR/raw, rồi <repo>/data/raw).
     raw_data_dir: Path | None = None
     # Danh sách origin phân tách bởi dấu phẩy.
-    cors_origins: str = "http://localhost:3000"
+    cors_origins: str = "http://localhost:3000,http://localhost:3100"
 
     # Chế độ phát triển khu vực quản trị (/api/admin/*). Khi bật (true) và ENV != production,
     # các endpoint quản trị mở cho dev truy cập (require_admin_dev). Khi ENV=production, validate_production()
@@ -84,7 +84,10 @@ class Settings(BaseSettings):
     llm_max_concurrent: int = Field(2, ge=1, le=16)
     llm_ip_hourly_cap: int = Field(10, ge=0)
     llm_ip_daily_cap: int = Field(30, ge=0)
-    llm_daily_call_cap: int = Field(300, ge=0)
+    # Free tiers: Gemini 2.5 Flash ~250 requests/day, Groq llama-3.3-70b ~1000/day. Stay under Gemini's cap;
+    # the same question is answered from cache for a day (regulations change rarely).
+    llm_daily_call_cap: int = Field(200, ge=0)
+    llm_cache_seconds: int = Field(86400, ge=0)
     llm_log_questions: bool = False
     llm_hash_secret: str | None = None
     # Nếu đặt, các endpoint import/sync/export yêu cầu header `X-Admin-Key`.

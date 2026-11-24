@@ -270,8 +270,8 @@ def validity_warnings(doc: RegulationDoc, today: date, within_days: int = DEFAUL
             newer = docs_by_id[doc.superseded_by]
             out.append(f"{label} sẽ được thay thế bởi {doc_label(newer)} từ ngày {_fmt(newer.effective_from)}.")
     if doc.metadata_unverified:
-        out.append(f"{doc.title}: metadata chưa được xác minh (số quyết định, ngày hiệu lực hoặc khóa áp dụng "
-                   "có thể chưa chính xác) — hãy đối chiếu văn bản gốc.")
+        out.append(f"{doc.title}: cần đối chiếu lại với văn bản gốc - nội dung được chép lại từ bản chụp nên "
+                   "có thể sai sót.")
     if not doc.applies_to_cohorts and not doc.applies_from_cohort:
         out.append(f"{doc.title}: chưa xác định khóa áp dụng.")
     return out

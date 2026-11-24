@@ -212,6 +212,7 @@ function L(weekday: number, start: number, end: number, room: string, weeks?: st
 }
 
 const lecturers = ["TS. Nguyễn Văn A", "ThS. Trần Thị B", "TS. Lê Văn C", "PGS.TS. Phạm Thị D", "ThS. Võ Văn E"];
+const mockLecturerEmails = ["an.nv@uel.edu.vn", "binh.tt@uel.edu.vn", "cuong.lv@uel.edu.vn", "dung.pt@uel.edu.vn", "em.vv@uel.edu.vn"];
 const rooms = ["A.101", "A.205", "B.203", "B.302", "C.105", "C.401", "D.201"];
 
 const slots: [number, number, number][] = [
@@ -229,6 +230,7 @@ const realSections: ClassSection[] = typedRawCourses.map((c) => {
     class_code: alias,
     module_code: code,
     lecturer: c.ProfessorName || undefined,
+    lecturer_email: c.ProfessorName ? "giangvien@uel.edu.vn" : undefined,
     quota: c.StudentQuotas,
     quota_min: c.MinStudentQuotas,
     quota_max: c.StudentQuotas,
@@ -288,6 +290,7 @@ function buildSections(semesterId: string): ClassSection[] {
         class_code: `${semesterId}${m.code}${String(k + 1).padStart(2, "0")}`,
         module_code: m.code,
         lecturer: lecturers[(mi + k) % lecturers.length],
+        lecturer_email: mockLecturerEmails[(mi + k) % mockLecturerEmails.length],
         quota: quotaMax,
         quota_min: 30,
         quota_max: quotaMax,

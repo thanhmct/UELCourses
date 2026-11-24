@@ -85,7 +85,9 @@ def source_blocked(text: str) -> bool:
 
 
 def regulation_scope(question: str) -> bool:
-    return not blocked(question) and bool(_regulation_topic.search(strip_accents(normalized(question))))
+    """Open gate: only unsafe input is refused here. Whether the question is about regulations is decided by
+    retrieval (no confident source -> refusal) and by the model's verbatim-quote check, in any language."""
+    return bool(question and question.strip()) and not blocked(question)
 
 
 def safe_source(text: str) -> str:

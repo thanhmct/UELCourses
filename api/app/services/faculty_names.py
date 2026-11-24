@@ -67,25 +67,52 @@ CANONICAL_FACULTIES_VI: list[str] = [
 
 # Bảng tĩnh dự phòng (đồng bộ với web/src/i18n/names.ts)
 STATIC_FACULTY_EN_TO_VI: dict[str, str] = {
+    "Department of Administration": "Phòng Hành chính",
+    "Department of Human Resources": "Phòng Nhân sự",
+    "Department of Quality Assurance": "Phòng Bảo đảm chất lượng",
+    "Department of Admissions and Student Affairs": "Phòng Tuyển sinh và Công tác sinh viên",
+    "Department of Academic Affairs": "Phòng Đào tạo",
+    "Department of Science and Technology": "Phòng Khoa học và Công nghệ",
+    "Department of Cooperation and Development": "Phòng Hợp tác phát triển",
+    "Department of Asset Management": "Phòng Quản trị tài sản",
+    "Department of Finance": "Phòng Tài chính",
+    "Department of Information Technology": "Phòng Công nghệ thông tin",
+    "Department of Communication": "Phòng Truyền thông",
+    "Department of Legal Affairs": "Phòng Pháp chế",
     "Faculty of Business Administration": "Khoa Quản trị kinh doanh",
     "Faculty of Information Systems": "Khoa Hệ thống thông tin",
     "Faculty of Finance and Banking": "Khoa Tài chính - Ngân hàng",
     "Faculty of Finance & Banking": "Khoa Tài chính - Ngân hàng",
     "Faculty of Economics": "Khoa Kinh tế",
-    "Faculty of Mathematical Economics": "Khoa Toán kinh tế",
+    "Faculty of Economic Mathematics": "Khoa Toán kinh tế",
     "Faculty of International Economic Relations": "Khoa Kinh tế đối ngoại",
     "Faculty of Accounting and Auditing": "Khoa Kế toán - Kiểm toán",
     "Faculty of Accounting & Auditing": "Khoa Kế toán - Kiểm toán",
     "Faculty of Law": "Khoa Luật",
     "School of Law": "Khoa Luật",
-    "Faculty of Business Law": "Khoa Luật Kinh tế",
     "Faculty of Economic Law": "Khoa Luật Kinh tế",
+    "The International Institute of UEL": "Viện Quốc tế UEL",
+    "Library": "Thư viện",
+    "Institute for Development and Research in Banking Technology VNUHCM": "Viện Nghiên cứu phát triển công nghệ ngân hàng ĐHQG-HCM",
+    "Institute of International and Comparative Law": "Viện Pháp luật Quốc tế và so sánh",
+    "Economics and Law Co., Ltd": "Công ty TNHH MTV Kinh tế – Luật",
+    "Trade Union": "Công đoàn",
+    "Youth Union": "Đoàn Thanh niên - Hội Sinh viên",
     "University of Economics and Law": "Trường Đại học Kinh tế - Luật",
+    # Tên cũ chỉ dùng để nhận dạng đầu vào lịch sử; đầu ra luôn lấy tên chính thức từ canonical map.
+    "Faculty of Mathematical Economics": "Khoa Toán kinh tế",
+    "Faculty of Business Law": "Khoa Luật Kinh tế",
     "Academic Affairs Office": "Phòng Đào tạo",
     "Quality Assurance Office": "Phòng Bảo đảm chất lượng",
     "Quality Assurance and Testing Center": "Phòng Bảo đảm chất lượng",
-    "Department of Quality Assurance": "Phòng Bảo đảm chất lượng",
     "UEL International Institute": "Viện Quốc tế UEL",
+    "Administration Office": "Phòng Hành chính",
+    "Administrative Office": "Phòng Hành chính",
+    "Human Resources Office": "Phòng Nhân sự",
+    "Finance Office": "Phòng Tài chính",
+    "Asset Management Office": "Phòng Quản trị tài sản",
+    "Communications Office": "Phòng Truyền thông",
+    "Legal Affairs Office": "Phòng Pháp chế",
     "Center for Foreign Languages and Informatics": "Trung tâm Ngoại ngữ - Tin học",
     "Department of Foreign Languages": "Bộ môn Ngoại ngữ",
 }
@@ -139,20 +166,39 @@ STATIC_DEPT_ALIASES: dict[str, str] = {
 }
 
 STATIC_FACULTY_VI_TO_EN: dict[str, str] = {
+    "phòng hành chính": "Department of Administration",
+    "phòng nhân sự": "Department of Human Resources",
+    "phòng bảo đảm chất lượng": "Department of Quality Assurance",
+    "bảo đảm chất lượng": "Department of Quality Assurance",
+    "phòng tuyển sinh và công tác sinh viên": "Department of Admissions and Student Affairs",
+    "phòng tuyển sinh & công tác sinh viên": "Department of Admissions and Student Affairs",
+    "phòng đào tạo": "Department of Academic Affairs",
+    "đào tạo": "Department of Academic Affairs",
+    "phòng khoa học và công nghệ": "Department of Science and Technology",
+    "phòng hợp tác phát triển": "Department of Cooperation and Development",
+    "phòng quản trị tài sản": "Department of Asset Management",
+    "phòng tài chính": "Department of Finance",
+    "phòng công nghệ thông tin": "Department of Information Technology",
+    "phòng truyền thông": "Department of Communication",
+    "phòng pháp chế": "Department of Legal Affairs",
     "quản trị kinh doanh": "Faculty of Business Administration",
     "hệ thống thông tin": "Faculty of Information Systems",
     "tài chính - ngân hàng": "Faculty of Finance and Banking",
     "kinh tế": "Faculty of Economics",
-    "toán kinh tế": "Faculty of Mathematical Economics",
+    "toán kinh tế": "Faculty of Economic Mathematics",
     "kinh tế đối ngoại": "Faculty of International Economic Relations",
     "kế toán - kiểm toán": "Faculty of Accounting and Auditing",
     "luật": "Faculty of Law",
-    "luật kinh tế": "Faculty of Business Law",
+    "luật kinh tế": "Faculty of Economic Law",
     "trường đại học kinh tế - luật": "University of Economics and Law",
-    "phòng đào tạo": "Academic Affairs Office",
-    "phòng bảo đảm chất lượng": "Department of Quality Assurance",
-    "bảo đảm chất lượng": "Department of Quality Assurance",
-    "viện quốc tế uel": "UEL International Institute",
+    "viện quốc tế uel": "The International Institute of UEL",
+    "thư viện": "Library",
+    "viện nghiên cứu phát triển công nghệ ngân hàng đhqg-hcm": "Institute for Development and Research in Banking Technology VNUHCM",
+    "viện pháp luật quốc tế và so sánh": "Institute of International and Comparative Law",
+    "công ty tnhh mtv kinh tế – luật": "Economics and Law Co., Ltd",
+    "công ty tnhh mtv kinh tế - luật": "Economics and Law Co., Ltd",
+    "công đoàn": "Trade Union",
+    "đoàn thanh niên - hội sinh viên": "Youth Union",
     "trung tâm ngoại ngữ - tin học": "Center for Foreign Languages and Informatics",
     "bộ môn ngoại ngữ": "Department of Foreign Languages",
 }
@@ -180,6 +226,18 @@ STATIC_DEPARTMENT_VI_TO_EN: dict[str, str] = {
     "luật hành chính - nhà nước": "Department of Administrative and State Law",
     "ngoại ngữ": "Department of Foreign Languages",
 }
+
+
+_YEAR_OR_COHORT_RE = re.compile(r"^\s*K?\s*\d{1,4}(\s*[-–—/]\s*\d{1,4})?\s*$", re.IGNORECASE)
+
+
+def is_year_or_cohort_label(text: str | None) -> bool:
+    """True nếu chuỗi chỉ là năm/khóa (vd '2023', '2023-2027', 'K25', '10'), không phải tên khoa.
+
+    Bộ đọc đề cương đôi khi bắt nhầm năm CTĐT hoặc khóa vào trường khoa; giá trị đó không được
+    dùng làm đề xuất khoa.
+    """
+    return bool(text and _YEAR_OR_COHORT_RE.match(text))
 
 
 def clean_raw_text(text: str | None) -> str:
@@ -327,19 +385,36 @@ def _load_canonical_map(path: Path = SEED_CANONICAL_TSV) -> dict[str, tuple[str,
                     if alias:
                         lookup[faculty_norm_key(alias)] = val
 
-    # Đảm bảo các khoa chuẩn và alias B6d được nạp đầy đủ
+    # Dự phòng khi file seed không tồn tại: toàn bộ tên đơn vị chính thức N1 và alias lịch sử.
     defaults: list[tuple[str, str, list[str]]] = [
+        ("Phòng Hành chính", "Department of Administration", ["Hành chính", "Administration", "Administration Office", "Administrative Office"]),
+        ("Phòng Nhân sự", "Department of Human Resources", ["Nhân sự", "Human Resources", "Human Resources Office"]),
+        ("Phòng Bảo đảm chất lượng", "Department of Quality Assurance", ["Bảo đảm chất lượng", "Quality Assurance", "Quality Assurance Office", "Quality Assurance and Testing Center", "QA"]),
+        ("Phòng Tuyển sinh và Công tác sinh viên", "Department of Admissions and Student Affairs", ["Phòng Tuyển sinh & Công tác sinh viên", "Tuyển sinh và Công tác sinh viên", "Tuyển sinh & Công tác sinh viên", "Admissions and Student Affairs", "Admissions & Student Affairs"]),
+        ("Phòng Đào tạo", "Department of Academic Affairs", ["Đào tạo", "Academic Affairs", "Academic Affairs Office"]),
+        ("Phòng Khoa học và Công nghệ", "Department of Science and Technology", ["Khoa học và Công nghệ", "Khoa học & Công nghệ", "Science and Technology", "Science & Technology"]),
+        ("Phòng Hợp tác phát triển", "Department of Cooperation and Development", ["Hợp tác phát triển", "Cooperation and Development", "Cooperation & Development"]),
+        ("Phòng Quản trị tài sản", "Department of Asset Management", ["Quản trị tài sản", "Asset Management", "Asset Management Office"]),
+        ("Phòng Tài chính", "Department of Finance", ["Finance Office"]),
+        ("Phòng Công nghệ thông tin", "Department of Information Technology", ["Công nghệ thông tin", "Information Technology", "IT Department"]),
+        ("Phòng Truyền thông", "Department of Communication", ["Truyền thông", "Communication", "Communications Office"]),
+        ("Phòng Pháp chế", "Department of Legal Affairs", ["Pháp chế", "Legal Affairs", "Legal Affairs Office"]),
         ("Khoa Quản trị kinh doanh", "Faculty of Business Administration", ["Quản trị kinh doanh", "QUẢN TRỊ KINH DOANH", "QTKD", "Business Administration", "BAA"]),
         ("Khoa Tài chính - Ngân hàng", "Faculty of Finance and Banking", ["Tài chính - Ngân hàng", "Tài chính Ngân hàng", "BANKING AND FINANCE", "FINANCE AND BANKING", "Finance and Banking", "Finance & Banking", "TCNH"]),
         ("Khoa Kế toán - Kiểm toán", "Faculty of Accounting and Auditing", ["Kế toán - Kiểm toán", "Kế toán – Kiểm toán", "Kế toán Kiểm toán", "ACCOUNTING – AUDITING", "Accounting and Auditing", "Accounting & Auditing", "KTKT"]),
         ("Khoa Hệ thống thông tin", "Faculty of Information Systems", ["Hệ thống thông tin", "MIS", "Information Systems", "HTTT"]),
         ("Khoa Kinh tế", "Faculty of Economics", ["Kinh tế", "Economics", "KT"]),
         ("Khoa Kinh tế đối ngoại", "Faculty of International Economic Relations", ["Kinh tế đối ngoại", "ECONOMIC RELATION", "ECONOMIC RELATIONS", "International Economic Relations", "KTĐN", "KTDN"]),
-        ("Khoa Toán kinh tế", "Faculty of Mathematical Economics", ["Toán kinh tế", "ECONOMIC MATHEMATICS", "MATHEMATICAL ECONOMICS", "Mathematical Economics", "TKT"]),
+        ("Khoa Toán kinh tế", "Faculty of Economic Mathematics", ["Toán kinh tế", "ECONOMIC MATHEMATICS", "MATHEMATICAL ECONOMICS", "Mathematical Economics", "Faculty of Mathematical Economics", "TKT"]),
         ("Khoa Luật", "Faculty of Law", ["Luật", "Law", "School of Law"]),
-        ("Khoa Luật Kinh tế", "Faculty of Business Law", ["Luật Kinh tế", "LUẬT KINH TẾ", "ECONOMIC LAW", "Business Law", "Economic Law", "Faculty of Economic Law", "LKT"]),
-        ("Phòng Đào tạo", "Academic Affairs Office", ["Đào tạo", "Academic Affairs"]),
-        ("Phòng Bảo đảm chất lượng", "Department of Quality Assurance", ["Bảo đảm chất lượng", "Quality Assurance", "Quality Assurance Office", "QA"]),
+        ("Khoa Luật Kinh tế", "Faculty of Economic Law", ["Luật Kinh tế", "LUẬT KINH TẾ", "ECONOMIC LAW", "Business Law", "Economic Law", "Faculty of Business Law", "LKT"]),
+        ("Viện Quốc tế UEL", "The International Institute of UEL", ["UEL International Institute", "International Institute of UEL", "Viện Quốc tế"]),
+        ("Thư viện", "Library", ["UEL Library"]),
+        ("Viện Nghiên cứu phát triển công nghệ ngân hàng ĐHQG-HCM", "Institute for Development and Research in Banking Technology VNUHCM", ["Viện Nghiên cứu phát triển công nghệ ngân hàng", "Institute for Development and Research in Banking Technology"]),
+        ("Viện Pháp luật Quốc tế và so sánh", "Institute of International and Comparative Law", ["Viện Pháp luật Quốc tế & so sánh", "International and Comparative Law Institute"]),
+        ("Công ty TNHH MTV Kinh tế – Luật", "Economics and Law Co., Ltd", ["Công ty TNHH MTV Kinh tế - Luật", "Economics and Law Company Limited"]),
+        ("Công đoàn", "Trade Union", ["UEL Trade Union"]),
+        ("Đoàn Thanh niên - Hội Sinh viên", "Youth Union", ["Đoàn Thanh niên – Hội Sinh viên", "Youth Union – Student Association", "Youth Union - Student Association"]),
     ]
     for fac_vi, fac_en, aliases in defaults:
         val = (fac_vi, fac_en)
@@ -696,7 +771,7 @@ def department_vi(en: str | None) -> str | None:
 def faculty_en(vi: str | None) -> str | None:
     """Chuyển tên khoa tiếng Việt sang tiếng Anh.
 
-    Ví dụ: 'Phòng Đào tạo' -> 'Academic Affairs Office'.
+    Ví dụ: 'Phòng Đào tạo' -> 'Department of Academic Affairs'.
            'Khoa Tài chính - Ngân hàng' -> 'Faculty of Finance and Banking'.
     """
     if not vi or not vi.strip():
@@ -911,11 +986,17 @@ def build_prefix_table_from_db(
             continue
 
         candidates = list(module_candidates.get(c_code, {}).values())
-        valid_own = [c for c in candidates if clean_raw_text(c.faculty) and has_core_name(c.faculty)]
+        valid_own = [
+            c for c in candidates
+            if clean_raw_text(c.faculty) and has_core_name(c.faculty) and not is_year_or_cohort_label(c.faculty)
+        ]
 
         cp_code = (m.counterpart_code or "").strip().upper() if m.counterpart_code else None
         cp_candidates = list(module_candidates.get(cp_code, {}).values()) if cp_code else []
-        valid_cp = [c for c in cp_candidates if clean_raw_text(c.faculty) and has_core_name(c.faculty)] if cp_code else []
+        valid_cp = [
+            c for c in cp_candidates
+            if clean_raw_text(c.faculty) and has_core_name(c.faculty) and not is_year_or_cohort_label(c.faculty)
+        ] if cp_code else []
 
         chosen = valid_own if valid_own else (valid_cp if valid_cp else [])
         if not chosen:
@@ -1060,7 +1141,8 @@ def audit_module_faculties_with_unmapped(
 
         # Lọc đề cương của chính môn có trường faculty có chữ thực chất (sau khi cắt rác và tiền tố trơn)
         valid_own_fac_candidates: list[_OutlineCandidate] = [
-            c for c in candidates if clean_raw_text(c.faculty) and has_core_name(c.faculty)
+            c for c in candidates
+            if clean_raw_text(c.faculty) and has_core_name(c.faculty) and not is_year_or_cohort_label(c.faculty)
         ]
         has_faculty_in_own_outline = len(valid_own_fac_candidates) > 0
 
@@ -1068,7 +1150,8 @@ def audit_module_faculties_with_unmapped(
         cp_code = (m.counterpart_code or "").strip().upper() if m.counterpart_code else None
         cp_candidates = list(module_candidates.get(cp_code, {}).values()) if cp_code else []
         valid_cp_fac_candidates: list[_OutlineCandidate] = [
-            c for c in cp_candidates if clean_raw_text(c.faculty) and has_core_name(c.faculty)
+            c for c in cp_candidates
+            if clean_raw_text(c.faculty) and has_core_name(c.faculty) and not is_year_or_cohort_label(c.faculty)
         ] if cp_code else []
         has_faculty_in_cp_outline = len(valid_cp_fac_candidates) > 0
 
@@ -1744,7 +1827,10 @@ def resolve_module_faculty(
         return list(outline_row) + [r for r in norm_rows if r not in outline_row]
 
     all_rows = _get_outline_rows(c_code)
-    valid_rows = [r for r in all_rows if clean_raw_text(r[0]) and has_core_name(r[0])]
+    valid_rows = [
+        r for r in all_rows
+        if clean_raw_text(r[0]) and has_core_name(r[0]) and not is_year_or_cohort_label(r[0])
+    ]
 
     if not valid_rows:
         # Thử tìm từ counterpart_code
@@ -1752,7 +1838,10 @@ def resolve_module_faculty(
         cp_code = (m.counterpart_code or "").strip().upper() if m and m.counterpart_code else None
         if cp_code:
             cp_rows = _get_outline_rows(cp_code)
-            valid_rows = [r for r in cp_rows if clean_raw_text(r[0]) and has_core_name(r[0])]
+            valid_rows = [
+                r for r in cp_rows
+                if clean_raw_text(r[0]) and has_core_name(r[0]) and not is_year_or_cohort_label(r[0])
+            ]
 
     if valid_rows:
         def rank(r):

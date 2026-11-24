@@ -74,10 +74,16 @@ app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
 # Nén phản hồi lớn (/venues ~2 MB JSON, /equivalents ~100 KB). Phản hồi nhỏ hơn 1 KB giữ nguyên.
 app.add_middleware(GZipMiddleware, minimum_size=1024)
+cors_origins = get_settings().cors_origin_list
+if "*" in cors_origins:
+    # Browsers reject Access-Control-Allow-Origin: * when credentials are included (allow_credentials=True).
+    # Raise RuntimeError at startup to prevent invalid or insecure wildcard configuration.
+    raise RuntimeError("CORS_ORIGINS cannot contain '*' when allow_credentials=True. Specify explicit origins.")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=get_settings().cors_origin_list,
-    allow_credentials=False,
+    allow_origins=cors_origins,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )

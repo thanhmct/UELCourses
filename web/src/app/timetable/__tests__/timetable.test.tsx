@@ -1440,4 +1440,51 @@ describe("7. Brief W32: Ô tìm môn ở Thời khóa biểu: dời nhãn 'Khôn
     // Phân biệt màu giữa 2 nhãn
     expect(electiveBadge.className).not.toEqual(noScheduleBadge.className);
   });
+
+  it("hiển thị các lựa chọn tải xuống PNG, ICS, Excel (.xlsx) và CSV (.csv)", async () => {
+    vi.spyOn(api, "semesters").mockResolvedValue({
+      data: [{ id: "2026-2027-1", name: "Học kỳ 1", year: "2026-2027", term: 1, is_current: true }],
+      mock: false,
+    });
+    vi.spyOn(api, "classes").mockResolvedValue({
+      data: [
+        {
+          module_code: "ECO101",
+          class_code: "261ECO10101",
+          lecturer: "TS. Nguyễn Văn A",
+          lecturer_email: "an.nv@uel.edu.vn",
+          lessons: [{ weekday: 2, start_period: 1, end_period: 3, start_time: "07:00", end_time: "09:35", room: "B1.406" }],
+        },
+      ],
+      mock: false,
+    });
+    vi.spyOn(api, "module").mockResolvedValue({
+      data: {
+        code: "ECO101",
+        name: "Kinh tế vi mô",
+        name_en: "Microeconomics",
+        credits: 3,
+        type: "Bắt buộc",
+        faculty: "Khoa Kinh tế",
+        lecturer_email: "an.nv@uel.edu.vn",
+        has_equivalents: false,
+        equivalents: [],
+        semesters: ["2026-2027-1"],
+      },
+      mock: false,
+    });
+
+    useTimetable.getState().setSemester("2026-2027-1");
+    useTimetable.getState().addModule({ code: "ECO101", name: "Kinh tế vi mô", credits: 3 }, "261ECO10101");
+
+    render(<TimetablePage />);
+
+    const downloadButton = screen.getByRole("button", { name: /Tải xuống/i });
+    fireEvent.click(downloadButton);
+
+    expect(screen.getByRole("menuitem", { name: "Ảnh PNG" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Lịch .ics" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Excel (.xlsx)" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "CSV (.csv)" })).toBeInTheDocument();
+  });
 });

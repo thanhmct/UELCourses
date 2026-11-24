@@ -69,9 +69,12 @@ class RegulationService:
         return data
 
     def ask(self, question: str, cohort: str | None = None, mode: str | None = None, top_k: int = 3, *,
-            reserve: Callable[[], bool] | None = None, profile: Profile | None = None) -> dict[str, Any]:
+            reserve: Callable[[], bool] | None = None, profile: Profile | None = None,
+            doc_ids: list[str] | None = None, lang: str | None = None,
+            previous: list[str] | None = None) -> dict[str, Any]:
         today = self._refresh()
-        return answer_mod.ask(self.index, question, cohort, mode, today, self.provider, top_k, reserve=reserve, profile=profile)
+        return answer_mod.ask(self.index, question, cohort, mode, today, self.provider, top_k, reserve=reserve,
+                              profile=profile, doc_ids=doc_ids, lang=lang, previous=previous)
 
     def compare(self, topic: str, cohorts: list[str]) -> dict[str, Any]:
         today = self._refresh()

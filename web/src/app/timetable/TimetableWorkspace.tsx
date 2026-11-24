@@ -17,6 +17,7 @@ import { hasVerifiedUndergraduateTrack } from "@/lib/programLookup";
 import { allModules } from "@/lib/programs";
 import { totalCredits } from "@/lib/credits";
 import { buildIcs } from "@/lib/ics";
+import { buildExportRows, buildTimetableCsv, buildTimetableXlsx } from "@/lib/timetableExport";
 import type { ClassSection } from "@/lib/types";
 import { parseSemesterId, seatsAvailable } from "@/lib/modules";
 import { Empty, EnBadge, Loading, RequiredBadge } from "@/components/ui";
@@ -561,6 +562,47 @@ export function TimetableWorkspace(props: TimetableWorkspaceProps) {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
+  async function prepareExportRows() {
+    const missingCodes = selected
+      .map((s) => s.module_code)
+      .filter((code) => !useTimetable.getState().info[code]?.faculty);
+    if (missingCodes.length > 0) {
+      await Promise.all(
+        missingCodes.map(async (code) => {
+          try {
+            const res = await api.module(code);
+            if (res.data) tt.rememberInfo(res.data);
+          } catch {
+            // ignore
+          }
+        }),
+      );
+    }
+    return buildExportRows(selected, useTimetable.getState().info, lang, t);
+  }
+
+  async function exportCsv() {
+    if (!selected.length) return flash(t("tt.noClassesExport"));
+    track("timetable_export_csv", { semester_id: semester });
+    const rows = await prepareExportRows();
+    const csv = buildTimetableCsv(rows);
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    download(`UELPATH-tkb-${semester}.csv`, url);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  async function exportXlsx() {
+    if (!selected.length) return flash(t("tt.noClassesExport"));
+    track("timetable_export_xlsx", { semester_id: semester });
+    const rows = await prepareExportRows();
+    const xlsx = buildTimetableXlsx(rows);
+    const url = URL.createObjectURL(
+      new Blob([xlsx as unknown as BlobPart], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }),
+    );
+    download(`UELPATH-tkb-${semester}.xlsx`, url);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
   function acceptImport() {
     if (!pendingImport) return;
     tt.replaceSemester(pendingImport.semester, pendingImport.entries);
@@ -817,9 +859,11 @@ export function TimetableWorkspace(props: TimetableWorkspaceProps) {
                 <Download className="h-4 w-4" aria-hidden /> {t("tt.download")} <ChevronDown className="h-3.5 w-3.5" aria-hidden />
               </button>
               {downOpen && (
-                <div className="absolute right-0 z-20 mt-1 w-40 rounded-md border border-slate-200 bg-white py-1 text-sm shadow-md dark:border-slate-700 dark:bg-slate-900" role="menu">
+                <div className="absolute right-0 z-20 mt-1 w-44 rounded-md border border-slate-200 bg-white py-1 text-sm shadow-md dark:border-slate-700 dark:bg-slate-900" role="menu">
                   <button role="menuitem" className="block w-full px-3 py-1.5 text-left hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => { setDownOpen(false); exportPng(); }}>{t("tt.png")}</button>
                   <button role="menuitem" className="block w-full px-3 py-1.5 text-left hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => { setDownOpen(false); exportIcs(); }}>{t("tt.ics")}</button>
+                  <button role="menuitem" className="block w-full px-3 py-1.5 text-left hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => { setDownOpen(false); exportXlsx(); }}>{t("tt.xlsx")}</button>
+                  <button role="menuitem" className="block w-full px-3 py-1.5 text-left hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => { setDownOpen(false); exportCsv(); }}>{t("tt.csv")}</button>
                 </div>
               )}
             </div>

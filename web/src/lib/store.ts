@@ -129,12 +129,18 @@ export const useSettings = create<SettingsState>()(
 );
 
 // ---------- Timetable ----------
+export interface TimetableModuleInfo extends ModuleRef {
+  faculty?: string;
+  faculty_en?: string | null;
+  lecturer_email?: string | null;
+}
+
 interface TimetableState {
   semester: string;
   bySemester: Record<string, TimetableEntry[]>;
   drafts: Record<string, Record<string, TimetableEntry[]>>;
   activeDrafts: Record<string, string>;
-  info: Record<string, ModuleRef>;
+  info: Record<string, TimetableModuleInfo>;
   plannerAssignments: Record<string, string[]>;
   setSemester: (s: string) => void;
   addModule: (m: ModuleRef, classCode?: string | null, semester?: string) => void;
@@ -143,7 +149,7 @@ interface TimetableState {
   toggleHidden: (code: string) => void;
   setColor: (code: string, color: number) => void;
   replaceSemester: (semester: string, entries: TimetableEntry[]) => void;
-  rememberInfo: (m: ModuleRef) => void;
+  rememberInfo: (m: ModuleRef | TimetableModuleInfo) => void;
   // Multiple drafts management
   switchDraft: (semester: string, draftName: string) => void;
   createDraft: (semester: string, draftName: string, source?: boolean | TimetableEntry[]) => void;
@@ -171,8 +177,16 @@ function appendTimetableModule(entries: TimetableEntry[], code: string, classCod
   }];
 }
 
-function timetableModuleInfo({ code, name, name_en = null, credits }: ModuleRef): ModuleRef {
-  return { code, name, name_en, credits };
+function timetableModuleInfo(m: ModuleRef & { faculty?: string; faculty_en?: string | null; lecturer_email?: string | null }): TimetableModuleInfo {
+  return {
+    code: m.code,
+    name: m.name,
+    name_en: m.name_en ?? null,
+    credits: m.credits,
+    ...(m.faculty ? { faculty: m.faculty } : {}),
+    ...(m.faculty_en ? { faculty_en: m.faculty_en } : {}),
+    ...(m.lecturer_email ? { lecturer_email: m.lecturer_email } : {}),
+  };
 }
 
 function updateEntries(s: TimetableState, fn: (e: TimetableEntry[]) => TimetableEntry[], sem = s.semester) {
@@ -224,7 +238,13 @@ export const useTimetable = create<TimetableState>()(
             activeDrafts: { ...(s.activeDrafts || {}), [semester]: draftName },
           };
         }),
-      rememberInfo: (m) => set((s) => ({ info: { ...s.info, [m.code]: timetableModuleInfo(m) } })),
+      rememberInfo: (m) =>
+        set((s) => ({
+          info: {
+            ...s.info,
+            [m.code]: timetableModuleInfo({ ...(s.info[m.code] || {}), ...m }),
+          },
+        })),
       switchDraft: (semester, draftName) =>
         set((s) => {
           const semDrafts = s.drafts?.[semester] || { "Phương án 1": s.bySemester[semester] ?? [] };

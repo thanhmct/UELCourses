@@ -73,6 +73,7 @@ export function CitationChip({ c, i }: { c: Citation; i: number }) {
 }
 
 const EMPTY_MESSAGES: ChatMsg[] = [];
+const EMPTY_SCOPE: RegulationChatTarget[] = [];
 
 /** Cohort line: taken from the program profile; otherwise the assistant asks when it matters. */
 export function ChatCohortHint() {
@@ -105,6 +106,10 @@ export function ChatPanel() {
   const msgs = useRegChat((s) => activeConversation(s)?.messages ?? EMPTY_MESSAGES);
   const busy = useRegChat((s) => s.activeId !== null && s.pendingIds.includes(s.activeId));
   const ask = useRegChat((s) => s.ask);
+  const tagDocument = useRegChat((s) => s.tagDocument);
+  const untagDocument = useRegChat((s) => s.untagDocument);
+  const scope = useRegChat((s) => activeConversation(s)?.scope ?? EMPTY_SCOPE);
+  const [notice, setNotice] = useState("");
 
   const query = regulationQuery(q);
   const showLookup = query !== null && !lookupHidden && !busy;
@@ -154,7 +159,12 @@ export function ChatPanel() {
   const selectTarget = (target: RegulationChatTarget) => {
     setQ("");
     inputRef.current?.focus();
-    void ask(`/${target.title}`, undefined, target);
+    // An indexed document is tagged: the next questions are answered inside it. One without quotable text
+    // keeps the old behaviour (metadata card).
+    const tagged = tagDocument(target);
+    if (tagged === "unindexed") void ask(`/${target.title}`, undefined, target);
+    else if (tagged === "full") setNotice(t("chat.scopeFull"));
+    else setNotice("");
   };
 
   const openLookup = () => {
@@ -274,6 +284,28 @@ export function ChatPanel() {
         )}
       </div>
 
+      {mounted && scope.length > 0 && (
+        <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs" role="group" aria-label={t("chat.scopeLabel")}>
+          <span className="text-slate-500">{t("chat.scopeLabel")}</span>
+          {scope.map((doc) => (
+            <span key={doc.id}
+              className="inline-flex max-w-full items-center gap-1 rounded-full border border-violet-300 bg-violet-50 py-0.5 pl-2 pr-1 text-violet-900 dark:border-violet-700 dark:bg-violet-950/40 dark:text-violet-100">
+              <Link href={wikilinkHref(doc.id)} title={t("chat.scopeOpen")}
+                onNavigate={() => useRegChat.getState().closeChat()}
+                className="truncate font-mono font-medium hover:underline">
+                {doc.number || doc.title}
+              </Link>
+              <button type="button" aria-label={t("chat.scopeRemove", { name: doc.number || doc.title })}
+                onClick={() => untagDocument(doc.id)}
+                className="rounded-full px-1.5 text-violet-700 hover:bg-violet-200 dark:text-violet-200 dark:hover:bg-violet-900">
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      {notice && <p role="status" className="mt-1 text-xs text-amber-700 dark:text-amber-300">{notice}</p>}
+
       {/* Ô nhập câu hỏi */}
       <form className="mt-2.5 flex gap-2 border-t border-slate-100 pt-2 dark:border-slate-800" onSubmit={handleSubmit}>
         <input
@@ -292,7 +324,7 @@ export function ChatPanel() {
               suggestionsRef.current?.querySelector("button")?.focus();
             }
           }}
-          placeholder={t("chat.placeholder")}
+          placeholder={t(mounted && scope.length ? "chat.placeholderScoped" : "chat.placeholder")}
           aria-label={t("chat.question")}
           aria-controls={showLookup ? suggestionsId : undefined}
         />

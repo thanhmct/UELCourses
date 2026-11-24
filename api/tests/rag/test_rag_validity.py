@@ -1,4 +1,4 @@
-from datetime import date
+﻿from datetime import date
 
 import pytest
 
@@ -69,8 +69,8 @@ def test_expiring_and_warnings():
 def test_metadata_unverified_warning():
     w1 = validity_warnings(_d("x", decision_no="", verified=True), T)
     w2 = validity_warnings(_d("y", decision_no="5/QĐ", verified=False), T)
-    assert any("metadata chưa được xác minh" in x for x in w1)
-    assert any("metadata chưa được xác minh" in x for x in w2)
+    assert any("cần đối chiếu lại" in x for x in w1)
+    assert any("cần đối chiếu lại" in x for x in w2)
 
 
 @pytest.mark.parametrize("text,expected", [

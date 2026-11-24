@@ -69,6 +69,70 @@ def test_eff2045_like_outline_overrides_ctdt(db):
     assert normalize_search("Khoa Tài chính - Ngân hàng") in m.search_text
 
 
+@pytest.mark.parametrize(
+    "label,expected",
+    [
+        ("2023", True), ("2023-2027", True), ("2024–2028", True), ("K25", True),
+        ("K22", True), ("10", True), (" 2021 - 2025 ", True),
+        ("Khoa Quản trị kinh doanh", False), ("FACULTY OF FINANCE AND BANKING", False),
+        ("Khoa Luật", False), ("", False), (None, False),
+    ],
+)
+def test_is_year_or_cohort_label(label, expected):
+    from app.services.faculty_names import is_year_or_cohort_label
+
+    assert is_year_or_cohort_label(label) is expected
+
+
+def test_year_or_cohort_in_outline_faculty_is_not_a_suggestion(db):
+    """Đề cương có trường khoa bị đọc nhầm thành năm/khóa ('2023', 'K22', '2023-2027')
+    không được dùng làm đề xuất khoa: môn giữ nguyên khoa hiện tại và không bị đánh dấu cần duyệt vì lý do này."""
+    db.add_all([
+        Module(code="BBB5044", name="Quản trị lữ hành", faculty="Khoa Quản trị kinh doanh",
+               department="Bộ môn Quản trị"),
+        OutlineDocument(id=11, sha256="a" * 64, file_name="b5044.pdf", rel_path="b5044.pdf", size_bytes=100),
+        OutlineDocument(id=12, sha256="b" * 64, file_name="b5044b.pdf", rel_path="b5044b.pdf", size_bytes=100),
+    ])
+    db.flush()
+    for doc_id, bad in ((11, "2023-2027"), (12, "K22")):
+        db.add(OutlineCourse(document_id=doc_id, course_code_norm="BBB5044", doc_type="syllabus_vi",
+                             faculty=bad, department=None, parse_status="ok"))
+        db.add(OutlineModuleLink(document_id=doc_id, module_code="BBB5044", source="catalog"))
+    db.commit()
+
+    res = apply_outline_faculties(db)
+    assert res["applied_changes"] == 0
+    assert db.get(Module, "BBB5044").faculty == "Khoa Quản trị kinh doanh"
+
+    row = {r["code"]: r for r in audit_module_faculties(db)}["BBB5044"]
+    assert row["faculty_theo_đề_cương"] in ("", None)
+    assert "chưa ánh xạ" not in (row["lý do"] or "")
+    assert "2023-2027" not in (row["vấn_đề"] or "")
+    assert row["faculty_chuẩn"] != "2023-2027"
+
+
+def test_valid_outline_faculty_still_used_when_other_outline_is_a_year(db):
+    """Một bản đề cương hỏng (năm) không làm mất bản đề cương có tên khoa thật của cùng môn."""
+    db.add_all([
+        Module(code="EFF2046", name="Quản trị tài chính 2", faculty="Khoa Hệ thống thông tin",
+               department="Bộ môn Thương mại điện tử"),
+        OutlineDocument(id=21, sha256="c" * 64, file_name="e1.pdf", rel_path="e1.pdf", size_bytes=100),
+        OutlineDocument(id=22, sha256="d" * 64, file_name="e2.pdf", rel_path="e2.pdf", size_bytes=100),
+    ])
+    db.flush()
+    db.add(OutlineCourse(document_id=21, course_code_norm="EFF2046", doc_type="syllabus_en",
+                         faculty="2023", department=None, parse_status="ok"))
+    db.add(OutlineCourse(document_id=22, course_code_norm="EFF2046", doc_type="syllabus_en",
+                         faculty="FACULTY OF FINANCE AND BANKING", department="DEPARTMENT OF FINANCE",
+                         parse_status="ok"))
+    db.add(OutlineModuleLink(document_id=21, module_code="EFF2046", source="catalog"))
+    db.add(OutlineModuleLink(document_id=22, module_code="EFF2046", source="catalog"))
+    db.commit()
+
+    apply_outline_faculties(db)
+    assert db.get(Module, "EFF2046").faculty == "Khoa Tài chính - Ngân hàng"
+
+
 def test_no_outline_keeps_old_value(db):
     """Brief B6h: Môn không có đề cương của mình lẫn của bản tương ứng:
     KHÔNG ghi 'Phòng Đào tạo', giữ nguyên giá trị cũ (cả trường hợp có giá trị và trống)."""
@@ -474,9 +538,10 @@ def test_unmapped_faculty_name_preserved(db):
 
 
 def test_faculty_en_and_vi_academic_affairs():
-    """Ánh xạ song ngữ cho 'Phòng Đào tạo' <-> 'Academic Affairs Office'."""
-    assert faculty_en("Phòng Đào tạo") == "Academic Affairs Office"
+    """Tên chính thức mới là đầu ra; tên cũ vẫn nhận được ở đầu vào."""
+    assert faculty_en("Phòng Đào tạo") == "Department of Academic Affairs"
     assert faculty_vi("Academic Affairs Office") == "Phòng Đào tạo"
+    assert faculty_en("Academic Affairs Office") == "Department of Academic Affairs"
     assert faculty_en("Khoa Tài chính - Ngân hàng") == "Faculty of Finance and Banking"
     assert faculty_vi("FACULTY OF FINANCE AND BANKING") == "Khoa Tài chính - Ngân hàng"
     assert faculty_en("Phòng Bảo đảm chất lượng") == "Department of Quality Assurance"
@@ -484,9 +549,67 @@ def test_faculty_en_and_vi_academic_affairs():
     assert faculty_vi("Department of Quality Assurance") == "Phòng Bảo đảm chất lượng"
 
 
+@pytest.mark.parametrize(
+    ("vi", "en"),
+    [
+        ("Phòng Hành chính", "Department of Administration"),
+        ("Phòng Nhân sự", "Department of Human Resources"),
+        ("Phòng Bảo đảm chất lượng", "Department of Quality Assurance"),
+        ("Phòng Tuyển sinh và Công tác sinh viên", "Department of Admissions and Student Affairs"),
+        ("Phòng Đào tạo", "Department of Academic Affairs"),
+        ("Phòng Khoa học và Công nghệ", "Department of Science and Technology"),
+        ("Phòng Hợp tác phát triển", "Department of Cooperation and Development"),
+        ("Phòng Quản trị tài sản", "Department of Asset Management"),
+        ("Phòng Tài chính", "Department of Finance"),
+        ("Phòng Công nghệ thông tin", "Department of Information Technology"),
+        ("Phòng Truyền thông", "Department of Communication"),
+        ("Phòng Pháp chế", "Department of Legal Affairs"),
+        ("Khoa Kinh tế", "Faculty of Economics"),
+        ("Khoa Kinh tế đối ngoại", "Faculty of International Economic Relations"),
+        ("Khoa Tài chính - Ngân hàng", "Faculty of Finance and Banking"),
+        ("Khoa Kế toán - Kiểm toán", "Faculty of Accounting and Auditing"),
+        ("Khoa Hệ thống thông tin", "Faculty of Information Systems"),
+        ("Khoa Quản trị kinh doanh", "Faculty of Business Administration"),
+        ("Khoa Luật", "Faculty of Law"),
+        ("Khoa Luật Kinh tế", "Faculty of Economic Law"),
+        ("Khoa Toán kinh tế", "Faculty of Economic Mathematics"),
+        ("Viện Quốc tế UEL", "The International Institute of UEL"),
+        ("Thư viện", "Library"),
+        ("Viện Nghiên cứu phát triển công nghệ ngân hàng ĐHQG-HCM", "Institute for Development and Research in Banking Technology VNUHCM"),
+        ("Viện Pháp luật Quốc tế và so sánh", "Institute of International and Comparative Law"),
+        ("Công ty TNHH MTV Kinh tế – Luật", "Economics and Law Co., Ltd"),
+        ("Công đoàn", "Trade Union"),
+        ("Đoàn Thanh niên - Hội Sinh viên", "Youth Union"),
+    ],
+)
+def test_official_uel_unit_names_round_trip(vi, en):
+    assert faculty_en(vi) == en
+    assert faculty_vi(en) == vi
+
+
+@pytest.mark.parametrize(
+    ("legacy_en", "vi", "official_en"),
+    [
+        ("Academic Affairs Office", "Phòng Đào tạo", "Department of Academic Affairs"),
+        ("Quality Assurance Office", "Phòng Bảo đảm chất lượng", "Department of Quality Assurance"),
+        ("Faculty of Business Law", "Khoa Luật Kinh tế", "Faculty of Economic Law"),
+        ("Faculty of Mathematical Economics", "Khoa Toán kinh tế", "Faculty of Economic Mathematics"),
+        ("UEL International Institute", "Viện Quốc tế UEL", "The International Institute of UEL"),
+    ],
+)
+def test_legacy_unit_names_are_input_aliases_only(legacy_en, vi, official_en):
+    assert faculty_vi(legacy_en) == vi
+    assert faculty_en(legacy_en) == official_en
+
+
+def test_department_of_finance_is_disambiguated_by_context():
+    assert faculty_vi("Department of Finance") == "Phòng Tài chính"
+    assert department_vi("Department of Finance") == "Bộ môn Tài chính"
+
+
 def test_module_facets_and_summary_show_academic_affairs(client, db):
     """Facet 'Khoa' ở API (/api/modules/facets và /api/module-facets) hiện 'Phòng Đào tạo',
-    chi tiết môn trả faculty_en = 'Academic Affairs Office'."""
+    chi tiết môn trả faculty_en = 'Department of Academic Affairs'."""
     db.add(Module(
         code="BBB1068",
         name="Kỹ năng lãnh đạo",
@@ -510,7 +633,7 @@ def test_module_facets_and_summary_show_academic_affairs(client, db):
     assert detail_res.status_code == 200
     data = detail_res.json()
     assert data["faculty"] == "Phòng Đào tạo"
-    assert data["faculty_en"] == "Academic Affairs Office"
+    assert data["faculty_en"] == "Department of Academic Affairs"
 
 
 def test_aliases_map_to_canonical_faculty():

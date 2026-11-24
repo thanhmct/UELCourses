@@ -74,6 +74,7 @@ export const CAMPUS_ROAD_LABELS: readonly CampusRoadLabel[] = [
   { nameVi: "Tương Lai", nameEn: "Future", x: 1010, y: 808, rotate: 0 },
   { nameVi: "Sáng Tạo", nameEn: "Creativity", x: 232, y: 560, rotate: -78 },
   { nameVi: "Thanh Niên", nameEn: "Youth", x: 380, y: 640, rotate: -35 },
+  { nameVi: "Fintech", nameEn: "Fintech", x: 419, y: 470, rotate: -90 },
 ];
 
 export function campusPlaceBounds(place: CampusPlace): CampusMapRect {
