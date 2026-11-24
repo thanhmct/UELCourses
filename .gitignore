@@ -29,3 +29,5 @@ tmp/
 .vscode/
 /*.pdf
 regulations/raw/*.pdf
+
+.claude/
