@@ -384,7 +384,7 @@ export default function VenuesPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title={t("venues.title")} subtitle={t("venues.subtitle")} />
+      <PageHeader title={t("venues.title")} />
       <div className="flex flex-wrap items-center justify-center gap-2">
             <button
               type="button"

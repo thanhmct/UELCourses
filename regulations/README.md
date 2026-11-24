@@ -2,10 +2,16 @@
 
 Thư mục do agent `regulations-collector` quản lý. Ngày thu thập: 2026-11-20.
 
-- `catalog.json`: danh mục 50 văn bản (28 bản đầu 2026-11-20 + 22 bản bổ sung 2026-11-21), schema xem `.claude/agents/regulations-collector.md`.
-- `raw/`: 27 file PDF gốc, tải từ các domain `*.uel.edu.vn` và `datafiles.chinhphu.vn`. Tên file là `<doc_id>.pdf`.
-- `manual/`: chỗ để người dùng tự bỏ file vào (xem hướng dẫn bên dưới).
+- `catalog.json`: danh mục 50 văn bản (28 bản đầu 2026-11-20 + 22 bản bổ sung 2026-11-21). Trường `source_url` là nguồn chính thức để người dùng mở văn bản gốc.
+- `raw/`: chỗ chứa PDF tải về **chỉ trên máy cục bộ** để lập lại chỉ mục. PDF trong thư mục này bị gitignore và không được lưu trong repo.
+- `manual/`: bản chép tay `.txt` dùng khi văn bản gốc không có lớp chữ hoặc chưa tải được.
 - `.venv/`: môi trường Python chỉ chứa `pypdf` để đọc metadata. Không commit thư mục này.
+
+## PDF và cách nạp lại chỉ mục cục bộ
+
+Repo không lưu PDF toàn văn. Ứng dụng chỉ hiển thị metadata và dẫn người dùng tới URL chính thức trong `source_url` của `catalog.json`.
+
+Khi cần lập lại chỉ mục trên máy cục bộ, tự tải văn bản từ `source_url` về đúng đường dẫn `regulations/raw/<doc_id>.pdf`, rồi chạy pipeline ingest. Với văn bản đã có `regulations/manual/<doc_id>.txt`, pipeline dùng bản chép tay có sẵn; không cần thêm PDF vào repo.
 
 **Lưu ý độ tin cậy:** phần lớn PDF của UEL là **bản scan**. Có 8 file không có lớp chữ (cần OCR) và một số file có OCR rất lỗi (mất dấu, sai số). Chỉ đánh `verified: true` khi số QĐ/ngày đọc được trong chính văn bản. Các trường lấy từ trang web hoặc từ trích dẫn trong văn bản khác có `verified: false` và ghi nguồn trong `notes`. Pipeline RAG nên OCR lại các file scan (vd. Tesseract `vie`) trước khi chunk.
 
@@ -20,7 +26,7 @@ Thư mục do agent `regulations-collector` quản lý. Ngày thu thập: 2026-1
 | uel-cnkq-494-2023 | Công nhận KQHT & chuyển đổi tín chỉ | 494/QĐ-ĐHKTL | 2023-04-28? | K23+ | active | ✓ (OCR lỗi) | ngày mâu thuẫn |
 | uel-hocphi-558-2023 | Quy trình quản lý học phí | 558/QĐ-ĐHKTL (OCR: 559) | 2023-05-16 | all | active | ✓ | OCR |
 | uel-kientap-472-2021 | Học phần kiến tập | 472/QĐ-ĐHKTL | 2021-05-04 | K19 | active? | ✓ | trang PĐT + OCR |
-| uel-cdr-ngoaingu-1390-2025 | Chuẩn đầu ra ngoại ngữ | 1390/QĐ-ĐHKTL | 2025-06-10 | ? | active | — (cần login) | trang PĐT |
+| uel-cdr-ngoaingu-1390-2025 | Chuẩn đầu ra ngoại ngữ | 1390/QĐ-ĐHKTL | 2025-06-10 | Từng nhóm khóa theo phụ lục (IV từ K24) | active | Bản ký số công khai ở `source_url` | **đã đọc** |
 | uel-ngoaingu-1579-k22 | Tiếng Anh & chuẩn NN (K22) | ? | ? | K22 | active? | — (server lỗi) | thấp |
 | uel-ngoaingu-2024-k24 | Tiếng Anh & chuẩn NN (từ khóa 2024) | (để trống) | 2024-08-13 | K24 | active | ✓ (ký số) | chữ ký số |
 | uel-thi-1622-2022 | Tổ chức thi, kiểm tra kết thúc HP | ? (file "1622") | ? | all | active | ✓ (scan, không chữ) | thấp |
@@ -90,11 +96,12 @@ Quy ước khóa (xác nhận bởi sinh viên UEL): mã khóa = 2 số cuối n
 15. Trang ifl.uel.edu.vn vẫn từ chối kết nối (có quy định tiếng Anh K22/K23 ở đó). Chuẩn đầu ra **tin học**: không có văn bản riêng của UEL trong nguồn công khai; hầu như chỉ có điều kiện chung trong Điều kiện tốt nghiệp (Sổ tay) nên có thể UEL không đặt chuẩn tin học riêng.
 16. Bản có lớp chữ (không scan) của 789/2017, 1622/2022, 952/2021, CTXH 2020, 2037/2023.
 
-## Cách bổ sung văn bản thủ công (`manual/`)
+## Cách bổ sung bản chép tay (`manual/`)
 
-1. Đặt file vào `regulations/manual/<doc_id>.<pdf|docx>`. Nếu văn bản đã có trong catalog thì dùng đúng `doc_id` đó; nếu là văn bản mới thì đặt id dạng `uel-<chủ đề>-<số>-<năm>`.
+1. Đặt nội dung chép tay vào `regulations/manual/<doc_id>.txt`. Nếu văn bản đã có trong catalog thì dùng đúng `doc_id` đó; nếu là văn bản mới thì đặt id dạng `uel-<chủ đề>-<số>-<năm>`.
 2. Mở `catalog.json` và sửa mục tương ứng (hoặc thêm mục mới):
-   - `"file": "manual/<doc_id>.pdf"`
+   - `"file": "manual/<doc_id>.txt"`;
+   - điền `source_url` trỏ tới trang hoặc file chính thức;
    - điền `decision_no`, `issued_date`, `effective_from` (YYYY-MM-DD) **đúng như ghi trong văn bản**;
    - `"verified": true` chỉ khi đã đọc trong chính văn bản;
    - cập nhật `status`, `supersedes` / `superseded_by` theo điều khoản thi hành;

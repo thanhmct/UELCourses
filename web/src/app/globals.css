@@ -250,7 +250,7 @@ body:is([data-festival="national"], [data-festival="reunification"]) .header-hol
   width: 2.85rem;
   aspect-ratio: 1;
   background: var(--festival-highlight);
-  mask: url("/festivals/dong-son-drum.svg") center / contain no-repeat;
+  mask: url("/festivals/dong-son-drum.png") center / contain no-repeat;
 }
 
 .festival-demo {

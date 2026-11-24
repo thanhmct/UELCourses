@@ -15,7 +15,7 @@ from app.rag.answer import ask
 from app.rag.completion import SYSTEM_PROMPT, complete
 from app.rag.module_answer import answer_module
 from app.rag.providers import CodexProvider, LLMProvider, ProviderError
-from app.rag.safety import MAX_CONTEXT_CHARS, log_question, regulation_scope, reserve_attempt, safe_source
+from app.rag.safety import MAX_CONTEXT_CHARS, MAX_QUESTION, log_question, regulation_scope, reserve_attempt, safe_source
 
 
 class Fake(LLMProvider):
@@ -68,7 +68,7 @@ def test_real_questions_are_refused_without_upstream_calls(db):
 def test_privacy_filters_and_anonymous_question_logs(monkeypatch, caplog):
     seen = []
     provider = Fake(lambda _, prompt: seen.append(prompt) or "{}")
-    for q in ("Điểm rèn luyện của name@example.org?", "Điểm rèn luyện MSSV K245123456?", "x" * 501):
+    for q in ("Điểm rèn luyện của name@example.org?", "Điểm rèn luyện MSSV K245123456?", "x" * (MAX_QUESTION + 1)):
         assert complete(q, {"a": "Nội dung công khai."}, "privacy", provider)[0] is None
     assert provider.calls == 0
     complete("Điểm rèn luyện", {
@@ -169,3 +169,20 @@ def test_concurrency_falls_back(monkeypatch):
             release.set()
         first.result(timeout=2)
     assert provider.calls == 1
+
+
+def test_forum_phrasing_is_expanded_and_off_topic_requests_are_routed():
+    from app.rag.intent import expand_forum, forum_redirect
+
+    assert expand_forum("đkhp kì 2 mấy tc, thi ck ko được mang tài liệu à") == \
+        "đăng ký học phần kỳ 2 mấy tín chỉ, thi kết thúc học phần (cuối kỳ) không được mang tài liệu à"
+    assert "điểm rèn luyện" in expand_forum("update minh chứng đrl") and "công tác xã hội" in expand_forum("ngày ctxh")
+    routes = {q: (forum_redirect(q) or {}).get("redirect", {}).get("kind") for q in (
+        "có ac nào pass sách giáo trình nhập môn qhqt ko ạ",
+        "Mình tìm tài liệu Kiểm toán nội bộ ạ",
+        "đề gk của cô Ngọc khó ko ạ",
+        "cho mình học lịch học môn dân sự 3 của cô Nam Hải với ạ",
+        "Cố vấn học tập được Hiệu trưởng phân công theo đề nghị của ai?",
+        "thi CK có được mang tài liệu in vào không ạ",
+    )}
+    assert list(routes.values()) == ["market", "materials", "review", "schedule", None, None]

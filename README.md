@@ -71,7 +71,7 @@ Dưới đây là tổng hợp toàn bộ các đường link, nguồn dữ li�
    - Chi tiết môn: Cây quan hệ 2 chiều (tiên quyết & mở khóa), định lượng khối lượng giờ học/tuần (`Workload Breakdown`), danh sách lớp mở và chỗ trống.
    - **Đánh giá & Review môn học**: Sinh viên chia sẻ kinh nghiệm, độ khó, khối lượng và vote hữu ích.
 2. **Sơ đồ Chương trình đào tạo ([`/programs`](web/src/app/programs/page.tsx))**:
-   - Tra cứu 86 CTĐT chính quy, sơ đồ Flowchart node-based trực quan theo học kỳ (`@xyflow/react`), kiểm tra điều kiện *Đã đạt / Đủ điều kiện / Bị chặn*.
+   - Tra cứu 86 CTĐT chính quy, sơ đồ Flowchart trực quan theo học kỳ, kiểm tra điều kiện *Đã đạt / Đủ điều kiện / Bị chặn*.
 3. **Xếp Thời khóa biểu ([`/timetable`](web/src/app/timetable/page.tsx))**:
    - Lưới Thứ 2–CN × Tiết 1–13, phát hiện và tô đỏ trùng lịch.
    - Kéo-thả đổi lớp cùng môn, chia sẻ qua URL, xuất ảnh PNG và file lịch `.ics`.

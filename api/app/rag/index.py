@@ -25,6 +25,7 @@ from typing import Any, Callable, Iterable
 
 from .models import Chunk, RegulationDoc
 from .textnorm import content_terms, features
+from .validity import cohort_matches
 
 INDEX_VERSION = 1
 DEFAULT_EMBED_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
@@ -191,13 +192,15 @@ class RagIndex:
                 for i, score in self.bm25.scores(query, allowed).items()}
 
     # ------------------------------------------------------------ search --
-    def search(self, query: str, top_k: int = 5, doc_ids: Iterable[str] | None = None) -> list[Hit]:
+    def search(self, query: str, top_k: int = 5, doc_ids: Iterable[str] | None = None, *,
+               cohort: str | None = None) -> list[Hit]:
         allowed = None
         ids = set(doc_ids) if doc_ids is not None else None
         matches = self.candidates(query, ids) if self.candidates is not None else None
-        if ids is not None or matches is not None:
+        if ids is not None or matches is not None or cohort is not None:
             allowed = {i for i, c in enumerate(self.chunks)
-                       if (ids is None or c.doc_id in ids) and (matches is None or c.chunk_id in matches)}
+                       if (ids is None or c.doc_id in ids) and (matches is None or c.chunk_id in matches)
+                       and (c.chunk_type != "appendix" or c.article or cohort_matches(c.applies_to_cohorts, cohort))}
             if not allowed:
                 return []
         allowed_rows = None if allowed is None else {r for r, i in enumerate(self._owner) if i in allowed}

@@ -49,11 +49,29 @@ describe("Ask UEL", () => {
       warnings: [],
     });
     render(<AskPage />);
-    fireEvent.change(screen.getByLabelText("Filter by cohort"), { target: { value: "" } });
+    expect(screen.queryByLabelText("Filter by cohort")).toBeNull();
     fireEvent.change(screen.getByLabelText("Question"), { target: { value: "Which course should I choose?" } });
     fireEvent.click(screen.getByRole("button", { name: "Ask" }));
     expect(await screen.findByRole("link", { name: /open the planner/i })).toHaveAttribute("href", "/planner");
     expect(ask).toHaveBeenCalledWith("modules", "Which course should I choose?", undefined, "en");
+  });
+
+  it("asks back for the cohort and re-asks the same question with the chosen one", async () => {
+    const ask = vi.spyOn(api, "askSources")
+      .mockResolvedValueOnce({
+        answer: "Quy định này khác nhau giữa các khóa. Bạn thuộc khóa nào?", found: false, mode: "clarify",
+        citations: [], warnings: [],
+        clarify: { kind: "cohort", question: "Quy định này khác nhau giữa các khóa. Bạn thuộc khóa nào?", options: [] },
+      })
+      .mockResolvedValueOnce({ answer: "Theo Điều 34 …", found: true, mode: "llm", citations: [], warnings: [] });
+    render(<AskPage />);
+    fireEvent.change(screen.getAllByRole("combobox")[0], { target: { value: "regulations" } });
+    fireEvent.change(screen.getByLabelText("Câu hỏi"), { target: { value: "Khi nào bị buộc thôi học?" } });
+    fireEvent.click(screen.getByRole("button", { name: "Gửi câu hỏi" }));
+    fireEvent.click(await screen.findByRole("button", { name: "K25" }));
+    expect(await screen.findByText("Theo Điều 34 …")).toBeInTheDocument();
+    expect(ask).toHaveBeenLastCalledWith("regulations", "Khi nào bị buộc thôi học?", "K25", "vi");
+    expect(screen.getByText(/Áp dụng khóa K25 bạn đã chọn/)).toBeInTheDocument();
   });
 
   it("labels a handbook citation and links to its rendered page segment", async () => {
@@ -81,5 +99,33 @@ describe("Ask UEL", () => {
     </ReactMarkdown>);
     expect(reader.container.querySelector("#" + anchor)).toHaveTextContent(quote);
     expect(reader.container).not.toHaveTextContent("^" + anchor);
+  });
+
+  it("opens an official citation source in a new tab when source_url is available", async () => {
+    const sourceUrl = "https://pdt.uel.edu.vn/van-ban/1268.pdf";
+    vi.spyOn(api, "askSources").mockResolvedValue({
+      answer: "Theo Khoản 2 Điều 5.",
+      found: true,
+      mode: "extractive",
+      warnings: [],
+      citations: [{
+        doc_id: "uel-qcdt-1268-2022",
+        decision_no: "1268/QĐ-ĐHKTL",
+        article: "5",
+        clause: "2",
+        anchor: "dieu-5-khoan-2",
+        quote: "Sinh viên đăng ký theo giới hạn tín chỉ.",
+        source_url: sourceUrl,
+      }],
+    });
+    render(<AskPage />);
+    fireEvent.change(screen.getAllByRole("combobox")[0], { target: { value: "regulations" } });
+    fireEvent.change(screen.getByLabelText("Câu hỏi"), { target: { value: "Giới hạn tín chỉ?" } });
+    fireEvent.click(screen.getByRole("button", { name: "Gửi câu hỏi" }));
+
+    const citation = await screen.findByRole("link", { name: /1268\/QĐ-ĐHKTL/ });
+    expect(citation).toHaveAttribute("href", sourceUrl);
+    expect(citation).toHaveAttribute("target", "_blank");
+    expect(citation).toHaveAttribute("rel", "noopener noreferrer");
   });
 });

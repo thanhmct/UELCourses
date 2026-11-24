@@ -23,7 +23,7 @@ from app.models import RagCallBudget
 
 from .textnorm import collapse_ws, strip_accents
 
-MAX_QUESTION = 500
+MAX_QUESTION = 1200  # forum posts often run several sentences
 MAX_QUOTE = 700
 MAX_CONTEXT_CHARS = 1800
 log = logging.getLogger("uvicorn.error.rag")
@@ -60,6 +60,11 @@ _regulation_topic = re.compile(
     r"so tay|hotline|phong y te|y si|"
     r"ky tuc xa|bao hiem y te|bhyt|vay von|chinh sach xa hoi|tro cap xa hoi|ho tro chi phi hoc tap|"
     r"cau lac bo|clb|doan thanh nien|hoi sinh vien|doan hoi|giay xac nhan|giay chung nhan sinh vien|"
+    r"thi ket thuc hoc phan|thi giua ky|lich thi|phong thi|vang thi|hoan thi|dinh chi thi|"
+    r"dang ky hoc phan|dieu chinh hoc phan|huy hoc phan|rut hoc phan|doi lop|hoc lai|hoc vuot|lich hoc|"
+    r"thoi khoa bieu|giao duc the chat|giao duc quoc phong|nghia vu quan su|tam hoan|"
+    r"le tot nghiep|le phuc|xet tot nghiep|bang diem|xep loai|diem ren luyen|minh chung|nha van hoa|"
+    r"hoc truc tuyen|chuong trinh trao doi|trao doi sinh vien|"
     r"academic regulations?|grade point average|graduation|tuition|scholarships?|student conduct)\b"
 )
 

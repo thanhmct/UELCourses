@@ -24,12 +24,13 @@ _DUPLICATE = re.compile(r"^(.{5,}?)\s*\1$")
 _CONTACT_VALUE = re.compile(
     r"^(?:SĐT|Hotline|Điện thoại|Email|Chức vụ|Địa chỉ|Số trực ban)\s*:", re.IGNORECASE
 )
+_EXAM_SCORE_ROW = re.compile(r"^(?:IELTS|TOEIC|TOEFL|VSTEP|CEFR|Aptis|PTE|PEIC)\b.*\d", re.IGNORECASE)
 
 
 def _is_title(line: str) -> bool:
     # OCR often renders contact labels in uppercase. They are evidence values,
     # not headings; dropping them here makes phone-number answers impossible.
-    if _CONTACT_VALUE.match(line):
+    if _CONTACT_VALUE.match(line) or _EXAM_SCORE_ROW.match(line):
         return False
     return bool(_CHAPTER.match(line)) or (
         5 <= len(line) <= 135 and line.isupper() and " " in line and not _LIST_ITEM.match(line)

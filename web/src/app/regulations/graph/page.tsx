@@ -1,6 +1,5 @@
 "use client";
 import dynamic from "next/dynamic";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";
@@ -8,7 +7,7 @@ import { UEL_COLORS } from "@/lib/brand";
 import { useApi } from "@/lib/useApi";
 import { useMounted } from "@/lib/useMounted";
 import { COHORTS, useSettings } from "@/lib/store";
-import { useWorkspace } from "@/lib/workspace";
+import { wikilinkHref } from "@/lib/vault";
 import { useT } from "@/i18n";
 import type { GraphEdgeType, RegulationStatus } from "@/lib/types";
 import { Empty, Loading, PageHeader } from "@/components/ui";
@@ -112,8 +111,7 @@ export default function RegulationGraphPage() {
             linkWidth={1.5}
             cooldownTicks={80}
             onNodeClick={(n) => {
-              useWorkspace.getState().open(String((n as GNode).id));
-              router.push("/regulations");
+              router.push(wikilinkHref(String((n as GNode).id)));
             }}
             nodeCanvasObject={(n, ctx, scale) => {
               const node = n as GNode;

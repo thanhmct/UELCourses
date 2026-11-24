@@ -31,11 +31,6 @@
   "include": [
     "**/*.ts",
     "**/*.tsx",
-    ".next-host/types/**/*.ts",
-    ".next-preview/types/**/*.ts",
-    ".next-smoke/types/**/*.ts",
-    ".next-test/types/**/*.ts",
-    ".next-ui/types/**/*.ts",
     ".next/types/**/*.ts",
     "next-env.d.ts"
   ],

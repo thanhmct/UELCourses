@@ -38,8 +38,19 @@ describe("UEL brand", () => {
   it("identifies the installed app as UELPATH and uses the wordmark navy", () => {
     expect(manifest.name).toMatch(/^UELPATH\b/);
     expect(manifest.short_name).toBe("UELPATH");
+    expect(manifest.id).toBe("/");
     expect(manifest.theme_color).toBe("#0B2A63");
     expect(manifest.theme_color).toBe(UELPATH_THEME_COLOR);
+  });
+
+  it("uses versioned UELPATH artwork instead of the retired globe icon", () => {
+    expect(manifest.icons).toHaveLength(4);
+    for (const icon of manifest.icons) {
+      expect(icon.src).not.toContain("globe.svg");
+      expect(icon.src).toContain("?v=uelpath-logo-");
+      const assetPath = icon.src.split("?")[0];
+      expect(() => readFileSync(new URL(`../../../public${assetPath}`, import.meta.url))).not.toThrow();
+    }
   });
 
   it("calculates the reference contrast ratios", () => {

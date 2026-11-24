@@ -1,5 +1,8 @@
 token.txt
-data/
+# Dữ liệu thật chỉ ở thư mục gốc data/ (không dùng "data/" trơn: nó chặn cả web/src/app/admin/data/)
+/data/
+web/src/data/*
+!web/src/data/program_ids.json
 __pycache__/
 .venv/
 .venv-rag/
@@ -25,3 +28,4 @@ tmp/
 *.err
 .vscode/
 /*.pdf
+regulations/raw/*.pdf

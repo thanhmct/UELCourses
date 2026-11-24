@@ -204,20 +204,20 @@
     "issuer": "Hiệu trưởng Trường Đại học Kinh tế - Luật",
     "decision_no": "1390/QĐ-ĐHKTL",
     "issued_date": "2025-06-10",
-    "effective_from": null,
+    "effective_from": "2025-06-10",
     "effective_to": null,
     "status": "active",
     "superseded_by": null,
     "supersedes": null,
-    "applies_to_cohorts": [],
+    "applies_to_cohorts": ["all"],
     "topics": [
       "chuẩn đầu ra ngoại ngữ",
       "tốt nghiệp"
     ],
-    "source_url": "https://pdt.uel.edu.vn/van-ban-quy-che-828/quyet-dinh-so-1390-qd-dhktl-ngay-10-6-2025-ban-hanh-quy-dinh-chuan-dau-ra-ve-trinh-do-ngoai-ngu-doi-voi-sinh-vien-trinh-do-dai-hoc",
-    "file": null,
-    "verified": false,
-    "notes": "Số và ngày lấy từ tiêu đề trang Phòng Đào tạo. Trang ghi áp dụng cho các chương trình chính quy, vừa làm vừa học và từ xa. File qua link.uel.edu.vn và Google Drive, cần đăng nhập email trường. Chưa xác định khóa áp dụng, cũng chưa rõ có thay thế các quy định ngoại ngữ 2022/2024 hay không."
+    "source_url": "https://kt.uel.edu.vn/Resources/Docs/SubDomain/kt/V%C4%83n%20b%E1%BA%A3n/2.%20Quy%20dinh%20chuan%20dau%20ra%20trinh%20do%20ngoai%20ngu%20UEL%20-%20Signed%20%2814%29.pdf",
+    "file": "raw/uel-cdr-ngoaingu-1390-2025.pdf",
+    "verified": true,
+    "notes": "Bản ký số công khai trên trang Khoa Kinh tế. Điều 2 của Quyết định ghi hiệu lực từ ngày ký. Phòng Bảo đảm chất lượng xác nhận K26 xem Phụ lục IV và V. Phụ lục IV (trang PDF 9) áp dụng từ K24."
   },
   {
     "doc_id": "uel-ngoaingu-1579-k22",

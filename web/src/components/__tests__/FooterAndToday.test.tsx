@@ -44,7 +44,9 @@ describe("W7: Footer and Today tab leftover requirements", () => {
         expect(footer.textContent).not.toContain("NUSMods");
         expect(footer.textContent).not.toContain("cảm hứng");
         expect(footer.textContent).toContain("UELPATH");
-        expect(footer.textContent).toContain("dự án khóa luận");
+        expect(footer.textContent).toContain(
+          "UELPATH - dự án do sinh viên UEL phát triển, không phải sản phẩm chính thức của Trường",
+        );
       });
     });
 
@@ -60,7 +62,7 @@ describe("W7: Footer and Today tab leftover requirements", () => {
         expect(footer.textContent).not.toContain("NUSMods");
         expect(footer.textContent).not.toContain("inspired");
         expect(footer.textContent).toContain("UELPATH");
-        expect(footer.textContent).toContain("graduation thesis project");
+        expect(footer.textContent).toContain("a project developed by UEL students");
       });
     });
   });
@@ -74,8 +76,7 @@ describe("W7: Footer and Today tab leftover requirements", () => {
       render(<TodayPage />);
 
       await waitFor(() => {
-        // Page title is displayed
-        expect(screen.getByText("Lịch học hôm nay")).toBeInTheDocument();
+        expect(screen.getByRole("region", { name: "Lịch học hôm nay" })).toBeInTheDocument();
 
         // Subtitle is NOT rendered anywhere in the document
         expect(

@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, cleanup, act } from "@testing-library/react";
 import { describe, expect, it, vi, afterEach } from "vitest";
 import TodayPage from "../page";
-import { sceneForPlace, tourUrl } from "@/lib/campusTour";
+import { useLang } from "@/i18n";
 
 vi.mock("@/lib/api", () => ({
   api: {
@@ -27,6 +27,8 @@ describe("TodayPage component", () => {
     window.history.replaceState({}, "", "/today");
     vi.useRealTimers();
     vi.restoreAllMocks();
+    useLang.setState({ lang: "vi" });
+    localStorage.removeItem("uelcourses-lang");
   });
 
   it("hiển thị dữ liệu mẫu mà không cần ghi vào thời khóa biểu", () => {
@@ -34,10 +36,8 @@ describe("TodayPage component", () => {
 
     render(<TodayPage />);
 
-    expect(screen.getByText("Dữ liệu mẫu")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Thoát xem thử" })).toHaveAttribute("href", "/today");
     expect(screen.getAllByText("Nguyên lý kế toán").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText("Phân tích tài chính")).toBeInTheDocument();
+    expect(screen.getAllByText("Phân tích tài chính").length).toBeGreaterThanOrEqual(1);
     expect(
       screen.getAllByText("Tích hợp quy trình kinh doanh với hệ thống ERP").length,
     ).toBeGreaterThanOrEqual(1);
@@ -55,7 +55,7 @@ describe("TodayPage component", () => {
     const { container } = render(<TodayPage />);
 
     expect(container.querySelector("iframe")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Tòa nhà B2" })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: "Tòa B2" })).toHaveAttribute(
       "aria-current",
       "true",
     );
@@ -63,7 +63,7 @@ describe("TodayPage component", () => {
     fireEvent.click(
       screen.getByRole("button", { name: /BFB4007.*Phân tích tài chính/i }),
     );
-    expect(screen.getByRole("button", { name: "Tòa nhà A" })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: "Tòa A" })).toHaveAttribute(
       "aria-current",
       "true",
     );
@@ -71,29 +71,34 @@ describe("TodayPage component", () => {
     fireEvent.click(
       screen.getByRole("button", { name: /BAA2028.*Nguyên lý kế toán/i }),
     );
-    expect(screen.getByRole("button", { name: "Tòa nhà B2" })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: "Tòa B2" })).toHaveAttribute(
       "aria-current",
       "true",
     );
 
     fireEvent.click(screen.getByRole("button", { name: /MI71.*Giáo dục thể chất 1/i }));
-    expect(screen.getByRole("button", { name: "Sân thể thao" })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: "Khu thể dục thể thao" })).toHaveAttribute(
       "aria-current",
       "true",
     );
     expect(container.querySelector("svg")).toHaveAttribute("data-zoomed", "true");
-    expect(screen.getByRole("link", { name: "Xem 360°" })).toHaveAttribute(
-      "href",
-      tourUrl(sceneForPlace("sports")),
-    );
   });
 
-  it("hiển thị tiêu đề trang và KHÔNG hiển thị phụ đề (today.subtitle)", () => {
+  it("không hiển thị hàng tiêu đề và phụ đề của trang", () => {
     render(<TodayPage />);
-    expect(screen.getByText("Lịch học hôm nay")).toBeInTheDocument();
+    expect(screen.queryByText("Lịch học hôm nay")).not.toBeInTheDocument();
     expect(
       screen.queryByText("Xem nhanh các tiết học trong ngày, phòng học và giảng viên phụ trách."),
     ).toBeNull();
+  });
+
+  it("tách vùng cuộn lịch khỏi bản đồ và cho phép focus bằng bàn phím", () => {
+    render(<TodayPage />);
+
+    const schedule = screen.getByRole("region", { name: "Lịch học hôm nay" });
+    expect(schedule).toHaveAttribute("tabindex", "0");
+    expect(schedule).toHaveClass("lg:overflow-y-auto", "lg:overscroll-y-contain");
+    expect(schedule).not.toContainElement(screen.getByRole("group", { name: "Bản đồ khuôn viên UEL" }));
   });
 
   it("khi hôm nay không có lịch học: hiển thị 'Chúc mừng bạn đã được nghỉ ngơi!'", () => {
@@ -117,9 +122,9 @@ describe("TodayPage component", () => {
     fireEvent.click(nextWeekTab);
     expect(nextWeekTab).toHaveAttribute("aria-selected", "true");
 
-    // Ngày không có lớp được ẩn hoàn toàn, không còn khung trạng thái rỗng.
-    expect(screen.queryByText("Không phải lên UEL")).not.toBeInTheDocument();
-    expect(document.querySelector("#panel-schedule")?.children).toHaveLength(0);
+    // Mỗi ngày trống chỉ hiện một thông báo bên dưới, không lặp ở dòng ngày.
+    expect(screen.getAllByText("Không phải lên UEL")).toHaveLength(7);
+    expect(document.querySelector("#panel-schedule")?.children).toHaveLength(7);
 
     // Mũi tên quay lại tab hôm nay & mai
     const prevArrow = screen.getByRole("button", { name: /Xem hôm nay/i });

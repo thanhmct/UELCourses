@@ -3,26 +3,41 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { api } from "./api";
 import { isConnectionError } from "./dataSource";
-import type { AskResponse } from "./types";
+import type { AskResponse, ModuleAskResponse } from "./types";
 import { useSettings } from "./store";
-import { useWorkspace } from "./workspace";
 import { translate, useLang } from "@/i18n";
+import { findRegulationChatTargets, regulationQuery, type ChatTarget, type RegulationChatTarget } from "./chatLookup";
+import { fold } from "./text";
+import { track } from "./analytics";
+import { chatContext, cohortReply } from "./chatContext";
 
 export interface ChatMsg {
   role: "user" | "ai";
   text: string;
+  clarifiedQuestion?: string;
   res?: AskResponse;
+  // Retain references in conversations saved when the popup offered syllabus lookup.
+  moduleRes?: ModuleAskResponse;
+  targets?: ChatTarget[];
   error?: boolean;
 }
 
 export type ChatPopupStatus = "closed" | "popup" | "maximized";
 
-interface RegChatState {
-  status: ChatPopupStatus;
+export interface ChatConversation {
+  id: string;
   cohort: string;
-  mode: "extractive" | "llm";
   messages: ChatMsg[];
-  busy: boolean;
+}
+
+interface SavedChat {
+  status: ChatPopupStatus;
+  activeId: string | null;
+  conversations: ChatConversation[];
+}
+
+interface RegChatState extends SavedChat {
+  pendingIds: string[];
 
   // Actions
   setStatus: (status: ChatPopupStatus) => void;
@@ -33,20 +48,27 @@ interface RegChatState {
   restoreChat: () => void;
   togglePopup: () => void;
   toggleMaximize: () => void;
-  setCohort: (cohort: string) => void;
-  setMode: (mode: "extractive" | "llm") => void;
-  ask: (question: string, overrideCohort?: string) => Promise<void>;
-  clearMessages: () => void;
+  openConversation: (id: string | null) => void;
+  deleteConversation: (id: string) => void;
+  ask: (question: string, overrideCohort?: string, target?: RegulationChatTarget) => Promise<void>;
+}
+
+export function activeConversation(state: SavedChat) {
+  return state.conversations.find((item) => item.id === state.activeId);
+}
+
+/** Cohort used for a question: the program profile first, then the one given in this chat. */
+export function chatCohort(sessionCohort: string): string {
+  return useSettings.getState().cohort || sessionCohort;
 }
 
 export const useRegChat = create<RegChatState>()(
   persist(
     (set, get) => ({
       status: "closed",
-      cohort: "",
-      mode: "extractive",
-      messages: [],
-      busy: false,
+      activeId: null,
+      conversations: [],
+      pendingIds: [],
 
       setStatus: (status) => set({ status }),
       openPopup: () => set({ status: "popup" }),
@@ -63,56 +85,93 @@ export const useRegChat = create<RegChatState>()(
           status: s.status === "maximized" ? "popup" : "maximized",
         })),
 
-      setCohort: (cohort) => set({ cohort }),
-      setMode: (mode) => set({ mode }),
+      openConversation: (activeId) => {
+        if (activeId === null || get().conversations.some((item) => item.id === activeId)) set({ activeId });
+      },
+      deleteConversation: (id) => set((s) => ({
+        activeId: s.activeId === id ? null : s.activeId,
+        conversations: s.conversations.filter((item) => item.id !== id),
+      })),
 
-      ask: async (question: string, overrideCohort?: string) => {
+      ask: async (question: string, overrideCohort?: string, target?: RegulationChatTarget) => {
         const text = question.trim();
-        if (!text || get().busy) return;
-
-        const currentSettingsCohort = useSettings.getState().cohort;
-        const targetCohort =
-          overrideCohort !== undefined
-            ? overrideCohort
-            : get().cohort || currentSettingsCohort;
-        const currentMode = get().mode;
+        const conversation = activeConversation(get());
+        const last = conversation?.messages.at(-1);
+        const clarification = last?.res?.clarify && cohortReply(text);
+        const previousQuestion = clarification ? conversation?.messages.findLast((item) => item.role === "user") : undefined;
+        const effectiveQuestion = previousQuestion?.clarifiedQuestion ?? previousQuestion?.text ?? text;
+        const lookupQuery = regulationQuery(effectiveQuestion);
+        if (!text || lookupQuery === "" || (conversation && get().pendingIds.includes(conversation.id))) return;
+        const pickedCohort = overrideCohort ?? clarification;
+        const cohort = pickedCohort ?? conversation?.cohort ?? "";
+        const targetCohort = pickedCohort ?? chatCohort(cohort);
+        const { lang } = useLang.getState();
+        const id = conversation?.id ?? (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+        const messages: ChatMsg[] = [...(conversation?.messages ?? []), {
+          role: "user", text, ...(previousQuestion ? { clarifiedQuestion: effectiveQuestion } : {}),
+        }];
 
         set((s) => ({
-          messages: [...s.messages, { role: "user", text }],
-          busy: true,
+          activeId: id,
+          conversations: [{ id, cohort, messages }, ...s.conversations.filter((item) => item.id !== id)],
+          pendingIds: [...s.pendingIds, id],
         }));
 
+        let reply: ChatMsg;
         try {
-          const res = (await api.ask(text, targetCohort || undefined, currentMode)).data;
-          set((s) => ({
-            messages: [...s.messages, { role: "ai", text: res.answer, res }],
-          }));
+          const matches = target ? [target] : lookupQuery !== null && pickedCohort === undefined
+            ? await findRegulationChatTargets(lookupQuery) : [];
+          const needle = fold(lookupQuery ?? "");
+          const exact = matches.filter((item) => [item.id, item.title, item.number]
+            .some((label) => label && fold(label) === needle));
+          const targets = exact.length ? exact : matches;
+          const selected = targets.length === 1 ? targets[0] : undefined;
+
+          if (lookupQuery !== null && targets.length) {
+            const message = selected?.indexed === false ? "chat.metadataOnly" : "chat.foundDocs";
+            reply = { role: "ai", text: translate(lang, message), targets };
+            track("chat_regulation", { query: selected?.id });
+          } else {
+            const query = (lookupQuery !== null ? `Quy định về ${lookupQuery}` : effectiveQuestion).slice(0, 500);
+            const context = chatContext(query, targetCohort);
+            const res = (await (context
+              ? api.ask(query, targetCohort || undefined, context)
+              : api.ask(query, targetCohort || undefined))).data;
+            reply = { role: "ai", text: res.answer, res };
+            if (!res.clarify && res.mode !== "context" && res.mode !== "intro") {
+              track("chat_regulation", { query: res.citations[0]?.doc_id });
+            }
+          }
         } catch (e) {
-          const lang = useLang.getState().lang;
           const message = isConnectionError(e)
             ? translate(lang, "api.connectionError")
             : translate(lang, "common.errorPrefix", { message: e instanceof Error ? e.message : String(e) });
-          set((s) => ({
-            messages: [
-              ...s.messages,
-              { role: "ai", text: message, error: true },
-            ],
-          }));
-        } finally {
-          set({ busy: false });
+          reply = { role: "ai", text: message, error: true };
         }
+
+        set((s) => ({
+          conversations: s.conversations.map((item) => item.id === id
+            ? { ...item, messages: [...item.messages, reply] } : item),
+          pendingIds: s.pendingIds.filter((pending) => pending !== id),
+        }));
       },
 
-      clearMessages: () => set({ messages: [] }),
     }),
     {
       name: "uelcourses-reg-chat",
+      version: 1,
       partialize: (s) => ({
         status: s.status,
-        cohort: s.cohort,
-        mode: s.mode,
-        messages: s.messages,
+        activeId: s.activeId,
+        conversations: s.conversations,
       }),
+      migrate: (stored): SavedChat => {
+        const previous = stored as { status?: ChatPopupStatus; cohort?: string; messages?: ChatMsg[] } | null;
+        const status = previous?.status ?? "closed";
+        if (!previous?.messages?.length) return { status, activeId: null, conversations: [] };
+        const legacy = { id: "previous-chat", cohort: previous.cohort ?? "", messages: previous.messages };
+        return { status, activeId: legacy.id, conversations: [legacy] };
+      },
     },
   ),
 );

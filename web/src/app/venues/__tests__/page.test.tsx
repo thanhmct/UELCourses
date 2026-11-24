@@ -157,6 +157,9 @@ describe("Brief W24: Khôi phục lưới lịch tháng phòng học (~30 ngày)
   it("1. Hiển thị lưới 7 cột với đủ số ngày của tháng (Hai ... CN)", async () => {
     render(<VenuesPage />);
 
+    expect(screen.getByRole("heading", { name: "Phòng học" })).toBeInTheDocument();
+    expect(screen.queryByText(/Tra lịch sử dụng phòng và tìm phòng trống/i)).not.toBeInTheDocument();
+
     // Chờ danh sách phòng tải xong và chọn phòng B1.104
     await waitFor(() => {
       expect(screen.getByText("B1.104")).toBeInTheDocument();

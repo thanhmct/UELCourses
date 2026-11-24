@@ -19,9 +19,11 @@ from sqlalchemy.orm import Session
 from app.db import SessionLocal, get_db
 from app.models import RagAnswerFeedback
 from app.rate_limit import heavy_rate_limit, limiter
+from app.services.text import normalize_search
 from .module_answer import answer_module
 from .safety import log_question, private_hash, reserve_attempt
 from .service import RagUnavailable, get_service
+from .user_context import ChatContext, workspace_answer
 
 router = APIRouter(tags=["regulations"])
 
@@ -31,6 +33,10 @@ class AskRequest(BaseModel):
     cohort: str | None = Field(None, max_length=16)
     mode: Literal["extractive", "llm"] | None = None
     top_k: int = Field(3, ge=1, le=10)
+
+
+class RegulationAskRequest(AskRequest):
+    context: ChatContext | None = None
 
 
 class CompareRequest(BaseModel):
@@ -75,11 +81,25 @@ def expiring_regulations(within_days: int = Query(90, ge=0, le=3650)) -> list[di
 
 @router.post("/regulations/ask")
 @limiter.limit(heavy_rate_limit)
-def ask_regulations(req: AskRequest, request: Request) -> JSONResponse:
+def ask_regulations(req: RegulationAskRequest, request: Request) -> JSONResponse:
+    question = normalize_search(req.question).rstrip("?!.")
+    if question in {"ban la ai", "gioi thieu ve ban", "gioi thieu ban than", "who are you", "introduce yourself"}:
+        answer = ("I’m UELPATH’s assistant for academic regulations and the study information you’ve selected."
+                  if question in {"who are you", "introduce yourself"}
+                  else "Mình là trợ lý UELPATH. Mình có thể tra quy chế học vụ kèm nguồn trích dẫn và trả lời về hồ sơ, thời khóa biểu hoặc kế hoạch bạn đã chọn.")
+        return JSONResponse({"answer": answer, "found": True, "mode": "intro", "citations": [], "warnings": []},
+                            headers={"Cache-Control": "no-store"})
+    direct, summary = workspace_answer(req.question, req.cohort, req.context)
+    if direct:
+        return JSONResponse({"answer": direct, "found": True, "mode": "context", "citations": [], "warnings": []},
+                            headers={"Cache-Control": "no-store"})
     try:
-        result = _svc().ask(req.question, req.cohort, req.mode, min(req.top_k, 3), reserve=_reserve(request))
+        profile = req.context.study_profile(req.cohort) if req.context else None
+        result = _svc().ask(req.question, req.cohort, req.mode, min(req.top_k, 3), reserve=_reserve(request), profile=profile)
     except SQLAlchemyError:
         raise HTTPException(503, "Chưa đọc được dữ liệu quy chế.") from None
+    if summary:
+        result["workspace_summary"] = summary
     return JSONResponse(_with_feedback_id("regulations", req.question, result), headers={"Cache-Control": "no-store"})
 
 

@@ -95,6 +95,7 @@ from app.services.text import normalize_search
 from app.services.analytics import (
     export_to_csv_string,
     get_analytics_overview_numbers,
+    get_trend_chat_topics,
     get_trend_classes_for_module,
     get_trend_conflicts,
     get_trend_modules,
@@ -424,6 +425,17 @@ def get_trends_search_endpoint(
         )
 
     return {"searches": search_data}
+
+
+@router.get("/trends/chat-topics", summary="Chủ đề được hỏi trong cửa sổ hỏi đáp AI")
+def get_trends_chat_topics_endpoint(
+    days: int = Query(30, ge=1, le=365),
+    from_date: date | None = Query(None, alias="from"),
+    to_date: date | None = Query(None, alias="to"),
+    _admin: dict[str, Any] = Depends(require_admin_dev(roles=["admin", "data_editor"])),
+    db: Session = Depends(get_db),
+):
+    return {"topics": get_trend_chat_topics(db, days, from_date, to_date)}
 
 
 @router.get("/trends/classes", summary="Lớp được chọn nhiều của môn học")

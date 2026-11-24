@@ -49,7 +49,7 @@ export function wikilinkLabel(l: Pick<Wikilink, "doc_id" | "anchor" | "label">):
 }
 
 export function wikilinkHref(docId: string, anchor?: string): string {
-  return `/regulations?doc=${encodeURIComponent(docId)}${anchor ? `#${anchor}` : ""}`;
+  return `/regulations/${encodeURIComponent(docId)}${anchor ? `#${encodeURIComponent(anchor)}` : ""}`;
 }
 
 /** "dieu-9-khoan-2" -> "Khoản 2 Điều 9"; "dieu-9" -> "Điều 9" */
@@ -72,6 +72,7 @@ const HEADING_RE = /^##\s+Điều\s+(\d+[a-z]?)\.?\s*(.*)$/i;
 const CLAUSE_RE = /^\*\*(\d+)\.?\*\*\s*(.*)$/;
 
 export interface OutlineItem {
+  key: string;
   anchor: string;
   number: string;
   title: string;
@@ -79,9 +80,20 @@ export interface OutlineItem {
 
 export function extractOutline(md: string): OutlineItem[] {
   const out: OutlineItem[] = [];
+  const anchorOccurrences = new Map<string, number>();
   for (const line of stripFrontmatter(md).split(/\r?\n/)) {
     const m = HEADING_RE.exec(line.trim());
-    if (m) out.push({ anchor: `dieu-${m[1]}`, number: m[1], title: m[2].trim() });
+    if (m) {
+      const anchor = `dieu-${m[1]}`;
+      const occurrence = (anchorOccurrences.get(anchor) ?? 0) + 1;
+      anchorOccurrences.set(anchor, occurrence);
+      out.push({
+        key: occurrence === 1 ? anchor : `${anchor}-${occurrence}`,
+        anchor,
+        number: m[1],
+        title: m[2].trim(),
+      });
+    }
   }
   return out;
 }

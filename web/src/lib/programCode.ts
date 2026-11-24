@@ -1,4 +1,4 @@
-import catalog from "@/data/programs_catalog.json";
+import programIds from "@/data/program_ids.json";
 import type { ValidProgramGroup } from "./types";
 
 export interface ProgramGroupValidationResult {
@@ -224,9 +224,8 @@ export interface ParsedProgramCode {
   normalized: string;
 }
 
-const catalogSummaries = ((catalog as { summaries?: { program_id: string }[] }).summaries ?? []);
-const catalogProgramIds = new Set(catalogSummaries.map((s) => s.program_id));
-const knownMajors = new Set(catalogSummaries.map((s) => s.program_id.slice(3)));
+const catalogProgramIds = new Set(programIds);
+const knownMajors = new Set(programIds.map((programId) => programId.slice(3)));
 const knownCohorts = new Set(["K19", "K20", "K21", "K22", "K23", "K24", "K25", "K26"]);
 
 export function isProgramInCatalog(p: ParsedProgramCode): boolean {

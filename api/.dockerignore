@@ -1,0 +1,11 @@
+.venv*
+__pycache__
+**/__pycache__
+**/*.pyc
+.pytest*/
+tests/
+data/
+*.db
+*.md
+.env
+token.txt

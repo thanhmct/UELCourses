@@ -8,6 +8,8 @@ const nextConfig: NextConfig = {
   env: {
     // NEXT_PUBLIC_API_URL is inlined at build time; default for local dev.
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000",
+    // Keep the flag compile-time constant so production builds can discard mock imports.
+    NEXT_PUBLIC_USE_MOCKS: process.env.NEXT_PUBLIC_USE_MOCKS || "false",
     NEXT_PUBLIC_APP_VERSION: pkg.version,
   },
 };

@@ -6,14 +6,16 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import Any, Callable
 
-from .completion import checked_quotes, complete
+from .intent import OUT_OF_SCOPE, expand_forum, focus_question, forum_redirect
+from .completion import checked_quotes, complete, parse_clarify
 from .handbook import SOURCE_LABEL, SUMMARY_WARNING, citation_label
 from .index import Hit, RagIndex
 from .models import Chunk, RegulationDoc, parse_date
 from .providers import LLMProvider, get_provider
 from .safety import MAX_QUOTE, regulation_scope, source_blocked
-from .textnorm import content_terms
-from .validity import (ACTIVE, applicable_docs, doc_label, is_cohort_specific, normalize_cohort,
+from .textnorm import content_terms, strip_accents
+from .user_context import Profile
+from .validity import (ACTIVE, applicable_docs, cohort_matches, cohort_no, doc_label, is_cohort_specific, normalize_cohort,
                        validity_warnings)
 
 REFUSAL = "Không tìm thấy quy định phù hợp trong các văn bản hiện có. Bạn hãy diễn đạt lại câu hỏi hoặc liên hệ Phòng Đào tạo."
@@ -49,7 +51,8 @@ def _is_confident(h: Hit) -> bool:
 
 
 def _question_cohort(question: str, cohort: str | None) -> str | None:
-    inferred = {normalize_cohort(match) for match in re.findall(r"\bK\s*\d{2}\b", question, re.IGNORECASE)}
+    inferred = {normalize_cohort(match) for match in re.findall(
+        r"\b(?:K\s*\d{2}|khóa\s+(?:20)?\d{2})\b", question, re.IGNORECASE)}
     return normalize_cohort(cohort) or (inferred.pop() if len(inferred) == 1 else None)
 
 
@@ -105,7 +108,7 @@ def retrieve(index: RagIndex, question: str, cohort: str | None, today: date, to
             group_ids = [d.doc_id for d in source if index.evidence_group(d.doc_id) == group]
             if subindex is None or not group_ids:
                 continue
-            hits = sorted(subindex.search(query, top_k=limit, doc_ids=group_ids), key=lambda h: -_final(h))
+            hits = sorted(subindex.search(query, top_k=limit, doc_ids=group_ids, cohort=cohort), key=lambda h: -_final(h))
             matches = [h for h in hits if _is_confident(h)]
             by_group[group] = (hits, matches)
         # Separate BM25 statistics stabilize ranking within each kind of source. Compare
@@ -221,12 +224,17 @@ def make_citation(index: RagIndex, chunk: Chunk, quote: str, point: str | None =
         "effective_from": doc.effective_from if doc else chunk.effective_from,
         "effective_to": doc.effective_to if doc else chunk.effective_to,
         "status": doc.status if doc else chunk.status,
+        "metadata_verified": doc.verified if doc else None,
+        "source_url": doc.source_url if doc else None,
         "score": round(score, 4) if score is not None else None,
     }
     if doc and chunk.source_type == "handbook":
         label = citation_label(doc, chunk)
         citation.update(source_type="handbook", source_label=SOURCE_LABEL, label=label, chapter=chunk.chapter,
                         wikilink=f"[[{chunk.doc_id}#^{chunk.anchor()}|{label}]]")
+    if doc and chunk.chunk_type == "appendix" and chunk.appendix_label:
+        label = f"{doc_label(doc)} · {chunk.appendix_label}"
+        citation.update(label=label, wikilink=f"[[{chunk.doc_id}#^{chunk.anchor()}|{label}]]")
     return citation
 
 
@@ -263,7 +271,7 @@ def _select_hits(index: RagIndex, hits: list[Hit], top_k: int) -> list[Hit]:
         chunk = hit.chunk
         best = best_by_type.setdefault(index.evidence_group(chunk.doc_id), _final(hit))
         key = (chunk.doc_id, chunk.page, chunk.heading) if chunk.source_type == "handbook" else (
-            chunk.doc_id, chunk.article, chunk.clause
+            chunk.doc_id, chunk.article, chunk.clause, chunk.appendix_label
         )
         if key in seen or _final(hit) < RELATIVE_KEEP * best:
             continue
@@ -423,7 +431,7 @@ def verify_llm_output(raw: str, hits: list[Hit]) -> tuple[bool, str, list[tuple[
 
 def answer_llm(index: RagIndex, question: str, cohort: str | None = None, today: date | None = None,
                provider: LLMProvider | None = None, top_k: int = 3, context_k: int = 6, *,
-               reserve: Callable[[], bool] | None = None) -> dict[str, Any]:
+               reserve: Callable[[], bool] | None = None, profile: Profile | None = None) -> dict[str, Any]:
     today = today or date.today()
     if not regulation_scope(question):
         return answer_extractive(index, question, cohort, today, top_k)
@@ -440,8 +448,15 @@ def answer_llm(index: RagIndex, question: str, cohort: str | None = None, today:
         # Cite the chunk the window actually comes from, so the quote stays a substring of it.
         if text and chunk.chunk_id not in chunks:
             chunks[chunk.chunk_id], sources[chunk.chunk_id] = chunk, text
-    quotes, reason = complete(question, sources,
-                              f"regulations:{index.version}:{_question_cohort(question, cohort)}", provider, reserve)
+    effective_cohort = _question_cohort(question, cohort)
+    study_profile = dict(profile or {})
+    if effective_cohort and re.fullmatch(r"K\d{2}", effective_cohort):
+        study_profile["cohort"] = effective_cohort
+    quotes, reason = complete(question, sources, f"regulations:{index.version}:{effective_cohort}",
+                              provider, reserve, profile=study_profile or None)
+    if quotes is None and (clarification := parse_clarify(reason)) is not None:
+        text, options = clarification
+        return _clarify("question", text, options) | {"provider": provider.name}
     if quotes is None:
         if reason in _LLM_REJECTED:
             # The model read the retrieved passages and found no verifiable answer. On the eval set the
@@ -471,10 +486,89 @@ def answer_llm(index: RagIndex, question: str, cohort: str | None = None, today:
             "warnings": warnings, "mode": "llm", "found": True, "provider": provider.name}
 
 
+CLARIFY_COHORT = "Quy định này khác nhau giữa các khóa. Bạn thuộc khóa nào?"
+
+
+def _clarify(kind: str, text: str, options: list[str] | None = None) -> dict[str, Any]:
+    return {"answer": text, "citations": [], "warnings": [], "mode": "clarify", "found": False,
+            "clarify": {"kind": kind, "question": text, "options": options or []}}
+
+
+def cohort_clarification(index: RagIndex, question: str, cohort: str | None,
+                         today: date | None = None) -> dict[str, Any] | None:
+    """Ask for the cohort when it is unknown and the best matches are cohort-specific documents."""
+    today = today or date.today()
+    if _question_cohort(question, cohort) or not regulation_scope(question):
+        return None
+    rr = retrieve(index, question, None, today)
+    hits = _select_hits(index, rr.confident, 3)
+    docs = [index.docs_by_id[h.chunk.doc_id] for h in hits if h.chunk.doc_id in index.docs_by_id]
+    if any(is_cohort_specific(doc) for doc in docs):
+        return _clarify("cohort", CLARIFY_COHORT)
+    return None
+
+
+_ENGLISH_OUTCOME = re.compile(r"\bchuan dau ra (?:ve trinh do ngoai ngu (?:doi voi )?)?tieng anh\b")
+_OTHER_OUTCOME_QUESTIONS = re.compile(
+    r"\b(?:mien|nop|thi|o dau|bao lau|thoi han|cong nhan|het han|home edition|indicator|"
+    r"toeic|toefl|cambridge|aptis|pte|peic|doi chieu|thay the|so sanh|de an|ngoai ngu khac)\b"
+)
+
+
+def _english_outcome(index: RagIndex, question: str, cohort: str | None, today: date,
+                     profile: Profile | None) -> dict[str, Any] | None:
+    """Read the minimum levels directly from the verified table for cohorts K24 onward."""
+    cohort = _question_cohort(question, cohort)
+    query = strip_accents(question.lower())
+    if ((cohort_no(cohort) or 0) < 24 or not regulation_scope(question)
+            or (profile and profile.get("degree") in ("thac_si", "tien_si"))
+            or not _ENGLISH_OUTCOME.search(query) or _OTHER_OUTCOME_QUESTIONS.search(query)):
+        return None
+    doc = index.docs_by_id.get("uel-cdr-ngoaingu-1390-2025")
+    if not doc or doc.verified is not True or doc.status != ACTIVE:
+        return None
+    for chunk in index.chunks:
+        if (chunk.doc_id != doc.doc_id or chunk.appendix_label != "Phụ lục IV"
+                or not cohort_matches(chunk.applies_to_cohorts, cohort)):
+            continue
+        header = re.search(r"(?m)^Trình độ/Chứng chỉ[^\n]*CTĐT bằng tiếng Việt[^\n]*CTĐT bằng tiếng Anh[^\n]*", chunk.text)
+        cefr = re.search(r"(?m)^([ABC][12]) +([ABC][12]) *$", chunk.text)
+        vstep = re.search(r"(?m)^Bậc (\d) +Bậc (\d) *$", chunk.text)
+        ielts = re.search(r"(?mi)^IELTS[^\n\d]*(\d+\.\d) +(\d+\.\d) *$", chunk.text)
+        if not (header and cefr and vstep and ielts and header.end() < cefr.start() < vstep.start() < ielts.start()):
+            continue
+        quote = chunk.text[header.start():ielts.end()].strip()
+        if len(quote) > MAX_QUOTE or source_blocked(quote):
+            continue
+        academic = re.search(r"chỉ chấp\s+nhận chứng chỉ IELTS Academic\b", chunk.text, re.IGNORECASE)
+        levels = [f"CEFR {cefr[i]}, VSTEP bậc {vstep[i]} hoặc IELTS{' Academic' if i == 2 and academic else ''} {ielts[i]}"
+                  for i in (1, 2)]
+        citation = make_citation(index, chunk, quote)
+        return {
+            "answer": f"Theo Phụ lục IV của {doc_label(doc)}, mức tối thiểu áp dụng cho {cohort}:\n\n"
+                      f"• CTĐT bằng tiếng Việt: {levels[0]}.\n"
+                      f"• CTĐT bằng tiếng Anh hoặc cử nhân tài năng: {levels[1]}.",
+            "citations": [citation], "warnings": _citation_warnings(index, [citation], today),
+            "mode": "extractive", "found": True,
+        }
+    return None
+
+
 def ask(index: RagIndex, question: str, cohort: str | None = None, mode: str | None = None,
         today: date | None = None, provider: LLMProvider | None = None, top_k: int = 3, *,
-        reserve: Callable[[], bool] | None = None) -> dict[str, Any]:
+        reserve: Callable[[], bool] | None = None, profile: Profile | None = None) -> dict[str, Any]:
+    # Forum phrasing: route non-regulation requests to the right page, expand abbreviations for retrieval.
+    if (redirect := forum_redirect(question)) is not None:
+        return redirect
+    question = focus_question(expand_forum(question))
+    if not regulation_scope(question):
+        return {"answer": OUT_OF_SCOPE, "citations": [], "warnings": [], "mode": "out_of_scope", "found": False}
+    # Cheap, LLM-free check first: never spend an LLM call on a question we must clarify anyway.
+    if (clarification := cohort_clarification(index, question, cohort, today)) is not None:
+        return clarification
+    if (outcome := _english_outcome(index, question, cohort, today or date.today(), profile)) is not None:
+        return outcome
     provider = provider or get_provider()
     if mode == "llm" or (mode is None and provider.available()):
-        return answer_llm(index, question, cohort, today, provider, top_k, reserve=reserve)
+        return answer_llm(index, question, cohort, today, provider, top_k, reserve=reserve, profile=profile)
     return answer_extractive(index, question, cohort, today, top_k)

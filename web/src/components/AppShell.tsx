@@ -13,6 +13,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const isAdmin = pathname?.startsWith("/admin");
   const isSettings = pathname === "/settings";
+  const isToday = pathname === "/today";
   useEffect(() => {
     if (!isAdmin) return startPlannerTimetableSync();
   }, [isAdmin]);
@@ -25,8 +26,8 @@ export function AppShell({ children }: { children: ReactNode }) {
     <>
       <Header />
       <SideNav />
-      <div className="md:pl-[212px]">
-        <main className="mx-auto max-w-[1400px] px-3 py-4 pb-24 md:px-5">
+      <div className={isToday ? "md:pl-[212px] lg:grid lg:h-[calc(100dvh-66px)] lg:grid-rows-[minmax(0,1fr)_auto]" : "md:pl-[212px]"}>
+        <main className={`mx-auto max-w-[1400px] px-3 py-4 pb-24 md:px-5${isToday ? " lg:flex lg:min-h-0 lg:w-full lg:flex-col lg:pb-4" : ""}`}>
           {!isSettings && <ConnectionNotice />}
           <HolidayAppearanceProvider showViewportEffects={!isSettings}>{children}</HolidayAppearanceProvider>
         </main>

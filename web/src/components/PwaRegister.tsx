@@ -11,7 +11,7 @@ export function PwaRegister() {
     // Register Service Worker
     if (typeof window !== "undefined" && "serviceWorker" in navigator && process.env.NODE_ENV === "production") {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("/sw.js").catch((err) => {
+        navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" }).catch((err) => {
           console.warn("ServiceWorker registration failed: ", err);
         });
       });

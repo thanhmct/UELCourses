@@ -1,16 +1,13 @@
 "use client";
-import { useParams, useRouter } from "next/navigation";
-import { useEffect } from "react";
-import { useWorkspace } from "@/lib/workspace";
-import { Loading } from "@/components/ui";
+import { useParams } from "next/navigation";
+import { RegulationInfoCard } from "@/components/regulations/RegulationInfoCard";
 
-/** Legacy URL /regulations/<doc>#dieu-N -> opens the doc in the workspace. */
-export default function RegulationRedirect() {
+export default function RegulationDocumentPage() {
   const { docId } = useParams<{ docId: string }>();
-  const router = useRouter();
-  useEffect(() => {
-    useWorkspace.getState().open(decodeURIComponent(docId), window.location.hash.slice(1) || undefined);
-    router.replace("/regulations");
-  }, [docId, router]);
-  return <Loading />;
+
+  return (
+    <div className="card mx-auto max-w-3xl p-4 sm:p-6">
+      <RegulationInfoCard key={docId} docId={docId} />
+    </div>
+  );
 }

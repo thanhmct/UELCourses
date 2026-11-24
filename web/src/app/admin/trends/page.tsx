@@ -7,6 +7,7 @@ import { useSemesters } from "@/lib/semesters";
 import { adminApi } from "@/lib/adminApi";
 import type {
   TrendClassItem,
+  TrendChatTopic,
   TrendConflictData,
   TrendModuleItem,
   TrendPairItem,
@@ -44,6 +45,7 @@ export default function AdminTrendsPage() {
   const [slots, setSlots] = useState<TrendSlotItem[]>([]);
   const [conflicts, setConflicts] = useState<TrendConflictData | null>(null);
   const [searches, setSearches] = useState<TrendSearchItem[]>([]);
+  const [chatTopics, setChatTopics] = useState<TrendChatTopic[] | null>([]);
   const [activity, setActivity] = useState<{ date: string; count: number }[]>([]);
 
   // Drilldown class state
@@ -65,7 +67,7 @@ export default function AdminTrendsPage() {
     const tDate = rangeOption === "custom" ? toDate || undefined : undefined;
 
     try {
-      const [modsRes, pairsRes, slotsRes, confRes, searchRes, overviewRes] = await Promise.all([
+      const [modsRes, pairsRes, slotsRes, confRes, searchRes, overviewRes, chatRes] = await Promise.all([
         adminApi.getTrendsModules({
           semester: semester || undefined,
           program: program || undefined,
@@ -90,6 +92,7 @@ export default function AdminTrendsPage() {
           to: tDate,
         }),
         adminApi.getOverview(),
+        adminApi.getTrendsChatTopics({ days: rangeDays, from: fDate, to: tDate }).catch(() => null),
       ]);
 
       setModules(modsRes.modules || []);
@@ -97,6 +100,7 @@ export default function AdminTrendsPage() {
       setSlots(slotsRes.slots || []);
       setConflicts(confRes);
       setSearches(searchRes.searches || []);
+      setChatTopics(chatRes?.topics ?? null);
       setActivity(overviewRes.activity_30d || []);
     } catch {
       // Fallback khi lỗi
@@ -105,6 +109,7 @@ export default function AdminTrendsPage() {
       setSlots([]);
       setConflicts(null);
       setSearches([]);
+      setChatTopics(null);
       setActivity([]);
     } finally {
       setLoading(false);
@@ -717,6 +722,34 @@ export default function AdminTrendsPage() {
               {t("admin.emptyTrendData")}
             </p>
           )}
+        </section>
+
+        <section className="card space-y-3 p-5">
+          <h2 className="text-sm font-bold">{t("admin.chatTopicsTitle")}</h2>
+          {loading ? <p role="status" className="text-xs text-slate-500">{t("common.loading")}</p> : chatTopics === null ? (
+            <p className="text-xs text-slate-500">{t("admin.chatTopicsError")}</p>
+          ) : chatTopics.length ? (
+            <table className="w-full text-left text-xs">
+              <thead className="text-slate-500">
+                <tr>
+                  <th scope="col" className="p-2">{t("admin.chatTopic")}</th>
+                  <th scope="col" className="p-2 text-right">{t("admin.chatTopicCount")}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {chatTopics.map(({ scope, target, title, count }) => (
+                  <tr key={`${scope}:${target ?? ""}`}>
+                    <td className="p-2">
+                      <p className="font-medium">{title ?? t("admin.chatTopicUnknown")}</p>
+                      <p className="text-slate-500">{t(scope === "modules" ? "ask.modules" : "ask.regulations")}{scope === "modules" && target ? ` · ${target}` : ""}</p>
+                    </td>
+                    <td className="p-2 text-right font-mono font-bold">{count}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : <p className="text-xs text-slate-500">{t("admin.emptyTrendData")}</p>}
+          <p className="text-xs text-slate-500">{t("admin.chatTopicsPeriod")}</p>
         </section>
 
         {/* Khối (e): Từ khóa tìm kiếm không có kết quả */}

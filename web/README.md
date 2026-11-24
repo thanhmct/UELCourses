@@ -16,7 +16,7 @@ Frontend Next.js 15 của dự án UELPATH — Nền tảng lập kế hoạch h
 
 3. **Chương trình đào tạo & Sơ đồ lộ trình (`/programs`, `/programs/[id]`)**:
    - Danh mục tra cứu đầy đủ 86 chương trình đào tạo của UEL qua các khóa tuyển sinh (K19 – K26) và các khoa.
-   - **Sơ đồ Flowchart tương tác (`@xyflow/react` + `@dagrejs/dagre`)**: Tự động dàn trang theo học kỳ (HK1 – HK8), phân màu theo khối kiến thức, hiển thị đường nối trực quan (nét liền cho tiên quyết, nét đứt cho học trước, chấm tròn cho song hành).
+   - **Sơ đồ Flowchart tương tác**: Tự động dàn trang theo học kỳ (HK1 – HK8), phân màu theo khối kiến thức, hiển thị đường nối trực quan (nét liền cho tiên quyết, nét đứt cho học trước, chấm tròn cho song hành).
    - Bộ lọc sơ đồ theo học kỳ, khối kiến thức, tìm kiếm môn và làm nổi bật chuỗi phụ thuộc (`relatedChain`).
    - Bảng danh mục theo khối kiến thức (Đại cương, Cơ sở ngành, Chuyên ngành...) với số tín chỉ bắt buộc của từng khối.
    - **Đối chiếu kế hoạch cá nhân (Check Eligibility)**: Tự động kiểm tra danh sách môn của sinh viên với CTĐT để phát hiện các môn đủ điều kiện học ngay và các môn đang bị chặn do thiếu tiên quyết.
@@ -62,7 +62,7 @@ Frontend Next.js 15 của dự án UELPATH — Nền tảng lập kế hoạch h
 
 - **Framework**: Next.js 15 (App Router, TypeScript, React 19)
 - **Styling**: Tailwind CSS
-- **Interactive Graphs & Flowcharts**: `@xyflow/react`, `@dagrejs/dagre`, `react-force-graph-2d`
+- **Interactive Graphs & Flowcharts**: `react-force-graph-2d`
 - **Drag & Drop**: `@dnd-kit/core`
 - **State Management**: Zustand (kèm persist localStorage)
 - **Exporting**: `html-to-image` (PNG), custom RFC 5545 generator (.ics)
@@ -80,6 +80,8 @@ npm install
 npm run dev
 ```
 Truy cập ứng dụng tại `http://localhost:3000`. Khi backend FastAPI chưa chạy, hệ thống tự động kích hoạt chế độ Fallback Mock Data để toàn bộ giao diện và chức năng vẫn demo mượt mà.
+
+`NEXT_PUBLIC_USE_MOCKS=true` và các test dùng mock cần các file `web/src/data/*.json` cục bộ; các file này không có trong Git và được sinh bằng `api/scripts/build_programs_catalog.py` cùng `fetch_courses.py`.
 
 ### Chạy kiểm thử:
 ```bash

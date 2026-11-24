@@ -1,0 +1,9 @@
+node_modules
+.next
+.next-*
+.env*.local
+coverage
+.vercel
+*.log
+*.err
+*.tsbuildinfo

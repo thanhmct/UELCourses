@@ -105,6 +105,27 @@ def test_chunks_metadata(fixture_dir):
     assert p.counts() == {"articles": 9, "clauses": 20, "points": 15}
 
 
+def test_standalone_appendix_preserves_table_and_cohort_locator():
+    from app.rag.index import RagIndex
+    from app.rag.models import RegulationDoc
+    from app.rag.segmenter import build_chunks, segment
+
+    doc = RegulationDoc(doc_id="qd", title="Chuẩn đầu ra", verified=True)
+    parsed = segment([
+        (1, "Điều 1. Hiệu lực\nQuy định có hiệu lực từ ngày ký."),
+        (8, "Phụ lục III: Chuẩn tiếng Anh\nÁp dụng cho Khóa 23\nIELTS (*) 4.5 5.5"),
+        (9, "\n3\nPhụ lục IV: Chuẩn tiếng Anh\nÁp dụng từ Khóa 24\nIELTS (*) 5.0 6.0"),
+    ])
+    chunks = build_chunks(doc, parsed)
+    assert len(chunks) == 3 and "Phụ lục" not in chunks[0].text
+    table = chunks[2]
+    assert table.page == 9 and table.article is None and table.appendix_label == "Phụ lục IV"
+    assert table.applies_to_cohorts == ["K24+"] and "IELTS (*) 5.0 6.0" in table.text
+    index = RagIndex([doc], chunks)
+    assert {hit.chunk.page for hit in index.search("IELTS", cohort="K26")} == {9}
+    assert {hit.chunk.page for hit in index.search("IELTS", cohort="K23")} == {8}
+
+
 def test_chunks_detach_appendix_and_limit_verbatim_windows():
     clause = "1. Nội dung chính kết thúc tại đây./. 6 PHỤ LỤC I " + ("dữ liệu bảng " * 260)
     parsed = segment("Điều 9. Điều khoản thi hành\n" + clause)

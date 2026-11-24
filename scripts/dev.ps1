@@ -64,7 +64,7 @@ switch ($Cmd) {
     'down' { Assert-Docker; Invoke-Compose @('down') }
     'setup' {
         Assert-Docker
-        Invoke-InWorkspace '/workspace/api' @('pip', 'install', '-r', 'requirements.txt')
+        Invoke-InWorkspace '/workspace/api' @('pip', 'install', '-r', 'requirements-dev.txt')
         if (Test-Path api\requirements-rag.txt) {
             try { Invoke-InWorkspace '/workspace/api' @('pip', 'install', '-r', 'requirements-rag.txt') } catch { 'Cảnh báo: requirements-rag.txt không cài đủ (bỏ qua).' }
         }
@@ -72,6 +72,7 @@ switch ($Cmd) {
     }
     'test' {
         Assert-Docker
+        Invoke-InWorkspace '/workspace/api' @('pip', 'install', '-r', 'requirements-dev.txt')
         Invoke-InWorkspace '/workspace/api' @('python', '-m', 'pytest', '-q', '--ignore=tests/rag')
         Invoke-InWorkspace '/workspace/web' @('npm', 'test')
     }

@@ -33,6 +33,15 @@ _APPENDIX_RE = re.compile(
     r"(?:(?<=\./\.)\s*(?:\d+\s+)?)?(?P<label>(?:DANH\s+MỤC\s+CÁC\s+)?PHỤ\s+LỤC(?:\s+[IVXLCDM\d]+)?)\b",
     re.IGNORECASE,
 )
+_APPENDIX_PAGE_RE = re.compile(r"^Phụ\s+lục\s+([IVXLCDM]+|\d+)\s*:", re.IGNORECASE)
+
+
+@dataclass
+class AppendixPage:
+    label: str
+    page: int
+    text: str
+    cohorts: list[str] | None
 
 
 @dataclass
@@ -42,6 +51,7 @@ class ParsedDocument:
     decision_no: str | None = None
     issued_date: str | None = None
     warnings: list[str] = field(default_factory=list)
+    appendices: list[AppendixPage] = field(default_factory=list)
 
     def counts(self) -> dict[str, int]:
         clauses = sum(len([c for c in a.clauses if c.clause]) for a in self.articles)
@@ -69,14 +79,22 @@ def segment(pages: list[tuple[int, str]] | str) -> ParsedDocument:
     """Parse text (or [(page_no, text)]) into articles with clauses and points."""
     if isinstance(pages, str):
         pages = [(1, pages)]
+    result = ParsedDocument()
     lines: list[tuple[int, str]] = []
     for page_no, text in pages:
-        for raw in nfc(text).split("\n"):
-            line = raw.strip()
-            if line:
-                lines.append((page_no, line))
+        page_lines = [line.strip() for line in nfc(text).split("\n") if line.strip()]
+        first = next((i for i, line in enumerate(page_lines) if not line.isdigit()), None)
+        if first is not None and (appendix := _APPENDIX_PAGE_RE.match(page_lines[first])):
+            page_lines = page_lines[first:]
+            scope = next((line for line in page_lines[1:4] if line.casefold().startswith("áp dụng")), "")
+            cohorts = [f"K{value}" for value in re.findall(r"\bKhóa\s+(?:K\s*)?(?:20)?(\d{2})\b", scope, re.IGNORECASE)]
+            if cohorts and re.match(r"Áp dụng từ\b", scope, re.IGNORECASE):
+                cohorts[0] += "+"
+            result.appendices.append(AppendixPage(f"Phụ lục {appendix[1].upper()}", page_no,
+                                                   "\n".join(page_lines), cohorts or None))
+            continue
+        lines.extend((page_no, line) for line in page_lines)
 
-    result = ParsedDocument()
     preamble: list[str] = []
     chapter: str | None = None
     section: str | None = None
@@ -309,4 +327,15 @@ def build_chunks(doc: RegulationDoc, parsed: ParsedDocument) -> list[Chunk]:
             make(art, None, art.intro, art.page, ":K0")
         for c in art.clauses:
             make(art, c, c.full_text(), c.page, f":K{c.clause}" if c.clause else "")
+    for appendix in parsed.appendices:
+        anchor = f"phu-luc-{appendix.label.split()[-1].lower()}-trang-{appendix.page}"
+        for part, window in enumerate(split_windows(appendix.text), 1):
+            chunks.append(Chunk(
+                chunk_id=f"{doc.doc_id}:{anchor}:{part}", doc_id=doc.doc_id, text=window,
+                title=doc.title, decision_no=doc.decision_no, page=appendix.page,
+                heading=appendix.text.splitlines()[0], source_anchor=anchor,
+                chunk_type="appendix", appendix_label=appendix.label, window_part=part,
+                applies_to_cohorts=appendix.cohorts or list(doc.applies_to_cohorts),
+                effective_from=doc.effective_from, effective_to=doc.effective_to, status=doc.status,
+            ))
     return chunks

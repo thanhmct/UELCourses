@@ -6,11 +6,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 WORKDIR /app
 
-# Cài thư viện trước để tận dụng cache layer
-COPY requirements*.txt ./
+# Cài thư viện production trước để tận dụng cache layer
+COPY requirements.txt requirements-rag.txt* ./
 RUN pip install -r requirements.txt \
- && if [ -f requirements-rag.txt ]; then pip install -r requirements-rag.txt || echo "WARN: requirements-rag.txt không cài đủ (bỏ qua thư viện tùy chọn)"; fi \
- && pip install "psycopg[binary]"
+ && if [ -f requirements-rag.txt ]; then pip install -r requirements-rag.txt || echo "WARN: requirements-rag.txt không cài đủ (bỏ qua thư viện tùy chọn)"; fi
 
 COPY . .
 

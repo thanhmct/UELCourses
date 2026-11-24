@@ -1,7 +1,7 @@
 import { brandVariables, normalizeHex } from "./appearance";
 import type { HolidayTheme } from "./holidays";
 
-const drum = "/festivals/dong-son-drum.svg";
+const drum = "/festivals/dong-son-drum.png";
 
 export const FESTIVAL_THEMES = {
   tet: { colors: ["#8A243C", "#AC481E", "#F8CC71"], date: "01/01", lunar: true },

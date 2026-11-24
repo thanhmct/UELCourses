@@ -42,6 +42,9 @@ describe("Brief A2: Admin Trends Page (/admin/trends)", () => {
     vi.spyOn(adminApi, "getTrendsSlots").mockResolvedValue({ slots: mockTrendSlots });
     vi.spyOn(adminApi, "getTrendsConflicts").mockResolvedValue(mockTrendConflicts);
     vi.spyOn(adminApi, "getTrendsSearch").mockResolvedValue({ searches: mockTrendSearches });
+    vi.spyOn(adminApi, "getTrendsChatTopics").mockResolvedValue({ topics: [
+      { scope: "regulations", target: "uel-cvht-1912-2024", title: "Quy định công tác Cố vấn học tập", count: 8 },
+    ] });
     vi.spyOn(adminApi, "getTrendsClasses").mockResolvedValue({
       module_code: "BIM5001",
       classes: mockTrendClasses,
@@ -76,6 +79,8 @@ describe("Brief A2: Admin Trends Page (/admin/trends)", () => {
     // Khối từ khóa không ra kết quả
     expect(screen.getByText("machine learning")).toBeInTheDocument();
     expect(screen.getByText("khoa học dữ liệu")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Chủ đề được hỏi trong cửa sổ AI" })).toBeInTheDocument();
+    expect(screen.getByRole("row", { name: /Quy định công tác Cố vấn học tập.*8/ })).toBeInTheDocument();
   });
 
   it("bản đồ nhiệt Thứ × Tiết vẽ đúng 112 ô tương ứng 7 ngày × 16 tiết", async () => {
@@ -131,5 +136,6 @@ describe("Brief A2: Admin Trends Page (/admin/trends)", () => {
         range: 7,
       })
     );
+    expect(adminApi.getTrendsChatTopics).toHaveBeenLastCalledWith(expect.objectContaining({ days: 7 }));
   });
 });

@@ -118,6 +118,16 @@ def test_outline_missing_and_no_confident_section(catalog):
     assert provider.calls == 0
 
 
+def test_general_syllabus_lookup_from_code_or_name(catalog):
+    from app.rag.module_answer import answer_module
+
+    for question in ("Đề cương BBA4001?", "Đề cương môn Quản trị chuỗi cung ứng"):
+        result = answer_module(catalog, question, cohort="K26", mode="extractive")
+        assert result["found"]
+        assert {"assessment", "objectives"} <= {item["kind"] for item in result["citations"]}
+        assert "Giữa kỳ 30%, cuối kỳ 70%." in result["answer"]
+
+
 def test_module_endpoint_and_anonymous_feedback(catalog):
     from fastapi.testclient import TestClient
 

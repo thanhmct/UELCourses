@@ -20,6 +20,7 @@ from .vault import Vault, build_vault
 from .pipeline import build_index, index_dir, regulations_dir
 from .providers import LLMProvider
 from .textnorm import strip_accents
+from .user_context import Profile
 from .validity import DEFAULT_EXPIRING_DAYS, cohort_applies, expiring, refresh_statuses, validity_warnings
 
 
@@ -68,9 +69,9 @@ class RegulationService:
         return data
 
     def ask(self, question: str, cohort: str | None = None, mode: str | None = None, top_k: int = 3, *,
-            reserve: Callable[[], bool] | None = None) -> dict[str, Any]:
+            reserve: Callable[[], bool] | None = None, profile: Profile | None = None) -> dict[str, Any]:
         today = self._refresh()
-        return answer_mod.ask(self.index, question, cohort, mode, today, self.provider, top_k, reserve=reserve)
+        return answer_mod.ask(self.index, question, cohort, mode, today, self.provider, top_k, reserve=reserve, profile=profile)
 
     def compare(self, topic: str, cohorts: list[str]) -> dict[str, Any]:
         today = self._refresh()

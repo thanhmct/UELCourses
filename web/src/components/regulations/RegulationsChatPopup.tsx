@@ -10,11 +10,10 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
-import { COHORTS, useSettings } from "@/lib/store";
 import { useRegChat } from "@/lib/regChatStore";
 import { useT } from "@/i18n";
 import { useMounted } from "@/lib/useMounted";
-import { ChatPanel } from "./ChatPanel";
+import { ChatWindow } from "./ChatWindow";
 
 export function RegulationsChatPopup() {
   const { t } = useT();
@@ -27,25 +26,12 @@ export function RegulationsChatPopup() {
   const closeChat = useRegChat((s) => s.closeChat);
   const minimizeChat = useRegChat((s) => s.minimizeChat);
   const toggleMaximize = useRegChat((s) => s.toggleMaximize);
-  const cohort = useRegChat((s) => s.cohort);
-  const setCohort = useRegChat((s) => s.setCohort);
-  const mode = useRegChat((s) => s.mode);
-  const setMode = useRegChat((s) => s.setMode);
-
-  const savedCohort = useSettings((s) => s.cohort);
   const popupRef = useRef<HTMLDivElement>(null);
-
-  // Sync cohort from settings on initial mount if not explicitly set
-  useEffect(() => {
-    if (mounted && !cohort && savedCohort) {
-      setCohort(savedCohort);
-    }
-  }, [mounted, cohort, savedCohort, setCohort]);
 
   // Handle ESC key to minimize or close popup
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && status !== "closed") {
+      if (e.key === "Escape" && !e.defaultPrevented && status !== "closed") {
         e.preventDefault();
         if (status === "maximized") {
           toggleMaximize();
@@ -128,34 +114,6 @@ export function RegulationsChatPopup() {
 
               {/* Bộ điều khiển tiêu đề */}
               <div className="flex items-center gap-1.5">
-                {/* Chọn khóa */}
-                <select
-                  value={cohort}
-                  onChange={(e) => setCohort(e.target.value)}
-                  className="input h-7 py-0.5 px-1.5 text-[11px]"
-                  aria-label={t("reg.cohortFilter")}
-                  title={t("reg.cohortFilter")}
-                >
-                  <option value="">{t("chat.cohortAll")}</option>
-                  {COHORTS.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
-
-                {/* Chế độ trả lời */}
-                <select
-                  value={mode}
-                  onChange={(e) => setMode(e.target.value as "extractive" | "llm")}
-                  className="input hidden h-7 py-0.5 px-1.5 text-[11px] sm:inline-block"
-                  aria-label={t("chat.mode")}
-                  title={t("chat.mode")}
-                >
-                  <option value="extractive">{t("chat.modeExt")}</option>
-                  <option value="llm">{t("chat.modeLlm")}</option>
-                </select>
-
                 {/* Mở trang đầy đủ */}
                 <button
                   type="button"
@@ -206,13 +164,8 @@ export function RegulationsChatPopup() {
               </div>
             </div>
 
-            {/* Nội dung ChatPanel dùng chung */}
-            <div className="flex-1 overflow-hidden p-3 sm:p-4">
-              <ChatPanel
-                cohort={cohort}
-                variant={isMaximized ? "maximized" : "popup"}
-                showHeader={false}
-              />
+            <div className="min-h-0 flex-1">
+              <ChatWindow variant={isMaximized ? "maximized" : "popup"} />
             </div>
           </div>
         </div>

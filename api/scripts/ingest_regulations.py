@@ -34,6 +34,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--regulations-dir", type=Path, default=None)
     ap.add_argument("--fixture", action="store_true", help="dùng dữ liệu MẪU trong tests/rag/fixtures")
     ap.add_argument("--publish-db", action="store_true", help="nạp vào DB sau khi đã sao lưu")
+    ap.add_argument("--doc-id", action="append", help="với --publish-db, chỉ cập nhật mã văn bản này (có thể lặp)")
     ap.add_argument("--out", type=Path, default=None, help="thư mục chỉ mục (mặc định RAG_INDEX_DIR)")
     ap.add_argument("--vault-dir", type=Path, default=None, help="thư mục vault Markdown (mặc định REGULATIONS_DIR/vault)")
     ap.add_argument("--no-vault", action="store_true")
@@ -43,6 +44,8 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
     if args.publish_db and (args.fixture or args.embeddings or args.out or embeddings_requested()):
         ap.error("--publish-db dùng dữ liệu thật và truy hồi SQL/BM25, không ghi cache file")
+    if args.doc_id and not args.publish_db:
+        ap.error("--doc-id chỉ dùng với --publish-db")
     try:
         sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
     except Exception:  # noqa: BLE001
@@ -57,13 +60,20 @@ def main(argv: list[str] | None = None) -> int:
     index, rep = build_index(reg, today=today, with_embeddings=args.embeddings or embeddings_requested())
     if args.publish_db:
         from app.db import engine
-        from app.rag.storage import publish_index
+        from app.rag.storage import publish_documents, publish_index
 
         if engine.dialect.name != "postgresql":
             ap.error("--publish-db yêu cầu PostgreSQL")
         if not index.chunks:
             ap.error("Không có đoạn văn bản hợp lệ để nạp vào DB")
-        publish_index(engine, index)
+        if args.doc_id:
+            try:
+                publish_documents(engine, index, set(args.doc_id))
+            except ValueError as exc:
+                ap.error(str(exc))
+            print(f"Đã cập nhật riêng: {', '.join(args.doc_id)}")
+        else:
+            publish_index(engine, index)
     else:
         index.save(out)
 

@@ -207,12 +207,19 @@ export interface RegulationDoc {
   effective_to?: string | null;
   status: RegulationStatus;
   superseded_by?: string | null;
+  supersedes?: string[];
   applies_to_cohorts: string[];
   source_url?: string | null;
   file: string;
   /** optional vault metadata */
   topic?: string;
+  topics?: string[];
+  is_sample?: boolean;
+  indexed?: boolean;
   issuer_level?: string;
+  issuer?: string | null;
+  verified?: boolean | null;
+  metadata_unverified?: boolean;
   metadata_verified?: boolean;
 }
 
@@ -268,6 +275,7 @@ export interface Citation {
   effective_to?: string | null;
   status?: RegulationStatus;
   metadata_verified?: boolean;
+  source_url?: string | null;
 }
 
 export interface AskResponse {
@@ -276,7 +284,11 @@ export interface AskResponse {
   citations: Citation[];
   answer_id?: string;
   warnings: string[];
-  mode: "extractive" | "llm";
+  mode: "extractive" | "llm" | "clarify" | "context" | "intro";
+  workspace_summary?: string;
+  /** The assistant asks back before answering (unknown cohort or an ambiguous question). */
+  clarify?: { kind: "cohort" | "question"; question: string; options: string[] };
+  abstained?: boolean;
 }
 
 export type AskScope = "regulations" | "modules";
@@ -496,6 +508,13 @@ export interface TrendConflictData {
   conflicted_schedules: number | string;
   conflict_rate_pct: number;
   anonymized: boolean;
+}
+
+export interface TrendChatTopic {
+  scope: AskScope;
+  target: string | null;
+  title: string | null;
+  count: number | "<5";
 }
 
 export interface TrendSearchItem {

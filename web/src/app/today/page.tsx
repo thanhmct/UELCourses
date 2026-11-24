@@ -1,24 +1,19 @@
 "use client";
 
-import Link from "next/link";
+import { PartyPopper } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import { useMounted } from "@/lib/useMounted";
 import { useTimetable } from "@/lib/store";
 import type { ClassSection, Lesson } from "@/lib/types";
 import { getOccurrencesByDate, getTimetableOccurrences } from "@/lib/occurrences";
-import { Loading, PageHeader } from "@/components/ui";
+import { Loading } from "@/components/ui";
 import { useT } from "@/i18n";
 import { moduleName } from "@/i18n/names";
 import { formatLecturerName } from "@/lib/lecturers";
 import { CampusMap } from "@/components/CampusMap";
 import {
-  TOUR_AREAS,
   placeForLesson,
-  placeForRoom,
-  sceneForPlace,
-  sceneForRoom,
-  tourUrl,
   type CampusPlace,
 } from "@/lib/campusTour";
 import {
@@ -51,25 +46,6 @@ function selectionForLesson(item: TodayLessonItem): MapSelection {
     name: item.name,
     place: placeForLesson(item.code, item.name, room ?? ""),
   };
-}
-
-function placeLabelKey(place: CampusPlace | null): string {
-  switch (place) {
-    case "A":
-      return "campus.buildingA";
-    case "B1":
-      return "campus.buildingB1";
-    case "B2":
-      return "campus.buildingB2";
-    case "sports":
-      return "campus.sports";
-    case "parking":
-      return "campus.parking";
-    case "gate":
-      return "campus.gate";
-    default:
-      return "campus.overview";
-  }
 }
 
 function getNowTimeStrings() {
@@ -220,18 +196,6 @@ export default function TodayPage() {
 
   const activeSelection = mapSelection ?? defaultMapSelection;
   const activePlace = pickedPlace ?? activeSelection.place;
-  const activeScene = useMemo(() => {
-    if (pickedPlace) return sceneForPlace(pickedPlace);
-    if (activeSelection.place && activeSelection.room) {
-      return activeSelection.place === placeForRoom(activeSelection.room)
-        ? sceneForRoom(activeSelection.room).scene
-        : sceneForPlace(activeSelection.place);
-    }
-    if (activeSelection.place) return sceneForPlace(activeSelection.place);
-    if (activeSelection.room) return sceneForRoom(activeSelection.room).scene;
-    return TOUR_AREAS[0].scenes[0];
-  }, [activeSelection, pickedPlace]);
-  const activeTourUrl = tourUrl(activeScene);
 
   const selectLesson = (item: TodayLessonItem) => {
     setMapSelection(selectionForLesson(item));
@@ -241,27 +205,13 @@ export default function TodayPage() {
   if (!mounted) return <Loading />;
 
   return (
-    <div className="space-y-4">
-      {/* Top title bar without subtitle */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <PageHeader title={t("today.title")} />
-        <div className="flex flex-wrap items-center gap-2">
-          {demoMode && (
-            <div className="inline-flex items-center gap-2 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-900 dark:bg-amber-950 dark:text-amber-200">
-              <span>{t("today.demoLabel")}</span>
-              <Link href="/today" className="underline underline-offset-2">
-                {t("today.demoExit")}
-              </Link>
-            </div>
-          )}
-          <Link href="/timetable" className="btn-outline text-xs">
-            {t("today.toWeek")}
-          </Link>
-        </div>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
-        <section className="min-w-0 space-y-4">
+    <div className="w-full lg:min-h-0 lg:flex-1">
+      <div className="grid gap-4 lg:h-full lg:grid-cols-[minmax(0,0.7fr)_minmax(0,1.45fr)] lg:grid-rows-[minmax(0,1fr)]">
+        <section
+          aria-label={t("today.title")}
+          tabIndex={0}
+          className="min-w-0 space-y-4 rounded-md lg:min-h-0 lg:overflow-y-auto lg:overscroll-y-contain lg:p-0.5 lg:pr-2"
+        >
           {/* Current or next class. */}
           <div className="rounded-md bg-brand-700 p-4 text-white shadow-sm">
             <div className="flex items-center justify-between gap-3">
@@ -370,10 +320,10 @@ export default function TodayPage() {
         </div>
       </div>
 
-      {/* Empty days stay hidden so the schedule remains compact. */}
+      {/* Empty days use two compact rows instead of a tall empty card. */}
       <div id="panel-schedule" role="tabpanel" className="space-y-4">
-        {daysWithLessons.filter((dayItem) => dayItem.lessons.length > 0).map((dayItem) => (
-          <div key={dayItem.isoDate} className="space-y-2">
+        {daysWithLessons.map((dayItem) => (
+          <div key={dayItem.isoDate} className="space-y-1.5">
             {/* Header: thứ + ngày/tháng (ví dụ "Thứ hai, 23/11") */}
             <div className="flex items-center justify-between border-b border-slate-200 pb-1.5 dark:border-slate-800">
               <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -384,11 +334,19 @@ export default function TodayPage() {
                   </span>
                 )}
               </h3>
-              <span className="text-xs text-slate-500">
-                {t("today.count", { n: dayItem.lessons.length })}
-              </span>
+              {dayItem.lessons.length > 0 && (
+                <span className="text-xs text-slate-500">
+                  {t("today.count", { n: dayItem.lessons.length })}
+                </span>
+              )}
             </div>
 
+            {dayItem.lessons.length === 0 ? (
+              <div className="flex items-center justify-center gap-2 py-1 text-sm font-medium text-slate-600 dark:text-slate-300">
+                <PartyPopper className="size-4 text-amber-500" aria-hidden />
+                <span>{t("today.noClass")}</span>
+              </div>
+            ) : (
               <div className="space-y-2">
                 {dayItem.lessons.map((item, idx) => {
                   const status = getLessonStatus(item.lesson, dayItem.isToday);
@@ -447,50 +405,19 @@ export default function TodayPage() {
                   );
                 })}
               </div>
+            )}
           </div>
         ))}
       </div>
         </section>
 
-        <aside className="card self-start p-4 lg:sticky lg:top-4">
-          <header className="mb-3 flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0">
-              <h2 className="text-base font-bold text-slate-900 dark:text-white">
-                {t("today.map.title")}
-              </h2>
-              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
-                {activeSelection.room && (
-                  <span className="rounded-full bg-amber-100 px-2 py-0.5 font-mono font-semibold text-amber-900 dark:bg-amber-950 dark:text-amber-200">
-                    {t("today.room", { room: activeSelection.room })}
-                  </span>
-                )}
-                <span className="rounded-full bg-brand-50 px-2 py-0.5 font-semibold text-brand-800 dark:bg-brand-950 dark:text-brand-200">
-                  {t(placeLabelKey(activePlace))}
-                </span>
-              </div>
-            </div>
-          </header>
-
+        <aside className="card p-3 lg:flex lg:min-h-0 lg:min-w-0 lg:flex-col">
           <CampusMap
             target={activePlace}
             onPick={setPickedPlace}
-            className="border border-slate-200 dark:border-slate-700"
+            fill
+            className="border border-slate-200 dark:border-slate-700 lg:min-h-0 lg:flex-1"
           />
-
-          {activeSelection.room && !activeSelection.place && (
-            <p className="mt-2 text-xs text-amber-800 dark:text-amber-300">
-              {t("campus.unknownBuilding")}
-            </p>
-          )}
-
-          <a
-            href={activeTourUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn-outline mt-3 inline-flex text-xs"
-          >
-            {t("campus.view360")}
-          </a>
         </aside>
       </div>
     </div>

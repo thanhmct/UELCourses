@@ -24,7 +24,7 @@ Hai AI không sửa cùng file cùng lúc (bảng "Khóa phiên" trong HANDOFF).
 - Cấu hình đọc từ biến môi trường (`.env.example`), không hard-code.
 - AI quy chế mặc định `extractive`; không bịa số quyết định/ngày, thiếu nguồn nói "không tìm thấy".
 - Mỗi thay đổi có test chạy được; không sửa test cho "xanh" khi hành vi sai.
-- **Commit:** tiêu đề `[claude|gemini|codex] feat|fix|docs|data|chore: …`. **Không** thêm dòng `Co-Authored-By` hay "Generated with …". Chỉ commit khi chủ dự án cho phép; không commit thay đổi dở của AI khác.
+- **Commit:** tiêu đề `feat|fix|docs|data|chore: …`, **không** tiền tố tên AI (`[claude]`, `[codex]`, `[gemini]`). **Không** thêm dòng `Co-Authored-By` hay "Generated with …". Chỉ commit khi chủ dự án cho phép; không commit thay đổi dở của AI khác.
 
 ## Quy tắc nghiệp vụ (đã chốt, áp dụng mọi nơi)
 - Khóa `Kyy` = tuyển sinh năm 20yy, bắt đầu năm học 20yy–20yy+1 (K26 → 2026–2027). Không dùng kiểu K44/K47.

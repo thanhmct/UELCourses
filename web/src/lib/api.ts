@@ -33,27 +33,6 @@ import type {
   Venue,
 } from "./types";
 import { LANG_STORAGE_KEY, translate, type Lang } from "@/i18n";
-import { mockEquivalents, mockModules, mockSections, mockSemesters } from "@/mocks/modules";
-import {
-  mockAsk,
-  mockBacklinks,
-  mockCompare,
-  mockGraph,
-  mockMarkdown,
-  mockRegulationDocs,
-  mockResolve,
-  stripArticles,
-} from "@/mocks/regulations";
-import {
-  mockCheckProgram,
-  mockElectiveGroups,
-  mockModuleTree,
-  mockProgram,
-  mockProgramGraph,
-  mockPrograms,
-  mockValidProgramGroups,
-} from "@/mocks/programs";
-import { mockModuleComments } from "@/mocks/admin";
 import { stripFrontmatter } from "./vault";
 import { appliesToCohort, effectiveBadge, normalizeArticles } from "./regulations";
 import { matches } from "./text";
@@ -61,6 +40,35 @@ import { venuesFromSections, filterVenues } from "./venues";
 import { parseSchedules } from "./schedule";
 import { connectionErrorMessage, isConnectionError, useDataSource } from "./dataSource";
 import type { AcademicHoliday } from "./holidays";
+import type { ChatContext } from "./chatContext";
+
+const loadModuleMocks = () => {
+  if (process.env.NODE_ENV === "test" || process.env.NEXT_PUBLIC_USE_MOCKS === "true") {
+    return import("@/mocks/modules");
+  }
+  throw new Error("Mock data is disabled in this build");
+};
+
+const loadRegulationMocks = () => {
+  if (process.env.NODE_ENV === "test" || process.env.NEXT_PUBLIC_USE_MOCKS === "true") {
+    return import("@/mocks/regulations");
+  }
+  throw new Error("Mock data is disabled in this build");
+};
+
+const loadProgramMocks = () => {
+  if (process.env.NODE_ENV === "test" || process.env.NEXT_PUBLIC_USE_MOCKS === "true") {
+    return import("@/mocks/programs");
+  }
+  throw new Error("Mock data is disabled in this build");
+};
+
+const loadAdminMocks = () => {
+  if (process.env.NODE_ENV === "test" || process.env.NEXT_PUBLIC_USE_MOCKS === "true") {
+    return import("@/mocks/admin");
+  }
+  throw new Error("Mock data is disabled in this build");
+};
 
 export const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/$/, "");
 
@@ -81,6 +89,7 @@ export interface ApiResult<T> {
 }
 
 const TIMEOUT_MS = 4000;
+const ASK_TIMEOUT_MS = 65_000;
 const RETRY_AFTER_MS = 30_000;
 let downSince = 0;
 
@@ -132,30 +141,30 @@ async function raw<T>(path: string, init?: RequestInit, timeoutMs = TIMEOUT_MS):
  * Call the API; on network failure / timeout / 5xx / 404 for whole endpoint
  * fall back to mock. 4xx other than 404 propagate (real validation errors).
  */
-async function withFallback<T>(path: string, fallback: () => T, init?: RequestInit, map?: (x: unknown) => T): Promise<ApiResult<T>> {
+async function withFallback<T>(path: string, fallback: () => T | Promise<T>, init?: RequestInit, map?: (x: unknown) => T, timeoutMs?: number): Promise<ApiResult<T>> {
   if (process.env.NODE_ENV === "test" && mocksEnabled()) {
     markMock(true);
-    return { data: fallback(), mock: true };
+    return { data: await fallback(), mock: true };
   }
   if (!mocksEnabled()) {
     // Real data only: never substitute mock data; surface the failure to the page.
-    const data = await raw<unknown>(path, init);
+    const data = await raw<unknown>(path, init, timeoutMs);
     markMock(false);
     return { data: map ? map(data) : (data as T), mock: false };
   }
   if (typeof window === "undefined" || (process.env.NODE_ENV === "test" && mocksEnabled()) || Date.now() - downSince < RETRY_AFTER_MS) {
     markMock(true);
-    return { data: fallback(), mock: true };
+    return { data: await fallback(), mock: true };
   }
   try {
-    const data = await raw<unknown>(path, init);
+    const data = await raw<unknown>(path, init, timeoutMs);
     markMock(false);
     return { data: map ? map(data) : (data as T), mock: false };
   } catch (e) {
     if (e instanceof ApiError && e.status >= 400 && e.status < 500 && e.status !== 404) throw e;
     if (!(e instanceof ApiError)) downSince = Date.now();
     markMock(true);
-    return { data: fallback(), mock: true };
+    return { data: await fallback(), mock: true };
   }
 }
 
@@ -250,7 +259,7 @@ export type OutlineData = {
   alternatives?: unknown[];
 };
 
-function getMockProgramAllowedCodes(f: ModuleFilter): Set<string> | null {
+async function getMockProgramAllowedCodes(f: ModuleFilter): Promise<Set<string> | null> {
   const pids: string[] = [];
   if (f.program_id && f.program_id.trim()) pids.push(f.program_id.trim());
   if (f.program_ids) {
@@ -259,6 +268,7 @@ function getMockProgramAllowedCodes(f: ModuleFilter): Set<string> | null {
     }
   }
   if (pids.length === 0) return null;
+  const { mockProgram } = await loadProgramMocks();
   const codes = new Set<string>();
   for (const pid of pids) {
     const p = mockProgram(pid);
@@ -286,8 +296,11 @@ export const api = {
     return { data: await raw<AcademicHoliday[]>(`/api/calendar?${query}`), mock: false };
   },
   moduleFacets: (f: ModuleFilter = {}) =>
-    withFallback<ModuleFacets>(`/api/module-facets${qs(f as Record<string, unknown>)}`, () => {
-      const allowedCodes = getMockProgramAllowedCodes(f);
+    withFallback<ModuleFacets>(`/api/module-facets${qs(f as Record<string, unknown>)}`, async () => {
+      const [{ mockModules }, allowedCodes] = await Promise.all([
+        loadModuleMocks(),
+        getMockProgramAllowedCodes(f),
+      ]);
 
       const creditsSet = new Set<number>();
       if (f.credits !== undefined && f.credits !== "") creditsSet.add(Number(f.credits));
@@ -420,11 +433,15 @@ export const api = {
       };
     }),  health: () => withFallback<{ status: string }>("/api/health", () => ({ status: "mock" })),
 
-  semesters: () => withFallback<Semester[]>("/api/semesters", () => mockSemesters),
+  semesters: () =>
+    withFallback<Semester[]>("/api/semesters", async () => (await loadModuleMocks()).mockSemesters),
 
   modules: (f: ModuleFilter = {}) =>
-    withFallback<Paged<ModuleSummary>>(`/api/modules${qs(f as Record<string, unknown>)}`, () => {
-      const allowedCodes = getMockProgramAllowedCodes(f);
+    withFallback<Paged<ModuleSummary>>(`/api/modules${qs(f as Record<string, unknown>)}`, async () => {
+      const [{ mockModules }, allowedCodes] = await Promise.all([
+        loadModuleMocks(),
+        getMockProgramAllowedCodes(f),
+      ]);
 
       const creditsSet = new Set<number>();
       if (f.credits !== undefined && f.credits !== "") creditsSet.add(Number(f.credits));
@@ -500,30 +517,34 @@ export const api = {
     const q = options ? qs(options as Record<string, unknown>) : "";
     return withFallback<ModuleDetail | null>(
       `/api/modules/${encodeURIComponent(code)}${q}`,
-      () => mockModules.find((m) => m.code === code) ?? null,
+      async () => (await loadModuleMocks()).mockModules.find((m) => m.code === code) ?? null,
     );
   },
 
   classes: (code: string, semester?: string) =>
     withFallback<ClassSection[]>(
       `/api/modules/${encodeURIComponent(code)}/classes${qs({ semester })}`,
-      () => mockSections(semester ?? "").filter((s) => s.module_code === code),
+      async () => (await loadModuleMocks()).mockSections(semester ?? "").filter((s) => s.module_code === code),
       undefined,
       (x) => (Array.isArray(x) ? x.map(normalizeSection) : []),
     ),
 
   equivalents: (q?: string) =>
-    withFallback<EquivalentItem[]>(`/api/equivalents${qs({ q })}`, () =>
-      mockEquivalents.filter(
+    withFallback<EquivalentItem[]>(`/api/equivalents${qs({ q })}`, async () =>
+      (await loadModuleMocks()).mockEquivalents.filter(
         (e) => !q || [e, ...e.equivalents].some((x) => matches(x.code, q) || matches(x.name, q)),
       ),
     ),
 
   equivalent: (code: string) =>
-    withFallback<EquivalentItem | null>(`/api/equivalents/${encodeURIComponent(code)}`, () => mockEquivalents.find((e) => e.code === code) ?? null),
+    withFallback<EquivalentItem | null>(`/api/equivalents/${encodeURIComponent(code)}`, async () =>
+      (await loadModuleMocks()).mockEquivalents.find((e) => e.code === code) ?? null,
+    ),
 
   venues: (q?: string, semester?: string) =>
-    withFallback<Venue[]>(`/api/venues${qs({ q, semester })}`, () => filterVenues(venuesFromSections(mockSections(semester ?? "")), q ?? "")),
+    withFallback<Venue[]>(`/api/venues${qs({ q, semester })}`, async () =>
+      filterVenues(venuesFromSections((await loadModuleMocks()).mockSections(semester ?? "")), q ?? ""),
+    ),
 
   feedback: async (payload: FeedbackPayload): Promise<ApiResult<{ ok: boolean }>> => {
     try {
@@ -545,70 +566,89 @@ export const api = {
   },
 
   regulations: (f: { cohort?: string; status?: string; q?: string } = {}) =>
-    withFallback<RegulationDoc[]>(`/api/regulations${qs(f)}`, () =>
-      mockRegulationDocs()
+    withFallback<RegulationDoc[]>(`/api/regulations${qs(f)}`, async () => {
+      const { mockRegulationDocs, stripArticles } = await loadRegulationMocks();
+      return mockRegulationDocs()
         .filter((d) => appliesToCohort(d, f.cohort) && (!f.status || d.status === f.status) && (!f.q || matches(`${d.title} ${d.decision_no}`, f.q)))
-        .map(stripArticles),
-    ),
+        .map(stripArticles);
+    }),
 
   regulation: (docId: string) =>
     withFallback<RegulationDocDetail | null>(
       `/api/regulations/${encodeURIComponent(docId)}`,
-      () => mockRegulationDocs().find((d) => d.doc_id === docId) ?? null,
+      async () => (await loadRegulationMocks()).mockRegulationDocs().find((d) => d.doc_id === docId) ?? null,
       undefined,
       (x) => (x ? { ...(x as RegulationDocDetail), articles: normalizeArticles((x as RegulationDocDetail).articles) } : null),
     ),
 
-  ask: (question: string, cohort?: string, mode: "extractive" | "llm" = "extractive") =>
+  // Single answer mode: the server answers with verbatim quotes (LLM-checked when available).
+  ask: (question: string, cohort?: string, context?: ChatContext) =>
     withFallback<AskResponse>(
       "/api/regulations/ask",
-      () => mockAsk(question, cohort),
-      { method: "POST", body: JSON.stringify({ question, cohort, mode }) },
+      async () => (await loadRegulationMocks()).mockAsk(question, cohort),
+      { method: "POST", body: JSON.stringify({ question, cohort, context }) },
+      undefined,
+      ASK_TIMEOUT_MS,
     ),
 
   askSources: (scope: AskScope, question: string, cohort: string | undefined, language: Lang) =>
     raw<AskResponse | ModuleAskResponse>(`/api/${scope}/ask`, {
       method: "POST",
       body: JSON.stringify({ question, cohort, language }),
-    }, 65_000),
+    }, ASK_TIMEOUT_MS),
 
   rateAnswer: (scope: AskScope, answer_id: string, helpful: boolean) =>
     raw<void>("/api/ask/feedback", { method: "POST", body: JSON.stringify({ scope, answer_id, helpful }) }),
 
   compare: (topic: string, cohorts: string[]) =>
-    withFallback<CompareResponse>("/api/regulations/compare", () => mockCompare(topic, cohorts), {
+    withFallback<CompareResponse>("/api/regulations/compare", async () =>
+      (await loadRegulationMocks()).mockCompare(topic, cohorts), {
       method: "POST",
       body: JSON.stringify({ topic, cohorts }),
     }),
 
   markdown: (docId: string) =>
-    withFallback<RegulationMarkdown | null>(`/api/regulations/${encodeURIComponent(docId)}/markdown`, () => mockMarkdown(docId), undefined, (x) =>
+    withFallback<RegulationMarkdown | null>(`/api/regulations/${encodeURIComponent(docId)}/markdown`, async () =>
+      (await loadRegulationMocks()).mockMarkdown(docId), undefined, (x) =>
       x ? { ...(x as RegulationMarkdown), markdown: stripFrontmatter(String((x as RegulationMarkdown).markdown ?? "")) } : null,
     ),
 
   backlinks: (docId: string) =>
-    withFallback<Backlink[]>(`/api/regulations/${encodeURIComponent(docId)}/backlinks`, () => mockBacklinks(docId)),
-
-  graph: (cohort?: string) => withFallback<RegulationGraph>(`/api/regulations/graph${qs({ cohort })}`, () => mockGraph(cohort)),
-
-  resolve: (ref: string) =>
-    withFallback<{ doc_id: string; anchor: string } | null>(`/api/regulations/resolve${qs({ ref })}`, () => mockResolve(ref)),
-
-  expiring: (withinDays = 90) =>
-    withFallback<RegulationDoc[]>(`/api/regulations/expiring${qs({ within_days: withinDays })}`, () =>
-      mockRegulationDocs()
-        .filter((d) => ["expiring"].includes(effectiveBadge(d, new Date(), withinDays)))
-        .map(stripArticles),
+    withFallback<Backlink[]>(`/api/regulations/${encodeURIComponent(docId)}/backlinks`, async () =>
+      (await loadRegulationMocks()).mockBacklinks(docId),
     ),
 
+  graph: (cohort?: string) =>
+    withFallback<RegulationGraph>(`/api/regulations/graph${qs({ cohort })}`, async () =>
+      (await loadRegulationMocks()).mockGraph(cohort),
+    ),
+
+  resolve: (ref: string) =>
+    withFallback<{ doc_id: string; anchor: string } | null>(`/api/regulations/resolve${qs({ ref })}`, async () =>
+      (await loadRegulationMocks()).mockResolve(ref),
+    ),
+
+  expiring: (withinDays = 90) =>
+    withFallback<RegulationDoc[]>(`/api/regulations/expiring${qs({ within_days: withinDays })}`, async () => {
+      const { mockRegulationDocs, stripArticles } = await loadRegulationMocks();
+      return mockRegulationDocs()
+        .filter((d) => ["expiring"].includes(effectiveBadge(d, new Date(), withinDays)))
+        .map(stripArticles);
+    }),
+
   programs: (f: { cohort?: string; q?: string; degree?: string } = {}) =>
-    withFallback<ProgramSummary[]>(`/api/programs${qs(f)}`, () => mockPrograms(f)),
+    withFallback<ProgramSummary[]>(`/api/programs${qs(f)}`, async () =>
+      (await loadProgramMocks()).mockPrograms(f),
+    ),
 
   validGroups: () =>
-    withFallback<ValidProgramGroup[]>("/api/programs/valid-groups", () => mockValidProgramGroups()),
+    withFallback<ValidProgramGroup[]>("/api/programs/valid-groups", async () =>
+      (await loadProgramMocks()).mockValidProgramGroups(),
+    ),
 
   program: (id: string) =>
-    withFallback<ProgramDetail | null>(`/api/programs/${encodeURIComponent(id)}`, () => {
+    withFallback<ProgramDetail | null>(`/api/programs/${encodeURIComponent(id)}`, async () => {
+      const { mockProgram } = await loadProgramMocks();
       const direct = mockProgram(id);
       if (direct) return direct;
       if (id.endsWith("E")) {
@@ -630,11 +670,12 @@ export const api = {
   electiveGroups: (id: string, track?: string) =>
     withFallback<ElectiveGroup[]>(
       `/api/programs/${encodeURIComponent(id)}/elective-groups${qs({ track })}`,
-      () => mockElectiveGroups(id),
+      async () => (await loadProgramMocks()).mockElectiveGroups(id),
     ),
 
   programGraph: (id: string) =>
-    withFallback<ProgramGraph | null>(`/api/programs/${encodeURIComponent(id)}/graph`, () => {
+    withFallback<ProgramGraph | null>(`/api/programs/${encodeURIComponent(id)}/graph`, async () => {
+      const { mockProgramGraph } = await loadProgramMocks();
       const direct = mockProgramGraph(id);
       if (direct) return direct;
       if (id.endsWith("E")) {
@@ -646,7 +687,8 @@ export const api = {
   moduleTree: (code: string, options?: { program_id?: string; direction?: "prereq" | "unlocks"; depth?: number }) =>
     withFallback<ModuleTreeNode | null>(
       `/api/modules/${encodeURIComponent(code)}/tree${qs(options ?? {})}`,
-      () => {
+      async () => {
+        const { mockModuleTree } = await loadProgramMocks();
         const pid = options?.program_id;
         const basePid = pid && pid.endsWith("E") ? pid.slice(0, -1) : pid;
         return mockModuleTree(code, basePid ? { ...options, program_id: basePid } : options);
@@ -657,7 +699,8 @@ export const api = {
     id: string,
     req: { completed: { code: string; grade?: string | number }[]; planned: Record<string, string[]> },
   ) =>
-    withFallback<CheckResult>(`/api/programs/${encodeURIComponent(id)}/check`, () => {
+    withFallback<CheckResult>(`/api/programs/${encodeURIComponent(id)}/check`, async () => {
+      const { mockCheckProgram, mockProgram } = await loadProgramMocks();
       const p = mockProgram(id) ?? (id.endsWith("E") ? mockProgram(id.slice(0, -1)) : null);
       if (!p) {
         return {
@@ -676,7 +719,8 @@ export const api = {
   moduleComments: (code: string, page = 1, size = 20) =>
     withFallback<ModuleCommentListResponse>(
       `/api/modules/${encodeURIComponent(code)}/comments${qs({ page, size })}`,
-      () => {
+      async () => {
+        const { mockModuleComments } = await loadAdminMocks();
         const list = mockModuleComments[code] || [];
         const approved = list.filter((c) => c.status === "approved");
         const total = approved.length;

@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 import pytest
 from app.config import get_settings
-from app.models import AnalyticsDaily, AnalyticsEvent, AnalyticsPair, ClassSection, Lesson, Module
+from app.models import AdminSetting, AnalyticsDaily, AnalyticsEvent, AnalyticsPair, ClassSection, Lesson, Module, RegulationDocument
 from app.services.analytics import (
     aggregate_analytics,
     purge_analytics,
@@ -259,6 +259,60 @@ def test_trends_requires_admin_dev_open(client, monkeypatch):
 
     res2 = client.get("/api/admin/trends/pairs")
     assert res2.status_code == 404
+
+
+def test_chat_topics_aggregate_catalog_targets_without_storing_questions(client, db, monkeypatch):
+    settings = get_settings()
+    monkeypatch.setattr(settings, "env", "development")
+    monkeypatch.setattr(settings, "admin_dev_open", False)
+    path = "/api/admin/trends/chat-topics"
+    assert client.get(path).status_code == 404
+
+    doc_id = "uel-cvht-1912-2024"
+    db.add_all([
+        RegulationDocument(id=doc_id, title="Quy định công tác Cố vấn học tập"),
+        Module(code="BBA4001", name="Quản trị chuỗi cung ứng"),
+        Module(code="BBA4002", name="Học phần ẩn", is_hidden=True),
+    ])
+    db.commit()
+    for i in range(5):
+        response = client.post("/api/analytics/events", json={
+            "anon_id": f"00000000-0000-4000-8000-{i:012d}",
+            "events": [{"type": "chat_regulation", "query": doc_id, "filters": {"question": "Nội dung chat"}}],
+        })
+        assert response.status_code == 204
+
+    payload = {
+        "anon_id": "10000000-0000-4000-8000-000000000000",
+        "events": [
+            {"type": "chat_module", "module_code": "bba4001", "query": "Nội dung riêng của câu hỏi"},
+            {"type": "chat_module", "module_code": "BBA4002"},
+            {"type": "chat_regulation", "query": "Nội dung riêng của câu hỏi"},
+        ],
+    }
+    assert client.post("/api/analytics/events", json=payload, headers={"DNT": "1"}).status_code == 204
+    assert db.query(AnalyticsEvent).count() == 5
+    assert client.post("/api/analytics/events", json=payload).status_code == 204
+    rows = db.query(AnalyticsEvent).all()
+    assert len(rows) == 8
+    assert {row.query_text for row in rows} == {doc_id, None}
+    assert {row.module_code for row in rows} == {"BBA4001", None}
+    assert all(row.filters is None and row.page is None for row in rows)
+
+    monkeypatch.setattr(settings, "admin_dev_open", True)
+    response = client.get(path)
+    assert response.status_code == 200
+    topics = {(row["scope"], row["target"]): row for row in response.json()["topics"]}
+    assert topics[("regulations", doc_id)]["count"] == 5
+    assert topics[("modules", "BBA4001")]["count"] == "<5"
+    assert topics[("regulations", None)]["title"] is None
+    assert ("modules", "BBA4002") not in topics
+    assert client.get(path, params={"from": "2000-01-01", "to": "2000-01-07"}).json() == {"topics": []}
+
+    db.add(AdminSetting(key="analytics.enabled", value=False))
+    db.commit()
+    assert client.post("/api/analytics/events", json=payload).status_code == 204
+    assert db.query(AnalyticsEvent).count() == 8
 
 
 def test_purge_analytics(db):

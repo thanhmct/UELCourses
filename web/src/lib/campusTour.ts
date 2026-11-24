@@ -1,6 +1,22 @@
+import { CAMPUS_PLACES } from "@/lib/campusPlaces";
+
 export const TOUR_BASE = "https://web-dhkinhteluat.vt360.vn/";
 
-export type CampusPlace = "A" | "B1" | "B2" | "sports" | "parking" | "gate";
+export type CampusPlace =
+  | "A"
+  | "hall"
+  | "A3"
+  | "B1"
+  | "B2"
+  | "canteen"
+  | "carPark"
+  | "bikePark"
+  | "lotusPond"
+  | "sports"
+  | "gate1"
+  | "gate2"
+  | "gate2A"
+  | "gate3";
 
 export type TourArea = {
   id: string;
@@ -79,7 +95,12 @@ export function tourUrl(scene: string): string {
 
 export function placeForRoom(room: string): CampusPlace | null {
   const normalized = room.trim().toUpperCase();
-  if (/^A\d*(?:[.\s-]|$)/.test(normalized)) return "A";
+  if (/HỘI\s*TRƯỜNG|(?:^|[.\s/-])HT(?:[.\s/-]|$)/i.test(normalized)) return "hall";
+  if (/SÂN|NHÀ\s*THI\s*ĐẤU|(?:^|[.\s/-])NTĐ(?:[.\s/-]|$)|THỂ\s*DỤC/i.test(normalized)) {
+    return "sports";
+  }
+  if (/^A3(?:[.\s-]|$)/.test(normalized)) return "A3";
+  if (/^(?:A|A1|A2)(?:[.\s-]|$)/.test(normalized)) return "A";
   if (/^B1(?:[.\s-]|$)/.test(normalized)) return "B1";
   if (/^B2(?:[.\s-]|$)/.test(normalized)) return "B2";
   if (/^B(?:[.\s-]|$)/.test(normalized)) return "B1";
@@ -87,7 +108,7 @@ export function placeForRoom(room: string): CampusPlace | null {
 }
 
 export function isPhysicalEducation(code: string, name: string): boolean {
-  return /^MI/i.test(code.trim()) || /thể chất|GDTC|physical education/i.test(name);
+  return /^(?:MI|PE)/i.test(code.trim()) || /thể chất|GDTC|physical education/i.test(name);
 }
 
 export function placeForLesson(code: string, name: string, room: string): CampusPlace | null {
@@ -101,19 +122,21 @@ export function placeForLesson(code: string, name: string, room: string): Campus
 }
 
 export function sceneForPlace(place: CampusPlace): string {
-  const scenes: Record<CampusPlace, string> = {
-    A: "Toàn cảnh Tòa A",
-    B1: "Tòa B1 - Sảnh tầng G",
-    B2: "Toàn cảnh Tòa B1- B2",
-    sports: "Sân Thể thao & Nhà thi đấu",
-    parking: "Khu Nhà xe",
-    gate: "Cổng chính UEL",
-  };
-  return scenes[place];
+  return CAMPUS_PLACES[place].tourScene ?? TOUR_AREAS[0].scenes[0];
 }
 
 export function sceneForRoom(room: string): { scene: string; areaId: string; exact: boolean } {
   const normalized = room.trim().toUpperCase();
+  const mappedPlace = placeForRoom(room);
+  if (mappedPlace === "sports") {
+    return { scene: sceneForPlace("sports"), areaId: "outdoor", exact: false };
+  }
+  if (mappedPlace === "hall") {
+    return { scene: sceneForPlace("hall"), areaId: "A", exact: false };
+  }
+  if (mappedPlace === "A3") {
+    return { scene: sceneForPlace("A3"), areaId: "outdoor", exact: false };
+  }
   const parts = normalized.match(/^([A-Z]+)(\d*)\s*(?:[.-]\s*|\s+)(\d+)/);
   const building = parts ? `${parts[1]}${parts[2]}` : (normalized.match(/^([A-Z]+\d*)/)?.[1] ?? "");
   const roomNumber = parts?.[3] ?? "";

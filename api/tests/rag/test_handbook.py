@@ -13,6 +13,15 @@ from app.rag.providers import LLMProvider
 from app.rag.service import RegulationService
 from app.rag.storage import load_db_index, publish_index
 
+
+def test_uppercase_certificate_scores_remain_quotable():
+    doc = RegulationDoc(doc_id="handbook", title="Sổ tay K26", source_type="handbook", applies_to_cohorts=["K26"])
+    chunks = build_handbook_chunks(doc, [(35, "CHUẨN NGOẠI NGỮ\nIELTS (*) 5.0 6.0\nTOEIC 550 785")])
+    assert len(chunks) == 1
+    assert chunks[0].heading == "CHUẨN NGOẠI NGỮ"
+    assert "IELTS (*) 5.0 6.0" in chunks[0].text and "TOEIC 550 785" in chunks[0].text
+
+
 QUESTION = "Báo mất thẻ ký túc xá"
 SUMMARY_TEXT = "Nếu làm mất thẻ ký túc xá, sinh viên báo tại quầy tiếp nhận."
 OFFICIAL_TEXT = "1. Sinh viên làm mất thẻ ký túc xá phải báo tại văn phòng quản lý."

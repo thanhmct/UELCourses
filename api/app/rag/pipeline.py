@@ -230,7 +230,7 @@ def build_index(reg_dir: Path | str | None = None, today: date | None = None,
             inferred = infer_applies_from(scope_text)
             if inferred:
                 doc.applies_from_cohort, doc.applies_from_source = inferred, "text"
-        doc.indexed = bool(parsed and parsed.articles)
+        doc.indexed = bool(parsed and (parsed.articles or parsed.appendices))
         docs.append(doc)
         counts = parsed.counts() if parsed else {"articles": 0, "clauses": 0, "points": 0}
         chunks = build_chunks(doc, parsed) if parsed is not None else []

@@ -63,7 +63,13 @@ export function Logo() {
   return (
     <Link href="/" className="flex items-center gap-2" aria-label={t("header.home")}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/brand/uelpath-wordmark-tight.png" alt="UELPATH" className="h-[29px] w-auto shrink-0 dark:rounded-md dark:bg-white dark:px-1.5 dark:py-1" />
+      <img
+        src="/brand/uelpath-wordmark-tight.webp"
+        alt="UELPATH"
+        width={166}
+        height={29}
+        className="h-[29px] w-auto shrink-0 dark:rounded-md dark:bg-white dark:px-1.5 dark:py-1"
+      />
       <span className="holiday-flag header-holiday-flag" aria-hidden="true">★</span>
     </Link>
   );

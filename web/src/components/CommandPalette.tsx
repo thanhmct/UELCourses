@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { create } from "zustand";
 import { api } from "@/lib/api";
 import { getMarkdown } from "@/lib/vaultCache";
-import { extractOutline } from "@/lib/vault";
+import { extractOutline, wikilinkHref, type OutlineItem } from "@/lib/vault";
 import { useWorkspace } from "@/lib/workspace";
 import type { RegulationDoc } from "@/lib/types";
 import { useT } from "@/i18n";
@@ -14,11 +14,8 @@ import { NAV } from "./Header";
 const usePalette = create<{ open: boolean; set: (v: boolean) => void }>((set) => ({ open: false, set: (open) => set({ open }) }));
 export const openCommandPalette = () => usePalette.getState().set(true);
 
-interface ArticleItem {
+interface ArticleItem extends OutlineItem {
   doc: RegulationDoc;
-  anchor: string;
-  number: string;
-  title: string;
 }
 
 const GROUP = "text-xs text-slate-500 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1";
@@ -54,7 +51,7 @@ export function CommandPalette() {
       const items = await Promise.all(
         r.data.map(async (d) => {
           const md = await getMarkdown(d.doc_id);
-          return md ? extractOutline(md.markdown).map((o) => ({ doc: d, anchor: o.anchor, number: o.number, title: o.title })) : [];
+          return md ? extractOutline(md.markdown).map((o) => ({ doc: d, ...o })) : [];
         }),
       );
       setArticles(items.flat());
@@ -67,7 +64,7 @@ export function CommandPalette() {
   };
   const goDoc = (doc: string, anchor?: string) => {
     useWorkspace.getState().open(doc, anchor);
-    if (path !== "/regulations") router.push("/regulations");
+    router.push(wikilinkHref(doc, anchor));
     close();
   };
 
@@ -113,7 +110,7 @@ export function CommandPalette() {
         {search.trim() && (
           <Command.Group heading={t("pal.articles")} className={GROUP}>
             {articles.map((a) => (
-              <Command.Item key={`${a.doc.doc_id}#${a.anchor}`} value={`${a.number} ${a.title} ${a.doc.decision_no} ${a.doc.doc_id}#${a.anchor}`} onSelect={() => goDoc(a.doc.doc_id, a.anchor)} className={ITEM}>
+              <Command.Item key={`${a.doc.doc_id}#${a.key}`} value={`${a.number} ${a.title} ${a.doc.decision_no} ${a.doc.doc_id}#${a.key}`} onSelect={() => goDoc(a.doc.doc_id, a.anchor)} className={ITEM}>
                 {t("pal.articleLabel", { n: a.number, title: a.title })} <span className="text-slate-500">· {a.doc.decision_no}</span>
               </Command.Item>
             ))}

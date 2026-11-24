@@ -6,6 +6,7 @@ from pathlib import Path
 
 source = Path('data/raw/ctdt_programs.json')
 target = Path('web/src/data/programs_catalog.json')
+program_ids_target = Path('web/src/data/program_ids.json')
 programs = json.loads(source.read_text(encoding='utf-8'))
 catalog = json.loads(target.read_text(encoding='utf-8'))
 
@@ -43,4 +44,9 @@ for pid, rows in programs.items():
     }
 
 target.write_text(json.dumps(catalog, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+program_ids = sorted({str(summary['program_id']) for summary in catalog['summaries']})
+program_ids_target.write_text(
+    json.dumps(program_ids, ensure_ascii=False, indent=2) + '\n',
+    encoding='utf-8',
+)
 print(f"detail programs: {len(catalog['details'])}")

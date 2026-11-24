@@ -13,14 +13,17 @@ from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.models import (
+    AdminSetting,
     AnalyticsDaily,
     AnalyticsEvent,
     AnalyticsPair,
     ClassSection,
     Lesson,
     Module,
+    RegulationDocument,
 )
 
+CHAT_EVENT_TYPES = {"chat_regulation", "chat_module"}
 ALLOWED_EVENT_TYPES: set[str] = {
     "module_view",
     "timetable_add",
@@ -34,9 +37,10 @@ ALLOWED_EVENT_TYPES: set[str] = {
     "program_set",
     "ics_export",
     "share_link",
-}
+} | CHAT_EVENT_TYPES
 
 PROGRAM_CODE_REGEX = re.compile(r"^K\d{2}\d{3}[A-Z0-9]*$")
+ANON_UUID = re.compile(r"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}", re.IGNORECASE)
 
 # In-memory sliding window rate limiting
 _anon_rate_window: dict[str, list[float]] = {}
@@ -108,12 +112,23 @@ def record_events(
 
     records: list[AnalyticsEvent] = []
     now_utc = datetime.now(timezone.utc)
+    chat_enabled = None
 
     for item in events_slice:
         if not isinstance(item, dict):
             continue
         ev_type = item.get("type")
-        if not ev_type or ev_type not in ALLOWED_EVENT_TYPES:
+        if not isinstance(ev_type, str) or ev_type not in ALLOWED_EVENT_TYPES:
+            continue
+
+        if ev_type in CHAT_EVENT_TYPES:
+            if not ANON_UUID.fullmatch(anon_id.strip()):
+                continue
+            if chat_enabled is None:
+                setting = db.get(AdminSetting, "analytics.enabled")
+                chat_enabled = setting is None or setting.value is not False
+            if chat_enabled:
+                records.append(_chat_event(db, item, clean_anon_id.lower(), ev_type, now_utc))
             continue
 
         module_code = item.get("module_code")
@@ -190,6 +205,25 @@ def record_events(
         db.commit()
 
     return len(records)
+
+
+def _chat_event(db: Session, item: dict[str, Any], anon_id: str, event_type: str,
+                now: datetime) -> AnalyticsEvent:
+    # Accept only public catalog identifiers. All other payload fields are discarded.
+    event = AnalyticsEvent(anon_id=anon_id, event_type=event_type, created_at=now)
+    if event_type == "chat_regulation":
+        doc_id = item.get("query")
+        if isinstance(doc_id, str) and 0 < len(doc_id) <= 64:
+            document = db.get(RegulationDocument, doc_id)
+            if document is not None:
+                event.query_text = document.id
+    else:
+        code = item.get("module_code")
+        if isinstance(code, str) and 0 < len(code) <= 64:
+            module = db.get(Module, code.upper())
+            if module is not None and not module.is_hidden and not module.is_sample:
+                event.module_code = module.code
+    return event
 
 
 def aggregate_analytics(
@@ -784,6 +818,33 @@ def get_trend_search_no_results(
             "anonymized": r.anon_cnt < K_ANONYMITY_THRESHOLD,
         })
     return res
+
+
+def get_trend_chat_topics(db: Session, days: int = 30, from_date: date | None = None,
+                          to_date: date | None = None) -> list[dict[str, Any]]:
+    end = datetime.combine(to_date, datetime.max.time(), tzinfo=timezone.utc) if to_date else datetime.now(timezone.utc)
+    start = datetime.combine(from_date, datetime.min.time(), tzinfo=timezone.utc) if from_date else end - timedelta(days=days)
+    # Join against the catalog again so removed documents and hidden modules have no identifying label.
+    identifier = func.coalesce(RegulationDocument.id, Module.code).label("target")
+    title = func.coalesce(RegulationDocument.title, Module.name).label("title")
+    count = func.count(AnalyticsEvent.id).label("total")
+    visitors = func.count(distinct(AnalyticsEvent.anon_id)).label("visitors")
+    rows = db.execute(
+        select(AnalyticsEvent.event_type, identifier, title, count, visitors)
+        .select_from(AnalyticsEvent)
+        .outerjoin(RegulationDocument, RegulationDocument.id == AnalyticsEvent.query_text)
+        .outerjoin(Module, and_(Module.code == AnalyticsEvent.module_code,
+                                Module.is_hidden.is_(False), Module.is_sample.is_(False)))
+        .where(AnalyticsEvent.event_type.in_(CHAT_EVENT_TYPES), AnalyticsEvent.created_at.between(start, end))
+        .group_by(AnalyticsEvent.event_type, identifier, title)
+        .order_by(count.desc(), AnalyticsEvent.event_type, identifier)
+        .limit(20)
+    )
+    return [
+        {"scope": "regulations" if row.event_type == "chat_regulation" else "modules",
+         "target": row.target, "title": row.title, "count": mask_anonymity(row.total, row.visitors)}
+        for row in rows
+    ]
 
 
 def get_trend_classes_for_module(

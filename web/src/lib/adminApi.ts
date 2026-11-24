@@ -30,6 +30,7 @@ import type {
   TrendModuleItem,
   TrendPairItem,
   TrendSearchItem,
+  TrendChatTopic,
   TrendSlotItem,
 } from "./types";
 import {
@@ -351,6 +352,10 @@ export const adminApi = {
   } = {}): Promise<{ searches: TrendSearchItem[] }> {
     const qs = this.buildQueryString(params);
     return this.request<{ searches: TrendSearchItem[] }>(`/api/admin/trends/search${qs}`);
+  },
+
+  async getTrendsChatTopics(params: { days?: number; from?: string; to?: string } = {}): Promise<{ topics: TrendChatTopic[] }> {
+    return this.request(`/api/admin/trends/chat-topics${this.buildQueryString(params)}`);
   },
 
   async getTrendsClasses(moduleCode: string, semester?: string): Promise<{ module_code: string; classes: TrendClassItem[] }> {

@@ -42,7 +42,7 @@ GET  /api/feedback/stats                           -> tổng hợp cho phân tí
 # RAG quy chế (router do regulations-rag cung cấp tại api/app/rag/router.py, biến `router`)
 GET  /api/regulations?cohort=&status=&q=           -> [RegulationDoc]
 GET  /api/regulations/{doc_id}                     -> RegulationDoc + articles[]
-POST /api/regulations/ask   {question, cohort?, mode?:"extractive"|"llm"}
+POST /api/regulations/ask   {question, cohort?, mode?:"extractive"|"llm", context?}
      -> {answer, citations:[{doc_id, decision_no, article, clause, quote, effective_from, effective_to, status}], warnings:[...], mode}
 POST /api/regulations/compare {topic, cohorts:[..]} -> {rows:[{cohort, doc, article, quote}], differences:[...]}
 GET  /api/regulations/expiring?within_days=90      -> [RegulationDoc]
@@ -58,6 +58,8 @@ GET  /api/regulations/resolve?ref=                  -> {doc_id, anchor} # phân 
 ```
 
 Vault Markdown được sinh ra tại `REGULATIONS_DIR/vault/<doc_id>.md` (YAML frontmatter + nội dung), mở được trực tiếp bằng app Obsidian thật như một bonus. Giao diện `/regulations` theo bố cục Obsidian: cây văn bản trái (lọc khóa/chủ đề/hiệu lực) · trình đọc giữa (anchor từng Điều/Khoản, hover preview link, panel backlinks "Được dẫn chiếu bởi", outline) · chat AI phải (trích dẫn là wikilink, click mở đúng Khoản và highlight) · Graph view (văn bản & quan hệ thay thế/sửa đổi/dẫn chiếu, màu theo hiệu lực) · split view so sánh 2 khóa · ghi chú/highlight cá nhân theo Điều (localStorage) · command palette Ctrl+K.
+
+Chat gửi `context` theo từng câu hỏi. Trường `program_ids` và `degree` bổ sung hồ sơ học tập. Các trường `timetable`, `planner` và `theme` được dùng tại API UELPATH để trả lời về dữ liệu trên thiết bị (`mode: "context"`) hoặc thêm `workspace_summary` bên cạnh câu trả lời quy chế. Ngữ cảnh yêu cầu không được lưu vào database.
 
 Kiểu dữ liệu chính:
 

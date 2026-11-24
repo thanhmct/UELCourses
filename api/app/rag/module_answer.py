@@ -281,6 +281,8 @@ def answer_module(db: Session, question: str, *, cohort: str | None = None, prog
         facts.remove("required")
     if "assessment" in kinds and not _matches(r"tin chi|credits?", remaining):
         facts = [kind for kind in facts if kind != "classes"]
+    if not kinds and not facts and _matches(r"de cuong|syllabus", remaining):
+        kinds = list(_SECTION_PATTERNS)
     if facts and not kinds:
         return _facts(db, module, program_id, semester or _semester(query), facts)
     if not kinds and not remaining.strip(" ?."):
