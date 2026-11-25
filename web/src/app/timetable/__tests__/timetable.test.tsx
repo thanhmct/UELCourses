@@ -467,12 +467,112 @@ describe("Phương án và danh sách lớp thời khóa biểu", () => {
     vi.spyOn(api, "outline").mockResolvedValue(null);
     useTimetable.getState().addModule(course, classCode);
     render(<TimetablePage />);
-    const option = await screen.findByRole("option", { name: /^261BIM205001/ });
+    // Mở dropdown chọn lớp (hiển thị trên cả desktop và điện thoại).
+    const toggle = await screen.findByRole("button", { name: "Choose class of BIM2050" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+
+    // Danh sách lớp là các box (radio trong label), không còn <option> của select.
+    const fieldset = screen.getByRole("group", { name: "Choose class of BIM2050" });
+    const option = within(fieldset).getByText(/^261BIM205001/).closest("label") as HTMLElement;
     expect(option).toHaveTextContent("261BIM205001 · Lecturer Nguyễn An");
-    expect(screen.getByText("Lecturer Nguyễn An", { selector: "p" })).toBeVisible();
+    expect(option).toHaveTextContent("Lecturer Nguyễn An");
     expect(option).toHaveTextContent("Thursday, Periods 10–12 (15:15–17:45), 10/09/2026–22/10/2026");
     expect(option).not.toHaveTextContent(/Tiết|One day|05\/11|12\/11/i);
     expect(screen.getByRole("button", { name: "Draft 1" })).toBeInTheDocument();
+  });
+
+  it("hiển thị danh sách lớp dạng dropdown nổi trên cả desktop (max-height 320px) lẫn điện thoại (tối đa 3 mục)", async () => {
+    let isPhone = false;
+    vi.spyOn(window, "matchMedia").mockImplementation((query: string) => ({
+      matches: query === "(max-width: 767px)" ? isPhone : false,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+    vi.spyOn(Element.prototype, "getClientRects").mockImplementation(function (this: Element) {
+      return (this.tagName === "LABEL" ? [new DOMRect(0, 0, 200, 60)] : []) as unknown as DOMRectList;
+    });
+
+    const course = { code: "BAA2028", name: "Nguyên lý kế toán", credits: 3 };
+    const sections = [1, 2, 3, 4, 5].map((n) => ({
+      module_code: course.code,
+      class_code: `261BAA20280${n}`,
+      lecturer: `Giảng viên ${n}`,
+      lessons: [{ weekday: 2, start_period: 1, end_period: 3, start_time: "07:00", end_time: "09:30", date_start: "2026-09-07", date_end: "2026-09-07" }],
+    }));
+    vi.spyOn(api, "classes").mockResolvedValue({ data: sections, mock: false });
+    vi.spyOn(api, "outline").mockResolvedValue({
+      module_code: course.code,
+      assessments: [{ item_code: "A3", component: "Thi trắc nghiệm", item_name: "Thi trắc nghiệm" }],
+    } as never);
+
+    useTimetable.getState().addModule(course, "261BAA202801");
+    render(<TimetablePage />);
+
+    const toggle = await screen.findByRole("button", { name: "Chọn lớp BAA2028" });
+    const row = toggle.closest("li") as HTMLElement;
+    expect(row).toHaveTextContent("BAA2028 Nguyên lý kế toán");
+    expect(row).toHaveTextContent("3 TC · Thi trắc nghiệm");
+    expect(row).toHaveTextContent(/Tổng ~2\.5 giờ/);
+
+    // Nút mở/đóng hiển thị cả desktop (không có desk:hidden) và mặc định đóng.
+    expect(toggle.className).not.toContain("desk:hidden");
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(toggle).toHaveTextContent("261BAA202801 · Giảng viên Giảng viên 1");
+
+    const fieldset = within(row).getByRole("group", { name: "Chọn lớp BAA2028", hidden: true });
+    expect(fieldset).toHaveClass("hidden");
+    expect(fieldset.className).not.toMatch(/\bdesk:(static|grid|max-h-none|overflow-visible)\b/);
+
+    // Desktop: mở thành dropdown nổi, max-height ~320px (md:max-h-80), không giới hạn 3 mục hay .dropdown-scroll.
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(fieldset).toHaveClass("absolute", "shadow-lg", "overflow-y-auto", "md:max-h-80");
+    expect(fieldset).not.toHaveClass("hidden", "dropdown-scroll");
+    expect(fieldset.style.maxHeight).toBe("");
+    expect(row).toHaveClass("relative", "z-30");
+
+    // Chọn lớp khác sẽ cập nhật lớp và tự đóng dropdown.
+    const secondRadio = within(fieldset).getByDisplayValue("261BAA202802");
+    fireEvent.click(secondRadio);
+    expect(useTimetable.getState().bySemester[semesterId][0].class_code).toBe("261BAA202802");
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(toggle).toHaveTextContent("261BAA202802 · Giảng viên Giảng viên 2");
+    expect(fieldset).toHaveClass("hidden");
+
+    // Đóng bằng Escape và bấm ra ngoài.
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    fireEvent.mouseDown(document.body);
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+
+    // Điện thoại: với > 3 lớp, applyMaxVisibleItems giới hạn 3 mục và bật .dropdown-scroll.
+    isPhone = true;
+    vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
+      if (this === fieldset) return new DOMRect(0, 100, 300, 320);
+      const index = Array.from(fieldset.children).indexOf(this);
+      if (index >= 0) return new DOMRect(0, 108 + index * 64, 280, 60);
+      return new DOMRect(0, 0, 300, 40);
+    });
+    fireEvent.click(toggle);
+    expect(fieldset).toHaveClass("dropdown-scroll");
+    expect(fieldset.style.maxHeight).toBe("208px");
+
+    // Nếu học phần đang ẩn (opacity-60), khi mở dropdown thì <li> không bị mờ để dropdown giữ nền đặc.
+    fireEvent.click(within(row).getByRole("button", { name: "Ẩn BAA2028" }));
+    expect(row).not.toHaveClass("opacity-60");
+    expect(toggle).toHaveClass("opacity-60");
   });
 });
 
@@ -1166,7 +1266,7 @@ describe("6. Brief W22: Giao diện khung cố định, không văn bản cảnh
     expect(screen.queryByText(/Vi phạm quy định xếp lớp/i)).toBeNull();
   });
 
-  it("mở rộng hàng có hai lớp trùng giờ và giữ chiều cao đó khi đổi tuần", () => {
+  it("mở rộng hàng có hai lớp trùng giờ; autofit theo đúng nội dung tuần đang xem khi đổi tuần", () => {
     const props = { semesterBlocks: conflictBlocks, alternatives: {}, colors: {}, onChangeClass: vi.fn() };
     const { rerender } = render(<TimetableGrid {...props} blocks={conflictBlocks} />);
     const thursday = screen.getByRole("row", { name: "Thứ 5" });
@@ -1177,10 +1277,12 @@ describe("6. Brief W22: Giao diện khung cố định, không văn bản cảnh
       expect(row.lastElementChild).toHaveStyle({ height: row === thursday ? "120px" : "57px" });
     }
 
+    // Đổi sang tuần chỉ còn một trong hai lớp: chiều cao co lại đúng với nội dung tuần đó (autofit),
+    // không giữ nguyên 120px của cả học kỳ để tránh khoảng trắng thừa trên/dưới khối.
     rerender(<TimetableGrid {...props} blocks={[{ ...conflictBlocks[1], occDate: "2026-09-17" }]} />);
     expect(within(thursday).queryByRole("button", { name: /BIE3004 lớp/ })).toBeNull();
     expect(within(thursday).getByRole("button", { name: classButton })).toBeInTheDocument();
-    expect(thursday.lastElementChild).toHaveStyle({ height: "120px" });
+    expect(thursday.lastElementChild).toHaveStyle({ height: "60px" });
   });
 
   it("rê chuột hoặc focus +N ở cột ngày hiển thị lịch tràn trong bảng nổi và Esc đóng bảng", () => {
@@ -1424,11 +1526,9 @@ describe("7. Brief W32: Ô tìm môn ở Thời khóa biểu: dời nhãn 'Khôn
     const button = within(option).getByRole("button");
     const [leftCluster, rightCluster] = Array.from(button.children) as HTMLElement[];
 
-    // Cụm trái: Tên môn + Tự chọn (indigo)
+    // Cụm trái: Tên môn; nhãn Tự chọn đã ẩn trên giao diện
     expect(within(leftCluster).getByText("Kế toán tài chính")).toBeInTheDocument();
-    const electiveBadge = within(leftCluster).getByText("Tự chọn");
-    expect(electiveBadge.getAttribute("data-variant")).toBe("elective");
-    expect(electiveBadge.className).toContain("bg-indigo-50");
+    expect(within(leftCluster).queryByText("Tự chọn")).toBeNull();
     expect(within(leftCluster).queryByText("Không có lịch")).toBeNull();
 
     // Cụm phải: Không có lịch (amber) + 3 TC đi liền nhau
@@ -1436,9 +1536,6 @@ describe("7. Brief W32: Ô tìm môn ở Thời khóa biểu: dời nhãn 'Khôn
     expect(noScheduleBadge.getAttribute("data-variant")).toBe("no-schedule");
     expect(noScheduleBadge.className).toContain("bg-amber-100");
     expect(within(rightCluster).getByText(/3 TC/)).toBeInTheDocument();
-
-    // Phân biệt màu giữa 2 nhãn
-    expect(electiveBadge.className).not.toEqual(noScheduleBadge.className);
   });
 
   it("hiển thị các lựa chọn tải xuống PNG, ICS, Excel (.xlsx) và CSV (.csv)", async () => {

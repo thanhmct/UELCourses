@@ -88,8 +88,8 @@ interface Props {
 
 /** Grid dimensions in pixels. Overlapping sessions have a full-height lane each. */
 const COL_W = 68;
-/** Giờ cuối cùng hiển thị trên lưới (lưới cắt tại mốc này). */
-const GRID_END = "20:00";
+/** Giờ cuối cùng hiển thị trên lưới (lưới cắt tại mốc này) — 20:15 là giờ kết thúc tiết học cuối (tiết 15). */
+const GRID_END = "20:15";
 const ROW_H = 57;
 const OVERLAP_LANE_H = 60;
 const MAX_VISIBLE_LANES = 2;
@@ -817,12 +817,6 @@ export const TimetableGrid = forwardRef<HTMLDivElement, Props>(function Timetabl
     }
     return map;
   }, [visibleSlots, ghostBlocks]);
-  // Reserve room for the semester layout so filtering a week does not move other days.
-  const semesterRowHeights = useMemo(() => {
-    const slots = groupBlocks(semesterBlocks);
-    return new Map([...slotsByDay(slots)].map(([day, items]) => [day, rowHeightFor(assignLanesByGenuineOverlap(items), slots)]));
-  }, [semesterBlocks]);
-
   // Keep Sunday across week changes when the semester has a Sunday session.
   const days = WEEKDAYS.filter((d) => d !== 8 || closures?.has(8) || (byDay.get(8)?.length ?? 0) > 0 || semesterBlocks.some((b) => b.lesson.weekday === 8));
 
@@ -878,7 +872,7 @@ export const TimetableGrid = forwardRef<HTMLDivElement, Props>(function Timetabl
             const closure = closures?.get(d);
             const dayItems = closure ? [] : byDay.get(d) ?? [];
             const laid = layoutDay(dayItems, selectedSlotKey);
-            const rowHeight = Math.max(semesterRowHeights.get(d) ?? ROW_H, rowHeightFor(laid, visibleSlots));
+            const rowHeight = rowHeightFor(laid, visibleSlots);
             const overflow = laid.filter(({ lane }) => lane >= MAX_VISIBLE_LANES);
             const overflowTitle = t("tt.overlappingSchedules", { day: weekdayName(t, d) });
 
