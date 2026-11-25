@@ -4,7 +4,7 @@ import { PartyPopper } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import { useMounted } from "@/lib/useMounted";
-import { useTimetable } from "@/lib/store";
+import { useSettings, useTimetable } from "@/lib/store";
 import type { ClassSection, Lesson } from "@/lib/types";
 import { getOccurrencesByDate, getTimetableOccurrences } from "@/lib/occurrences";
 import { Loading } from "@/components/ui";
@@ -73,6 +73,19 @@ export default function TodayPage() {
   const [liveClock, setLiveClock] = useState<string>("");
   const [mapSelection, setMapSelection] = useState<MapSelection | null>(null);
   const [pickedPlace, setPickedPlace] = useState<CampusPlace | null>(null);
+  // Map visibility follows the saved setting (Cài đặt); toggling here saves it too.
+  const [showMap, setShowMap] = useState(false);
+  const setDefaultShowMap = useSettings((s) => s.setDefaultShowMap);
+
+  useEffect(() => {
+    setShowMap(useSettings.getState().defaultShowMap);
+  }, []);
+
+  const toggleMap = () => {
+    const next = !showMap;
+    setShowMap(next);
+    setDefaultShowMap(next);
+  };
 
   // Live second-by-second clock in local time, safely cleaned up on unmount
   useEffect(() => {
@@ -202,11 +215,15 @@ export default function TodayPage() {
     setPickedPlace(null);
   };
 
-  if (!mounted) return <Loading />;
+  if (!mounted) return <Loading page />;
 
   return (
     <div className="w-full lg:min-h-0 lg:flex-1">
-      <div className="grid gap-4 lg:h-full lg:grid-cols-[minmax(0,0.7fr)_minmax(0,1.45fr)] lg:grid-rows-[minmax(0,1fr)]">
+      <div
+        className={`grid gap-4 lg:h-full lg:grid-rows-[minmax(0,1fr)] ${
+          showMap ? "lg:grid-cols-[minmax(0,0.7fr)_minmax(0,1.45fr)]" : "lg:grid-cols-[minmax(0,1fr)]"
+        }`}
+      >
         <section
           aria-label={t("today.title")}
           tabIndex={0}
@@ -214,53 +231,65 @@ export default function TodayPage() {
         >
           {/* Current or next class. */}
           <div className="rounded-md bg-brand-700 p-4 text-white shadow-sm">
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-sm font-medium text-brand-200">{t("today.subject")}</span>
-              {liveClock && (
-                <span
-                  className="rounded bg-brand-800 px-2.5 py-1 font-mono text-sm font-semibold tabular-nums text-white shadow-sm"
-                  aria-label="live-clock"
-                >
-                  {liveClock}
-                </span>
-              )}
-            </div>
             {nextLesson ? (
-              <div className="min-w-0">
-                <p className="mt-2 line-clamp-2 text-lg font-bold leading-snug">
-                  {nextLesson.name}
-                </p>
-                <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                  <span className="whitespace-nowrap font-mono text-xl font-bold">
-                    {nextLesson.lesson.start_time} – {nextLesson.lesson.end_time}
-                  </span>
-                  {nextLesson.lesson.room ? (
-                    <button
-                      type="button"
-                      aria-pressed={activeSelection.room === nextLesson.lesson.room}
-                      onClick={() => selectLesson(nextLesson)}
-                      className="rounded px-1 text-xl font-bold text-amber-300 transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
+              <>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-medium text-brand-200">{t("today.subject")}</span>
+                  {liveClock && (
+                    <span
+                      className="rounded bg-brand-800 px-2.5 py-1 font-mono text-sm font-semibold tabular-nums text-white shadow-sm"
+                      aria-label="live-clock"
                     >
-                      {t("today.room", { room: nextLesson.lesson.room })}
-                    </button>
-                  ) : (
-                    <span className="text-xl font-bold text-amber-300">{t("today.noRoom")}</span>
+                      {liveClock}
+                    </span>
                   )}
                 </div>
-                <p className="mt-2 truncate text-xs text-brand-100">
-                  <span className="font-mono">{nextLesson.code}</span>
-                  <span aria-hidden="true"> · </span>
-                  {formatLecturerName(nextLesson.lecturer, lang) || t("today.unknownLecturer")}
-                </p>
-              </div>
+                <div className="min-w-0">
+                  <p className="mt-2 line-clamp-2 text-lg font-bold leading-snug">
+                    {nextLesson.name}
+                  </p>
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                    <span className="whitespace-nowrap font-mono text-xl font-bold">
+                      {nextLesson.lesson.start_time} – {nextLesson.lesson.end_time}
+                    </span>
+                    {nextLesson.lesson.room ? (
+                      <button
+                        type="button"
+                        aria-pressed={activeSelection.room === nextLesson.lesson.room}
+                        onClick={() => selectLesson(nextLesson)}
+                        className="rounded px-1 text-xl font-bold text-amber-300 transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
+                      >
+                        {t("today.room", { room: nextLesson.lesson.room })}
+                      </button>
+                    ) : (
+                      <span className="text-xl font-bold text-amber-300">{t("today.noRoom")}</span>
+                    )}
+                  </div>
+                  <p className="mt-2 truncate text-xs text-brand-100">
+                    <span className="font-mono">{nextLesson.code}</span>
+                    <span aria-hidden="true"> · </span>
+                    {formatLecturerName(nextLesson.lecturer, lang) || t("today.unknownLecturer")}
+                  </p>
+                </div>
+              </>
             ) : (
-              <p className="mt-3 text-base font-semibold text-brand-100">
-                {todayLessons.length === 0 ? t("today.dayOff") : t("today.freeMsg")}
-              </p>
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-base font-semibold text-white">
+                  {todayLessons.length === 0 ? t("today.dayOff") : t("today.freeMsg")}
+                </p>
+                {liveClock && (
+                  <span
+                    className="shrink-0 rounded bg-brand-800 px-2.5 py-1 font-mono text-sm font-semibold tabular-nums text-white shadow-sm"
+                    aria-label="live-clock"
+                  >
+                    {liveClock}
+                  </span>
+                )}
+              </div>
             )}
           </div>
 
-      {/* Tabs: "Hôm nay & mai" | "Tuần sau" with right-aligned arrows */}
+      {/* Tabs: "Hôm nay & mai" | "Tuần sau" */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div
           className="flex gap-1 rounded-md border border-slate-200 bg-slate-100 p-1 dark:border-slate-800 dark:bg-slate-900"
@@ -296,28 +325,14 @@ export default function TodayPage() {
           </button>
         </div>
 
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => setActiveTab("today")}
-            disabled={activeTab === "today"}
-            aria-label={t("today.prevTab")}
-            title={isSunday ? t("today.tabTodayOnly") : t("today.tabTodayTomorrow")}
-            className="rounded border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800"
-          >
-            ←
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("next_week")}
-            disabled={activeTab === "next_week"}
-            aria-label={t("today.nextTab")}
-            title={t("today.tabNextWeek")}
-            className="rounded border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800"
-          >
-            →
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={toggleMap}
+          aria-pressed={showMap}
+          className="rounded border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800"
+        >
+          {showMap ? t("today.hideMap") : t("today.showMap")}
+        </button>
       </div>
 
       {/* Empty days use two compact rows instead of a tall empty card. */}
@@ -371,24 +386,17 @@ export default function TodayPage() {
                       } ${selected ? "ring-2 ring-brand-500" : ""}`}
                     >
                       <div className="flex flex-wrap items-center gap-1.5 text-xs">
-                        <span className="font-mono font-bold text-brand-700 dark:text-brand-300">
+                        <span className="font-bold text-brand-700 dark:text-brand-300">
                           {item.code}
                         </span>
                         <span aria-hidden="true" className="text-slate-400">·</span>
-                        <span className="font-mono font-semibold text-slate-700 dark:text-slate-200">
+                        <span className="font-semibold text-slate-700 dark:text-slate-200">
                           {item.lesson.start_time} – {item.lesson.end_time}
                         </span>
                         <span aria-hidden="true" className="text-slate-400">·</span>
-                        <span className="rounded-full bg-amber-100 px-2 py-0.5 font-mono font-semibold text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+                        <span className="rounded-full bg-brand-100 px-2 py-0.5 font-semibold text-brand-800 dark:bg-brand-900 dark:text-brand-100">
                           {room || t("today.none")}
                         </span>
-                        {item.lesson.date_start &&
-                          item.lesson.date_end &&
-                          item.lesson.date_start === item.lesson.date_end && (
-                            <span className="rounded bg-amber-100 px-2 py-0.5 font-semibold text-amber-800 dark:bg-amber-950 dark:text-amber-300">
-                              {t("tt.oneTime")}
-                            </span>
-                          )}
                         {status === "past" && (
                           <span className="rounded bg-slate-100 px-2 py-0.5 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                             {t("today.past")}
@@ -411,14 +419,16 @@ export default function TodayPage() {
       </div>
         </section>
 
-        <aside className="card p-3 lg:flex lg:min-h-0 lg:min-w-0 lg:flex-col">
-          <CampusMap
-            target={activePlace}
-            onPick={setPickedPlace}
-            fill
-            className="border border-slate-200 dark:border-slate-700 lg:min-h-0 lg:flex-1"
-          />
-        </aside>
+        {showMap && (
+          <aside className="card p-3 lg:flex lg:min-h-0 lg:min-w-0 lg:flex-col">
+            <CampusMap
+              target={activePlace}
+              onPick={setPickedPlace}
+              fill
+              className="border border-slate-200 dark:border-slate-700 lg:min-h-0 lg:flex-1"
+            />
+          </aside>
+        )}
       </div>
     </div>
   );

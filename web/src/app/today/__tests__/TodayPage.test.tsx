@@ -14,6 +14,10 @@ vi.mock("@/lib/useMounted", () => ({
 }));
 
 vi.mock("@/lib/store", () => ({
+  useSettings: Object.assign(
+    (selector: (s: { setDefaultShowMap: () => void }) => unknown) => selector({ setDefaultShowMap: () => {} }),
+    { getState: () => ({ defaultShowMap: localStorage.getItem("uelpath.today.showMap") === "1" }) },
+  ),
   useTimetable: () => ({
     semester: "HK1 2024-2025",
     bySemester: { "HK1 2024-2025": [] },
@@ -29,6 +33,7 @@ describe("TodayPage component", () => {
     vi.restoreAllMocks();
     useLang.setState({ lang: "vi" });
     localStorage.removeItem("uelcourses-lang");
+    localStorage.removeItem("uelpath.today.showMap");
   });
 
   it("hiển thị dữ liệu mẫu mà không cần ghi vào thời khóa biểu", () => {
@@ -48,6 +53,7 @@ describe("TodayPage component", () => {
   });
 
   it("dùng bản đồ SVG, kích hoạt đúng tòa B2 và sân thể thao", () => {
+    localStorage.setItem("uelpath.today.showMap", "1");
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 10, 23, 8, 0, 0));
     window.history.replaceState({}, "", "/today?demo=1");
@@ -93,6 +99,7 @@ describe("TodayPage component", () => {
   });
 
   it("tách vùng cuộn lịch khỏi bản đồ và cho phép focus bằng bàn phím", () => {
+    localStorage.setItem("uelpath.today.showMap", "1");
     render(<TodayPage />);
 
     const schedule = screen.getByRole("region", { name: "Lịch học hôm nay" });
@@ -101,22 +108,36 @@ describe("TodayPage component", () => {
     expect(schedule).not.toContainElement(screen.getByRole("group", { name: "Bản đồ khuôn viên UEL" }));
   });
 
-  it("khi hôm nay không có lịch học: hiển thị 'Chúc mừng bạn đã được nghỉ ngơi!'", () => {
+  it("khi hôm nay không có lịch học: ẩn nhãn 'Môn:' và hiển thị 'Chúc mừng bạn đã được nghỉ ngơi!' chữ trắng", () => {
     render(<TodayPage />);
-    // Xuất hiện trong banner tiếp theo và/hoặc danh sách rỗng
+    expect(screen.queryByText("Môn:")).not.toBeInTheDocument();
     const dayOffTexts = screen.getAllByText("Chúc mừng bạn đã được nghỉ ngơi!");
     expect(dayOffTexts.length).toBeGreaterThanOrEqual(1);
+    expect(dayOffTexts[0]).toHaveClass("text-white");
+    expect(dayOffTexts[0]).not.toHaveClass("text-brand-100");
   });
 
-  it("hiển thị các tab và các mũi tên chuyển tab bên phải", () => {
+  it("khi có tiết học tiếp theo: vẫn hiển thị nhãn 'Môn:'", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 10, 23, 8, 0, 0));
+    window.history.replaceState({}, "", "/today?demo=1");
+
     render(<TodayPage />);
-    // Tab tuần sau luôn có
+    expect(screen.getByText("Môn:")).toBeInTheDocument();
+  });
+
+  it("hiển thị các tab chuyển lịch và không hiển thị các nút mũi tên ← → kế bên nút Hiện bản đồ", () => {
+    render(<TodayPage />);
+    const todayTab = screen.getByRole("tab", { name: /Hôm nay/i });
     const nextWeekTab = screen.getByRole("tab", { name: /Tuần sau/i });
+    expect(todayTab).toBeInTheDocument();
     expect(nextWeekTab).toBeInTheDocument();
 
-    // Mũi tên chuyển tab
-    const nextArrow = screen.getByRole("button", { name: "Xem tuần sau" });
-    expect(nextArrow).toBeInTheDocument();
+    // Không còn các nút mũi tên ← →
+    expect(screen.queryByRole("button", { name: "Xem tuần sau" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Xem hôm nay/i })).not.toBeInTheDocument();
+    expect(screen.queryByText("←")).not.toBeInTheDocument();
+    expect(screen.queryByText("→")).not.toBeInTheDocument();
 
     // Bấm chuyển sang tab tuần sau
     fireEvent.click(nextWeekTab);
@@ -126,12 +147,10 @@ describe("TodayPage component", () => {
     expect(screen.getAllByText("Không phải lên UEL")).toHaveLength(7);
     expect(document.querySelector("#panel-schedule")?.children).toHaveLength(7);
 
-    // Mũi tên quay lại tab hôm nay & mai
-    const prevArrow = screen.getByRole("button", { name: /Xem hôm nay/i });
-    expect(prevArrow).toBeInTheDocument();
-    expect(prevArrow).not.toBeDisabled();
-    fireEvent.click(prevArrow);
+    // Bấm quay lại tab hôm nay & mai
+    fireEvent.click(todayTab);
     expect(nextWeekTab).toHaveAttribute("aria-selected", "false");
+    expect(todayTab).toHaveAttribute("aria-selected", "true");
   });
 
   it("hiển thị đồng hồ thời gian chạy mỗi giây", async () => {
