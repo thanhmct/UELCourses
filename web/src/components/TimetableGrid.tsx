@@ -836,7 +836,7 @@ export const TimetableGrid = forwardRef<HTMLDivElement, Props>(function Timetabl
     <div className="space-y-3">
       <div
         ref={scrollerRef}
-        className="overflow-x-auto rounded-md border border-slate-200 dark:border-slate-800"
+        className="w-fit max-w-full overflow-x-auto rounded-md border border-slate-200 dark:border-slate-800"
         role="region"
         aria-label={t("tt.gridAria")}
         tabIndex={0}
