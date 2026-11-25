@@ -15,6 +15,7 @@ import { ReportErrorsButton } from "@/components/FeedbackWidget";
 import { PrerequisiteTree } from "@/components/PrerequisiteTree";
 import { WorkloadBreakdownView } from "@/components/WorkloadBreakdown";
 import { ModuleReviews } from "@/components/ModuleReviews";
+import { LecturerReviewPanel } from "@/components/LecturerReviewPanel";
 import { ModuleDescriptionText } from "@/components/ModuleDescriptionText";
 import { OutlineBlock } from "@/components/OutlineBlock";
 import { useT, weekdayName } from "@/i18n";
@@ -355,6 +356,7 @@ export default function ModuleDetailPage() {
 
       <section className="card">
         <ModuleReviews moduleCode={m.code} moduleName={m.name} />
+        <LecturerReviewPanel moduleCode={m.code} />
       </section>
     </div>
   );

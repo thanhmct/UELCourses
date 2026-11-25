@@ -1,15 +1,18 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.models import Review, User
-from app.routers.auth import require_user
-from app.services.moderation import GUIDELINES_VI, moderate
+from app.rate_limit import get_real_ip
+from app.routers.auth import require_active_user
 from app.services.catalog_visibility import public_module
+from app.services.ip_utils import hash_client_ip
+from app.services.moderation import GUIDELINES_VI, moderate
+from app.services.moderation_ban import apply_autoban_if_needed
 
 router = APIRouter(tags=["reviews"])
 
@@ -78,10 +81,17 @@ def list_reviews(code: str, page: int = Query(1, ge=1), size: int = Query(20, ge
 
 
 @router.post("/modules/{code}/reviews", status_code=201, summary="Viết đánh giá học phần (cần đăng nhập)")
-def create_review(code: str, body: ReviewIn, user: User = Depends(require_user), db: Session = Depends(get_db)):
+def create_review(
+    code: str,
+    body: ReviewIn,
+    request: Request,
+    user: User = Depends(require_active_user),
+    db: Session = Depends(get_db),
+):
     mcode = public_module(db, code).code
     if db.scalar(select(Review.id).where(Review.module_code == mcode, Review.user_id == user.id).limit(1)):
         raise HTTPException(409, "Bạn đã đánh giá học phần này. Liên hệ quản trị viên nếu cần sửa.")
+    ip_hash = hash_client_ip(get_real_ip(request))
     res = moderate(body.content + " " + (body.professor or ""))
     review = Review(
         module_code=mcode, user_id=user.id,
@@ -89,9 +99,13 @@ def create_review(code: str, body: ReviewIn, user: User = Depends(require_user),
         semester=body.semester, professor=body.professor, rating=body.rating, difficulty=body.difficulty,
         workload=body.workload, content=body.content.strip(), status=res.status,
         moderation_reasons=res.reasons or None,
+        ip_hash=ip_hash,
     )
     db.add(review)
     db.commit()
+    if res.status == "pending":
+        apply_autoban_if_needed(db, user, ip_hash, res.reasons)
+        db.commit()
     if res.status == "approved":
         msg = "Cảm ơn bạn! Đánh giá đã được đăng."
     else:

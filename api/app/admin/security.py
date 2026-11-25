@@ -9,6 +9,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from app.models import AuditLog
+from app.services.ip_utils import hash_client_ip
 
 try:
     from argon2 import PasswordHasher
@@ -86,13 +87,6 @@ def verify_csrf_token(plain_csrf: str, hashed_csrf: str) -> bool:
         return False
     token_hash = hash_token(plain_csrf)
     return hmac.compare_digest(token_hash, hashed_csrf)
-
-
-def hash_client_ip(ip: str | None) -> str | None:
-    """Băm địa chỉ IP bằng SHA-256 để bảo vệ quyền riêng tư người dùng."""
-    if not ip:
-        return None
-    return hashlib.sha256(ip.strip().encode("utf-8")).hexdigest()
 
 
 def generate_temp_password(length: int = 16) -> str:

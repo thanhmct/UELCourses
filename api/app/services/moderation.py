@@ -26,10 +26,10 @@ from app.models import BannedTerm
 
 GUIDELINES_VI = [
     "Chia sẻ đánh giá về học phần bạn đã học. Hãy ghi học kỳ đã học và giảng viên phụ trách.",
-    "Phê bình tiêu cực được phép nếu mang tính xây dựng, không công kích cá nhân.",
-    "Không spam hoặc quảng cáo (không để liên kết, số điện thoại, tài khoản mạng xã hội để mời gọi).",
-    "Không ngôn từ thù ghét, lăng mạ, đe dọa, quấy rối hoặc nội dung tình dục.",
+    "Cho phép phê bình thẳng và nặng về chất lượng giảng dạy, độ khó, cách chấm điểm, miễn là mang tính xây dựng; các góp ý gay gắt về chuyên môn vẫn được giữ lại nếu không công kích cá nhân.",
+    "Cấm tuyệt đối: công kích cá nhân, ngoại hình hoặc đời tư của giảng viên hay người khác; ngôn từ thù ghét, phân biệt, lăng mạ, đe dọa, quấy rối; nội dung tình dục; spam hoặc quảng cáo (không để liên kết, số điện thoại, tài khoản mạng xã hội để mời gọi).",
     "Đánh giá vi phạm sẽ được chuyển sang chờ duyệt hoặc gỡ, dù tích cực hay tiêu cực.",
+    "Tài khoản vi phạm nhiều lần (từ 3 lần vi phạm nghiêm trọng trong 30 ngày) sẽ bị tự động khóa tạm thời cả tài khoản và địa chỉ IP đã dùng; vi phạm nghiêm trọng hoặc tái phạm sau khi được mở lại có thể bị quản trị viên khóa vĩnh viễn.",
     "Lưu ý: nhà trường (UEL) không kiểm duyệt các đánh giá này. Muốn phản hồi chính thức, dùng kênh góp ý của trường. Nội dung do sinh viên tự viết, chưa được xác minh.",
 ]
 

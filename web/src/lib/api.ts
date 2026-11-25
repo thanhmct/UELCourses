@@ -2,13 +2,18 @@
 // Real data only by default: when the API is unreachable the call fails (pages show an error and the
 // app shell shows a connection notice). Mock data from src/mocks/ is used ONLY when NEXT_PUBLIC_USE_MOCKS=true
 // (dev/demo/tests); then results carry `mock: true` so pages show the "Dữ liệu mẫu" label.
+import type { ExchangeStatList } from "./exchangeStats";
 import type {
   AskResponse,
   AskScope,
+  AuthMeResponse,
+  AuthProvidersResponse,
   Backlink,
   CheckResult,
   ClassSection,
   ElectiveGroup,
+  LecturerReviewList,
+  PostLecturerReviewPayload,
   RegulationGraph,
   RegulationMarkdown,
   CompareResponse,
@@ -28,6 +33,7 @@ import type {
   ProgramSummary,
   RegulationDoc,
   RegulationDocDetail,
+  SatisfactionStatus,
   Semester,
   ValidProgramGroup,
   Venue,
@@ -99,6 +105,59 @@ export class ApiError extends Error {
     message: string,
   ) {
     super(message);
+  }
+}
+
+export class AuthApiError extends ApiError {
+  constructor(
+    status: number,
+    message: string,
+    public detail?: unknown,
+  ) {
+    super(status, message);
+    this.name = "AuthApiError";
+  }
+}
+
+async function authFetch<T>(path: string, init?: RequestInit, timeoutMs = TIMEOUT_MS): Promise<T> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(`${API_URL}${path}`, {
+      ...init,
+      credentials: "include",
+      signal: ctrl.signal,
+      headers: {
+        Accept: "application/json",
+        ...(init?.body && typeof init.body === "string" ? { "Content-Type": "application/json" } : {}),
+        ...init?.headers,
+      },
+    });
+    if (!res.ok) {
+      let msg = `HTTP ${res.status}`;
+      let detail: unknown = null;
+      try {
+        const errJson = await res.json();
+        detail = errJson?.detail;
+        if (typeof detail === "string") {
+          msg = detail;
+        } else if (Array.isArray(detail) && detail[0]?.msg) {
+          msg = detail.map((d: any) => d.msg).join(", ");
+        }
+      } catch {
+        // Fallback to default message
+      }
+      throw new AuthApiError(res.status, msg, detail);
+    }
+    const data = (res.status === 204 ? undefined : await res.json()) as T;
+    markOffline(false);
+    return data;
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    markOffline(true);
+    throw new AuthApiError(0, connectionErrorMessage());
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -174,7 +233,7 @@ function qs(params: Record<string, unknown>): string {
     if (v === undefined || v === null || v === "") continue;
     if (Array.isArray(v)) {
       if (v.length === 0) continue;
-      if (k === "credits_in" || k === "type_in") {
+      if (k === "credits_in" || k === "type_in" || k === "final_assessment_in") {
         const joined = v.filter((x) => x !== "" && x != null).join(",");
         if (joined) p.set(k, joined);
       } else {
@@ -227,12 +286,17 @@ export type ModuleFilter = {
   credits_in?: (number | string)[] | string;
   type?: string;
   type_in?: string[] | string;
+  final_assessment_in?: string[] | string;
   /** "en" | "vi" */
   language?: string;
   is_english?: boolean;
   /** "true" | "false" */
   talent?: string;
   has_outline?: string;
+  /** Học phần đã chọn/đã học (phân cách bằng dấu phẩy): xếp lên đầu danh sách */
+  priority_codes?: string;
+  /** Sau nhóm ưu tiên, xếp theo số SV trao đổi đã học (nhiều → ít) */
+  exchange_rank?: boolean;
   degree?: string;
   /** CTĐT, vd "K23406" (khóa 23, ngành 406) */
   program_id?: string;
@@ -529,6 +593,13 @@ export const api = {
       (x) => (Array.isArray(x) ? x.map(normalizeSection) : []),
     ),
 
+  /** Số SV trao đổi đã học các học phần (công khai, tổng hợp). Mã không có dữ liệu thì không có trong items. */
+  exchangeStats: (codes: string[]) =>
+    withFallback<ExchangeStatList>(
+      `/api/exchange-stats${qs({ codes: codes.join(",") })}`,
+      async () => ({ items: [] }),
+    ),
+
   equivalents: (q?: string) =>
     withFallback<EquivalentItem[]>(`/api/equivalents${qs({ q })}`, async () =>
       (await loadModuleMocks()).mockEquivalents.filter(
@@ -548,7 +619,11 @@ export const api = {
 
   feedback: async (payload: FeedbackPayload): Promise<ApiResult<{ ok: boolean }>> => {
     try {
-      await raw("/api/feedback", { method: "POST", body: JSON.stringify(payload) });
+      await raw("/api/feedback", {
+        method: "POST",
+        body: JSON.stringify(payload),
+        ...(payload.quick_rating ? { credentials: "include" as const } : {}),
+      });
       return { data: { ok: true }, mock: false };
     } catch (e) {
       if (e instanceof ApiError && e.status === 422) throw e;
@@ -564,6 +639,13 @@ export const api = {
       return { data: { ok: true }, mock: true };
     }
   },
+
+  feedbackSatisfactionStatus: () =>
+    withFallback<SatisfactionStatus>(
+      "/api/feedback/satisfaction-status",
+      () => ({ already_rated: false }),
+      { credentials: "include" },
+    ),
 
   regulations: (f: { cohort?: string; status?: string; q?: string } = {}) =>
     withFallback<RegulationDoc[]>(`/api/regulations${qs(f)}`, async () => {
@@ -752,11 +834,28 @@ export const api = {
 
   postModuleComment: (
     code: string,
-    payload: { body: string; rating?: number; anon_id?: string }
+    payload: { body: string; rating?: number; anon_id?: string; semester?: string }
   ) =>
     raw<ModuleComment>(`/api/modules/${encodeURIComponent(code)}/comments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
+
+  authProviders: () => authFetch<AuthProvidersResponse>("/api/auth/providers"),
+
+  authMe: () => authFetch<AuthMeResponse>("/api/auth/me"),
+
+  authLogout: () => authFetch<{ ok: boolean }>("/api/auth/logout", { method: "POST" }),
+
+  reviewGuidelines: () => authFetch<{ items: string[] }>("/api/reviews/guidelines"),
+
+  moduleReviews: (code: string, page = 1, size = 20) =>
+    authFetch<LecturerReviewList>(`/api/modules/${encodeURIComponent(code)}/reviews${qs({ page, size })}`),
+
+  postModuleReview: (code: string, payload: PostLecturerReviewPayload) =>
+    authFetch<{ id: number; status: string; message: string }>(`/api/modules/${encodeURIComponent(code)}/reviews`, {
+      method: "POST",
       body: JSON.stringify(payload),
     }),
 };

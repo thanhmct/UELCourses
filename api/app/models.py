@@ -713,7 +713,7 @@ class RagAnswerFeedback(Base):
 # Tài khoản sinh viên (đăng nhập Google/Facebook) và đánh giá học phần
 # =============================================================================
 class User(Base):
-    """Chỉ lưu định danh từ nhà cung cấp và tên hiển thị. KHÔNG lưu email."""
+    """Email là tùy chọn, chỉ lưu nếu OAuth cấp quyền, chỉ dùng để thông báo khi bị ban, không hiển thị công khai."""
 
     __tablename__ = "users"
     __table_args__ = (UniqueConstraint("provider", "subject", name="uq_user_provider_subject"),)
@@ -722,6 +722,13 @@ class User(Base):
     provider: Mapped[str] = mapped_column(String(16))  # google | facebook
     subject: Mapped[str] = mapped_column(String(128))  # id do nhà cung cấp cấp
     display_name: Mapped[str] = mapped_column(String(128), default="Sinh viên")
+    email: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    ban_level: Mapped[str | None] = mapped_column(String(16), nullable=True)  # temporary | permanent
+    ban_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    banned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    ban_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    ban_cycle_reset_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    ban_notified_email_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
@@ -746,7 +753,27 @@ class Review(Base):
     content: Mapped[str] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(16), default="approved", index=True)
     moderation_reasons: Mapped[Any | None] = mapped_column(JsonType, nullable=True)
+    ip_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class BannedIp(Base):
+    """Địa chỉ IP (băm SHA-256) bị khóa tạm thời hoặc vĩnh viễn do vi phạm lặp lại."""
+
+    __tablename__ = "banned_ips"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    ip_hash: Mapped[str] = mapped_column(String(64), index=True, nullable=False)
+    level: Mapped[str] = mapped_column(String(16), nullable=False)  # temporary | permanent
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_by: Mapped[str] = mapped_column(String(32), nullable=False)  # system | <admin_id>
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    lifted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    lifted_by: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    related_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
 
 
 # =============================================================================

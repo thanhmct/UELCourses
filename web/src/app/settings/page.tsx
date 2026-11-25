@@ -12,6 +12,7 @@ import { appConfirm } from "@/lib/dialog";
 import { useMounted } from "@/lib/useMounted";
 import { cohortFromId } from "@/lib/cohort";
 import { api, API_URL, APP_VERSION } from "@/lib/api";
+import type { AuthMeResponse, AuthProvidersResponse } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 import { Loading, PageHeader } from "@/components/ui";
 import { ProgramProfileDialog } from "@/components/ProgramProfileDialog";
@@ -89,6 +90,71 @@ function ProgramCodeField({ children }: { children: ReactNode }) {
       </div>
 
       {!hasGlobalProfileDialogHost() && <ProgramProfileDialog open={isOpen} onClose={close} />}
+    </section>
+  );
+}
+
+function AccountSection() {
+  const { t } = useT();
+  const [me, setMe] = useState<AuthMeResponse | null>(null);
+  const [providers, setProviders] = useState<AuthProvidersResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      const [m, p] = await Promise.all([api.authMe().catch(() => null), api.authProviders().catch(() => null)]);
+      if (!active) return;
+      setMe(m);
+      setProviders(p);
+      setLoading(false);
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleLogout = async () => {
+    await api.authLogout().catch(() => null);
+    setMe({ user: null });
+  };
+
+  const user = me?.user ?? null;
+
+  return (
+    <section className="card min-w-0 space-y-3 rounded-xl sm:p-5">
+      <div className="space-y-1">
+        <h2 className="font-semibold">{t("settings.accountTitle")}</h2>
+        <p className="text-xs text-slate-500 leading-relaxed">{t("settings.accountDesc")}</p>
+      </div>
+      {loading ? (
+        <Loading compact />
+      ) : user ? (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="text-sm text-slate-700 dark:text-slate-300">
+            {t("settings.accountLoggedInAs", { name: user.display_name })}
+          </span>
+          <button type="button" onClick={handleLogout} className="btn min-h-9 border border-slate-300 px-3 text-xs dark:border-slate-700">
+            {t("settings.accountLogout")}
+          </button>
+        </div>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          {providers?.google?.ready && (
+            <a href={`${API_URL}/api/auth/google/login`} className="btn-primary min-h-9 px-3 text-xs">
+              {t("settings.accountLoginGoogle")}
+            </a>
+          )}
+          {providers?.facebook?.ready && (
+            <a href={`${API_URL}/api/auth/facebook/login`} className="btn-primary min-h-9 px-3 text-xs">
+              {t("settings.accountLoginFacebook")}
+            </a>
+          )}
+          {!providers?.google?.ready && !providers?.facebook?.ready && (
+            <p className="text-xs text-slate-400">{t("settings.accountNoProviders")}</p>
+          )}
+        </div>
+      )}
     </section>
   );
 }
@@ -225,6 +291,7 @@ export default function SettingsPage() {
         </section>
       </div>
       <AppearanceSettings />
+      <div className="grid gap-4 lg:grid-cols-2">
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="card min-w-0 space-y-3 rounded-xl sm:p-5">
           <div className="flex items-start justify-between gap-4">

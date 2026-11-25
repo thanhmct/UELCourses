@@ -11,6 +11,7 @@ import type {
   AdminUserItem,
   AuditLogItem,
   AuditLogResponse,
+  BanListResponse,
   BannedTerm,
   BulkModerationRequest,
   CalendarEventsResponse,
@@ -1048,6 +1049,32 @@ export const adminApi = {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
+    });
+  },
+
+  // ---------- Bans (Brief A7) ----------
+  async listBans(params: { status?: string; scope?: string } = {}): Promise<BanListResponse> {
+    const qs = this.buildQueryString(params);
+    return this.request<BanListResponse>(`/api/admin/bans${qs}`);
+  },
+
+  async liftBan(userId: number): Promise<{ success: boolean; user_id: number }> {
+    return this.request<{ success: boolean; user_id: number }>(`/api/admin/bans/${userId}/lift`, {
+      method: "POST",
+    });
+  },
+
+  async escalateBan(userId: number, note?: string): Promise<{ success: boolean; user_id: number; ban_level: string }> {
+    return this.request<{ success: boolean; user_id: number; ban_level: string }>(`/api/admin/bans/${userId}/escalate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ note: note || null }),
+    });
+  },
+
+  async notifyBan(userId: number): Promise<{ success: boolean; message?: string }> {
+    return this.request<{ success: boolean; message?: string }>(`/api/admin/bans/${userId}/notify`, {
+      method: "POST",
     });
   },
 };

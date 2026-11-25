@@ -298,6 +298,8 @@ export interface AskResponse {
   /** The assistant asks back before answering (unknown cohort or an ambiguous question). */
   clarify?: { kind: "cohort" | "question"; question: string; options: string[] };
   abstained?: boolean;
+  /** Passages the assistant looked at but could not confirm; shown as links, not as the answer. */
+  related?: Citation[];
 }
 
 export type AskScope = "regulations" | "modules";
@@ -432,6 +434,11 @@ export interface FeedbackPayload {
   message: string;
   contact?: string;
   app_version: string;
+  quick_rating?: boolean;
+}
+
+export interface SatisfactionStatus {
+  already_rated: boolean;
 }
 
 export interface ModuleFilter {
@@ -443,6 +450,7 @@ export interface ModuleFilter {
   credits_in?: (number | string)[] | string;
   type?: string;
   type_in?: string[] | string;
+  final_assessment_in?: string[] | string;
   language?: string;
   is_english?: boolean;
   talent?: string;
@@ -548,6 +556,8 @@ export interface ModuleComment {
   rating?: number | null;
   author_name: string;
   status: "pending" | "approved" | "rejected" | "hidden";
+  /** Học kỳ sinh viên đã học, vd "2026-2027-1" (có khi góp ý theo học kỳ) */
+  semester?: string | null;
   created_at: string;
 }
 
@@ -562,7 +572,7 @@ export interface ModuleCommentListResponse {
 export interface ModerationQueueItem {
   id: string;
   item_id: number;
-  type: "feedback" | "comment" | "book";
+  type: "feedback" | "comment" | "book" | "review";
   title: string;
   content: string;
   rating?: number | null;
@@ -588,6 +598,7 @@ export interface ModerationQueueResponse {
     feedback: number;
     comment: number;
     book: number;
+    review?: number;
   };
 }
 
@@ -599,9 +610,100 @@ export interface BannedTerm {
 }
 
 export interface BulkModerationRequest {
-  items: { type: "feedback" | "comment" | "book"; id: number }[];
+  items: { type: "feedback" | "comment" | "book" | "review"; id: number }[];
   action: "approve" | "reject" | "hide";
   note?: string;
+}
+
+// ---------- Auth & Lecturer Reviews (Brief A7) ----------
+export interface AuthBanInfo {
+  level: "temporary" | "permanent" | string;
+  reason: string | null;
+  expires_at: string | null;
+}
+
+export interface AuthUser {
+  id: number;
+  display_name: string;
+  provider: string;
+  banned: AuthBanInfo | null;
+}
+
+export interface AuthMeResponse {
+  user: AuthUser | null;
+}
+
+export interface AuthProvidersResponse {
+  google?: { ready: boolean };
+  facebook?: { ready: boolean };
+  [provider: string]: { ready: boolean } | undefined;
+}
+
+export interface LecturerReviewItem {
+  id: number;
+  display_name: string;
+  semester: string | null;
+  professor: string | null;
+  rating: number;
+  difficulty: number | null;
+  workload: number | null;
+  content: string;
+  created_at: string;
+}
+
+export interface LecturerReviewSummary {
+  count: number;
+  avg_rating: number | null;
+  avg_difficulty: number | null;
+  avg_workload: number | null;
+}
+
+export interface LecturerReviewList {
+  items: LecturerReviewItem[];
+  summary: LecturerReviewSummary;
+  page: number;
+  size: number;
+  total: number;
+}
+
+export interface PostLecturerReviewPayload {
+  rating: number;
+  difficulty?: number | null;
+  workload?: number | null;
+  semester?: string | null;
+  professor?: string | null;
+  display_name?: string | null;
+  content: string;
+}
+
+export interface BannedUser {
+  user_id: number;
+  display_name: string;
+  provider: string;
+  email?: string | null;
+  ban_level?: string | null;
+  ban_reason?: string | null;
+  banned_at?: string | null;
+  ban_expires_at?: string | null;
+  ban_notified_email_at?: string | null;
+}
+
+export interface BannedIp {
+  id: number;
+  ip_hash: string;
+  level: string;
+  reason?: string | null;
+  created_by: string;
+  created_at: string;
+  expires_at?: string | null;
+  lifted_at?: string | null;
+  lifted_by?: string | null;
+  related_user_id?: number | null;
+}
+
+export interface BanListResponse {
+  users: BannedUser[];
+  banned_ips: BannedIp[];
 }
 
 // ---------- Data Admin & Outlines (Brief A4) ----------
@@ -846,7 +948,7 @@ export interface AdminPasswordResetResponse {
 }
 
 export interface AdminSettingsData {
-  moderation_mode: "pre" | "post";
+  moderation_mode: "auto" | "pre" | "post";
   analytics_enabled: boolean;
   analytics_retention_days: number;
   updated_by?: string | null;

@@ -1,6 +1,6 @@
 """Đăng nhập bằng Google / Facebook (OAuth2 authorization-code) + phiên ký HMAC trong cookie.
 
-Không lưu email hay thông tin nhạy cảm: chỉ lưu (provider, subject, tên hiển thị) để gắn đánh giá với tài khoản.
+Lưu (provider, subject, tên hiển thị); email là tùy chọn, chỉ lưu nếu OAuth cấp quyền và chỉ dùng để thông báo khi bị ban, không hiển thị công khai.
 Khóa OAuth lấy từ biến môi trường; thiếu khóa thì endpoint đăng nhập trả 503 (không vỡ app).
 Tạo khóa: Google Cloud Console (OAuth client, redirect URI = {OAUTH_REDIRECT_BASE}/api/auth/google/callback),
 Facebook for Developers (app Facebook Login, redirect = {OAUTH_REDIRECT_BASE}/api/auth/facebook/callback).
@@ -48,11 +48,11 @@ def providers() -> dict[str, Provider]:
     return {
         "google": Provider(
             "google", "https://accounts.google.com/o/oauth2/v2/auth", "https://oauth2.googleapis.com/token",
-            "openid profile", s.google_client_id, s.google_client_secret,
+            "openid profile email", s.google_client_id, s.google_client_secret,
         ),
         "facebook": Provider(
             "facebook", "https://www.facebook.com/v19.0/dialog/oauth", "https://graph.facebook.com/v19.0/oauth/access_token",
-            "public_profile", s.facebook_app_id, s.facebook_app_secret,
+            "public_profile,email", s.facebook_app_id, s.facebook_app_secret,
         ),
     }
 
@@ -114,8 +114,15 @@ def authorize_url(p: Provider, state: str) -> str:
     return f"{p.auth_url}?{urlencode(params)}"
 
 
+def _clean_optional_email(raw: object) -> str | None:
+    if not isinstance(raw, str):
+        return None
+    cleaned = raw.strip()[:256]
+    return cleaned or None
+
+
 def exchange_code(p: Provider, code: str) -> dict:
-    """Trả về {subject, name}. Ném ValueError nếu nhà cung cấp từ chối."""
+    """Trả về {subject, name, email}. Ném ValueError nếu nhà cung cấp từ chối."""
     with httpx.Client(timeout=15) as client:
         if p.name == "google":
             tok = client.post(p.token_url, data={"code": code, "client_id": p.client_id, "client_secret": p.client_secret,
@@ -128,14 +135,22 @@ def exchange_code(p: Provider, code: str) -> dict:
             if info.status_code != 200:
                 raise ValueError("Không lấy được thông tin tài khoản Google.")
             d = info.json()
-            return {"subject": str(d.get("sub")), "name": d.get("name") or "Sinh viên"}
+            return {
+                "subject": str(d.get("sub")),
+                "name": d.get("name") or "Sinh viên",
+                "email": _clean_optional_email(d.get("email")),
+            }
         tok = client.get(p.token_url, params={"client_id": p.client_id, "client_secret": p.client_secret,
                                               "redirect_uri": redirect_uri(p.name), "code": code})
         if tok.status_code != 200:
             raise ValueError("Facebook từ chối mã xác thực.")
         access = tok.json().get("access_token")
-        info = client.get("https://graph.facebook.com/me", params={"fields": "id,name", "access_token": access})
+        info = client.get("https://graph.facebook.com/me", params={"fields": "id,name,email", "access_token": access})
         if info.status_code != 200:
             raise ValueError("Không lấy được thông tin tài khoản Facebook.")
         d = info.json()
-        return {"subject": str(d.get("id")), "name": d.get("name") or "Sinh viên"}
+        return {
+            "subject": str(d.get("id")),
+            "name": d.get("name") or "Sinh viên",
+            "email": _clean_optional_email(d.get("email")),
+        }

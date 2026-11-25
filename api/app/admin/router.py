@@ -13,6 +13,7 @@ from app.db import SessionLocal
 from app.models import (
     AcademicEvent,
     AuditLog,
+    BannedIp,
     BannedTerm,
     Feedback,
     ImportRun,
@@ -20,6 +21,7 @@ from app.models import (
     ModuleComment,
     Review,
     Semester,
+    User,
 )
 from app.schemas import (
     AcademicEventIn,
@@ -37,8 +39,11 @@ from app.schemas import (
     AdminUserPatchIn,
     AuditLogItemOut,
     AuditLogListResponse,
+    BannedIpOut,
     BannedTermIn,
     BannedTermOut,
+    BannedUserOut,
+    BanListOut,
     BulkFacultyReviewIn,
     BulkModerationIn,
     CalendarEventsResponse,
@@ -103,6 +108,8 @@ from app.services.analytics import (
     get_trend_search_no_results,
     get_trend_slots,
 )
+from app.services.moderation_ban import as_utc, is_user_ban_active
+from app.services.notify import send_ban_email
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -478,9 +485,9 @@ def get_trends_classes_endpoint(
 # Yêu cầu vai trò: admin hoặc moderator
 # =============================================================================
 
-@router.get("/moderation/queue", response_model=ModerationQueueResponse, summary="Hàng đợi kiểm duyệt (góp ý, bình luận, chợ sách)")
+@router.get("/moderation/queue", response_model=ModerationQueueResponse, summary="Hàng đợi kiểm duyệt (góp ý, bình luận, đánh giá, chợ sách)")
 def get_moderation_queue(
-    type: str = Query("all", description="Loại nội dung: all | feedback | comment | book"),
+    type: str = Query("all", description="Loại nội dung: all | feedback | comment | book | review"),
     status: str = Query("pending", description="Trạng thái: all | pending | approved | rejected | hidden"),
     flagged: bool | None = Query(None, description="Chỉ lấy các mục có cờ cảnh báo"),
     q: str | None = Query(None, description="Từ khóa tìm kiếm"),
@@ -556,12 +563,49 @@ def get_moderation_queue(
                 )
             )
 
+    # 3. Review (đánh giá học phần của tài khoản sinh viên)
+    if type in ("all", "review"):
+        stmt = select(Review)
+        if status != "all":
+            stmt = stmt.where(Review.status == status)
+        if flagged is True:
+            stmt = stmt.where(Review.moderation_reasons.isnot(None))
+        if q:
+            stmt = stmt.where(
+                or_(
+                    Review.content.ilike(f"%{q}%"),
+                    Review.professor.ilike(f"%{q}%"),
+                    Review.module_code.ilike(f"%{q}%"),
+                )
+            )
+        for r in db.scalars(stmt):
+            flags = r.moderation_reasons or []
+            if flagged is True and not flags:
+                continue
+            title = f"Đánh giá môn {r.module_code}" + (f" - GV {r.professor}" if r.professor else "")
+            items.append(
+                ModerationQueueItemOut(
+                    id=f"review_{r.id}",
+                    item_id=r.id,
+                    type="review",
+                    title=title,
+                    content=r.content,
+                    rating=r.rating,
+                    author=r.display_name,
+                    status=r.status,
+                    flag_reasons=flags,
+                    created_at=r.created_at,
+                    module_code=r.module_code,
+                )
+            )
+
     # Sắp xếp mới nhất lên đầu
-    items.sort(key=lambda x: x.created_at, reverse=True)
+    items.sort(key=lambda x: as_utc(x.created_at) or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
 
     # Thống kê tổng số lượng theo từng loại (chờ duyệt)
     fb_pending = db.scalar(select(func.count(Feedback.id)).where(Feedback.status == "pending")) or 0
     cm_pending = db.scalar(select(func.count(ModuleComment.id)).where(ModuleComment.status == "pending")) or 0
+    rv_pending = db.scalar(select(func.count(Review.id)).where(Review.status == "pending")) or 0
 
     total_count = len(items)
     paged_items = items[(page - 1) * size : page * size]
@@ -572,9 +616,10 @@ def get_moderation_queue(
         page=page,
         size=size,
         counts={
-            "all": fb_pending + cm_pending,
+            "all": fb_pending + cm_pending + rv_pending,
             "feedback": fb_pending,
             "comment": cm_pending,
+            "review": rv_pending,
             "book": 0,
         },
     )
@@ -594,7 +639,8 @@ def moderate_single_item(
         raise HTTPException(status_code=400, detail="Hành động không hợp lệ. Chọn approve, reject hoặc hide.")
 
     status_map = {"approve": "approved", "reject": "rejected", "hide": "hidden"}
-    new_status = status_map[action]
+    # Review không có trạng thái hidden riêng; thao tác hide được quy về rejected
+    new_status = "rejected" if item_type == "review" and action == "hide" else status_map[action]
     now = datetime.now(timezone.utc)
     note = body.note if body else None
 
@@ -619,6 +665,12 @@ def moderate_single_item(
         item.moderated_at = now
         if note:
             item.moderation_note = note
+    elif item_type == "review":
+        item = db.get(Review, item_id)
+        if not item:
+            raise HTTPException(status_code=404, detail="Không tìm thấy đánh giá này.")
+        old_status = item.status
+        item.status = new_status
     elif item_type == "book":
         raise HTTPException(status_code=404, detail="Tính năng chợ giáo trình sẽ khả dụng ở giai đoạn A7.")
     else:
@@ -768,6 +820,217 @@ def delete_banned_term(
     db.delete(term_obj)
     db.commit()
     return {"success": True, "id": term_id}
+
+
+@router.get("/bans", response_model=BanListOut, summary="Danh sách tài khoản và IP bị khóa")
+def list_bans(
+    status: str = Query("active", description="Trạng thái: active | lifted | expired | all"),
+    scope: str = Query("all", description="Phạm vi nguồn khóa IP: all | system | admin"),
+    _admin: dict[str, Any] = Depends(require_admin_dev(roles=["admin", "moderator"])),
+    db: Session = Depends(get_db),
+):
+    if status not in ("active", "lifted", "expired", "all"):
+        raise HTTPException(status_code=400, detail="Trạng thái không hợp lệ. Chọn active, lifted, expired hoặc all.")
+    if scope not in ("all", "system", "admin"):
+        raise HTTPException(status_code=400, detail="Phạm vi không hợp lệ. Chọn all, system hoặc admin.")
+
+    now = datetime.now(timezone.utc)
+
+    # 1. Danh sách tài khoản bị khóa (User không lưu lịch sử sau khi gỡ ban)
+    users_out: list[BannedUserOut] = []
+    if status != "lifted":
+        user_stmt = select(User).where(User.ban_level.isnot(None)).order_by(User.banned_at.desc(), User.id.desc())
+        for u in db.scalars(user_stmt):
+            active = is_user_ban_active(u, now)
+            if status == "active" and not active:
+                continue
+            if status == "expired" and not (u.ban_level == "temporary" and not active):
+                continue
+            users_out.append(
+                BannedUserOut(
+                    user_id=u.id,
+                    display_name=u.display_name,
+                    provider=u.provider,
+                    email=u.email,
+                    ban_level=u.ban_level,
+                    ban_reason=u.ban_reason,
+                    banned_at=u.banned_at,
+                    ban_expires_at=u.ban_expires_at,
+                    ban_notified_email_at=u.ban_notified_email_at,
+                )
+            )
+
+    # 2. Danh sách IP bị khóa (lọc theo scope và status)
+    ip_stmt = select(BannedIp).order_by(BannedIp.created_at.desc(), BannedIp.id.desc())
+    if scope == "system":
+        ip_stmt = ip_stmt.where(BannedIp.created_by == "system")
+    elif scope == "admin":
+        ip_stmt = ip_stmt.where(BannedIp.created_by != "system")
+
+    ips_out: list[BannedIpOut] = []
+    for row in db.scalars(ip_stmt):
+        exp = as_utc(row.expires_at)
+        is_lifted = row.lifted_at is not None
+        is_active_ip = (not is_lifted) and (
+            row.level == "permanent" or (row.level == "temporary" and exp is not None and exp > now)
+        )
+        is_expired_ip = (not is_lifted) and row.level == "temporary" and (exp is None or exp <= now)
+
+        if status == "active" and not is_active_ip:
+            continue
+        if status == "lifted" and not is_lifted:
+            continue
+        if status == "expired" and not is_expired_ip:
+            continue
+
+        ips_out.append(
+            BannedIpOut(
+                id=row.id,
+                ip_hash=row.ip_hash,
+                level=row.level,
+                reason=row.reason,
+                created_by=row.created_by,
+                created_at=row.created_at,
+                expires_at=row.expires_at,
+                lifted_at=row.lifted_at,
+                lifted_by=row.lifted_by,
+                related_user_id=row.related_user_id,
+            )
+        )
+
+    return BanListOut(users=users_out, banned_ips=ips_out)
+
+
+@router.post("/bans/{user_id}/lift", summary="Gỡ khóa tài khoản và các IP liên quan")
+def lift_user_ban(
+    user_id: int,
+    admin: dict[str, Any] = Depends(require_admin_dev(roles=["admin", "moderator"])),
+    db: Session = Depends(get_db),
+):
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="Không tìm thấy người dùng này.")
+
+    now = datetime.now(timezone.utc)
+    old_level = user.ban_level
+    old_reason = user.ban_reason
+
+    user.ban_level = None
+    user.ban_reason = None
+    user.banned_at = None
+    user.ban_expires_at = None
+    user.ban_cycle_reset_at = now
+
+    lifted_by = (admin.get("email") or "admin")[:32]
+    related_ips = list(
+        db.scalars(select(BannedIp).where(BannedIp.related_user_id == user_id, BannedIp.lifted_at.is_(None)))
+    )
+    for ip_ban in related_ips:
+        ip_ban.lifted_at = now
+        ip_ban.lifted_by = lifted_by
+
+    db.add(
+        AuditLog(
+            actor_type=admin.get("actor_type", "dev"),
+            actor_id=admin.get("email", "dev@uelcourses.local"),
+            action="lift_ban",
+            entity_type="user",
+            entity_id=str(user_id),
+            before={"ban_level": old_level, "ban_reason": old_reason},
+            after={"ban_level": None, "lifted_ip_count": len(related_ips)},
+            created_at=now,
+        )
+    )
+    db.commit()
+    return {"success": True, "user_id": user_id}
+
+
+@router.post("/bans/{user_id}/escalate", summary="Nâng mức khóa tài khoản lên vĩnh viễn")
+def escalate_user_ban(
+    user_id: int,
+    body: ModerationActionIn | None = None,
+    admin: dict[str, Any] = Depends(require_admin_dev(roles=["admin", "moderator"])),
+    db: Session = Depends(get_db),
+):
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="Không tìm thấy người dùng này.")
+    if not user.ban_level:
+        raise HTTPException(status_code=400, detail="Người dùng hiện không bị khóa.")
+
+    now = datetime.now(timezone.utc)
+    old_level = user.ban_level
+    old_reason = user.ban_reason
+    note = body.note.strip() if body and body.note and body.note.strip() else None
+
+    user.ban_level = "permanent"
+    user.ban_expires_at = None
+    if note:
+        user.ban_reason = f"{old_reason} | {note}" if old_reason else note
+
+    db.add(
+        AuditLog(
+            actor_type=admin.get("actor_type", "dev"),
+            actor_id=admin.get("email", "dev@uelcourses.local"),
+            action="escalate_ban_permanent",
+            entity_type="user",
+            entity_id=str(user_id),
+            before={"ban_level": old_level, "ban_reason": old_reason},
+            after={"ban_level": "permanent", "ban_reason": user.ban_reason, "note": note},
+            created_at=now,
+        )
+    )
+    db.commit()
+    return {"success": True, "user_id": user_id, "ban_level": "permanent"}
+
+
+@router.post("/bans/{user_id}/notify", summary="Gửi email thông báo khóa tài khoản cho sinh viên")
+def notify_user_ban(
+    user_id: int,
+    admin: dict[str, Any] = Depends(require_admin_dev(roles=["admin", "moderator"])),
+    db: Session = Depends(get_db),
+):
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="Không tìm thấy người dùng này.")
+
+    if not user.email:
+        return {"success": False, "message": "Người dùng chưa cấp email, không thể gửi thông báo."}
+
+    res = send_ban_email(
+        to_email=user.email,
+        display_name=user.display_name,
+        level=user.ban_level or "temporary",
+        reason=user.ban_reason,
+        expires_at=user.ban_expires_at,
+    )
+    if not res.get("sent"):
+        if res.get("reason") == "smtp_not_configured":
+            return {
+                "success": False,
+                "message": "Chưa cấu hình SMTP, không thể gửi email tự động. Vui lòng liên hệ trực tiếp.",
+            }
+        return {
+            "success": False,
+            "message": "Không thể gửi email thông báo lúc này. Vui lòng liên hệ trực tiếp.",
+        }
+
+    now = datetime.now(timezone.utc)
+    user.ban_notified_email_at = now
+    db.add(
+        AuditLog(
+            actor_type=admin.get("actor_type", "dev"),
+            actor_id=admin.get("email", "dev@uelcourses.local"),
+            action="notify_ban_email",
+            entity_type="user",
+            entity_id=str(user_id),
+            before=None,
+            after={"ban_level": user.ban_level, "notified_at": now.isoformat()},
+            created_at=now,
+        )
+    )
+    db.commit()
+    return {"success": True, "message": "Đã gửi email thông báo."}
 
 
 # =============================================================================

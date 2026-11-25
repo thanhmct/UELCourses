@@ -101,6 +101,13 @@ class Settings(BaseSettings):
     facebook_app_id: str = ""
     facebook_app_secret: str = ""
 
+    # Cấu hình SMTP gửi email thông báo (để trống để tắt)
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from: str = ""
+
     max_upload_bytes: int = 30 * 1024 * 1024
 
     # Nguồn học phần tương đương (portal UEL). Token do người dùng gửi kèm request,

@@ -672,7 +672,7 @@ class BannedTermOut(ORM):
 class ModerationQueueItemOut(BaseModel):
     id: str
     item_id: int
-    type: str  # feedback | comment | book
+    type: str  # feedback | comment | book | review
     title: str
     content: str
     rating: int | None = None
@@ -709,6 +709,36 @@ class BulkModerationIn(BaseModel):
     items: list[BulkModerationTarget]
     action: str = Field(pattern="^(approve|reject|hide)$")
     note: str | None = Field(default=None, max_length=1000)
+
+
+class BannedUserOut(BaseModel):
+    user_id: int
+    display_name: str
+    provider: str
+    email: str | None = None
+    ban_level: str | None = None
+    ban_reason: str | None = None
+    banned_at: datetime | None = None
+    ban_expires_at: datetime | None = None
+    ban_notified_email_at: datetime | None = None
+
+
+class BannedIpOut(BaseModel):
+    id: int
+    ip_hash: str
+    level: str
+    reason: str | None = None
+    created_by: str
+    created_at: datetime
+    expires_at: datetime | None = None
+    lifted_at: datetime | None = None
+    lifted_by: str | None = None
+    related_user_id: int | None = None
+
+
+class BanListOut(BaseModel):
+    users: list[BannedUserOut]
+    banned_ips: list[BannedIpOut]
 
 
 # =============================================================================

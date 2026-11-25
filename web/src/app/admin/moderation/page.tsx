@@ -3,10 +3,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useT } from "@/i18n";
 import { adminApi, AdminApiError } from "@/lib/adminApi";
-import type { BannedTerm, ModerationQueueItem } from "@/lib/types";
+import type { BannedTerm, ModerationQueueItem, BanListResponse } from "@/lib/types";
 import { Loading } from "@/components/ui";
 
-type SubTab = "feedback" | "comment" | "book" | "banned_terms";
+type SubTab = "feedback" | "comment" | "review" | "book" | "banned_terms" | "bans";
 
 export default function AdminModerationPage() {
   const { t } = useT();
@@ -18,10 +18,11 @@ export default function AdminModerationPage() {
 
   // Queue state
   const [items, setItems] = useState<ModerationQueueItem[]>([]);
-  const [counts, setCounts] = useState<{ all: number; feedback: number; comment: number; book: number }>({
+  const [counts, setCounts] = useState<{ all: number; feedback: number; comment: number; review: number; book: number }>({
     all: 0,
     feedback: 0,
     comment: 0,
+    review: 0,
     book: 0,
   });
   const [total, setTotal] = useState<number>(0);
@@ -50,9 +51,15 @@ export default function AdminModerationPage() {
   const [termLoading, setTermLoading] = useState<boolean>(false);
   const [termError, setTermError] = useState<string | null>(null);
 
+  // Bans state (Brief A7)
+  const [bans, setBans] = useState<BanListResponse | null>(null);
+  const [bansLoading, setBansLoading] = useState<boolean>(false);
+  const [banActionLoading, setBanActionLoading] = useState<number | null>(null);
+  const [banMessage, setBanMessage] = useState<string | null>(null);
+
   // Load moderation queue
   const loadQueue = useCallback(async () => {
-    if (currentTab === "book" || currentTab === "banned_terms") return;
+    if (currentTab === "book" || currentTab === "banned_terms" || currentTab === "bans") return;
     setLoading(true);
     try {
       const res = await adminApi.getModerationQueue({
@@ -66,7 +73,7 @@ export default function AdminModerationPage() {
 
       setItems(res.items || []);
       setTotal(res.total || 0);
-      if (res.counts) setCounts(res.counts);
+      if (res.counts) setCounts({ ...res.counts, review: res.counts.review ?? 0 });
 
       // Keep active selection or select first
       if (res.items && res.items.length > 0) {
@@ -99,17 +106,91 @@ export default function AdminModerationPage() {
     }
   }, [currentTab]);
 
+  // Load bans list (Brief A7)
+  const loadBans = useCallback(async () => {
+    if (currentTab !== "bans") return;
+    setBansLoading(true);
+    try {
+      const res = await adminApi.listBans({ status: "active", scope: "all" });
+      setBans(res);
+    } catch {
+      // Ignored
+    } finally {
+      setBansLoading(false);
+    }
+  }, [currentTab]);
+
   useEffect(() => {
     if (currentTab === "banned_terms") {
       setLoading(false);
       loadBannedTerms();
     } else if (currentTab === "book") {
       setLoading(false);
+    } else if (currentTab === "bans") {
+      setLoading(false);
+      setBanMessage(null);
+      loadBans();
     } else {
       loadQueue();
     }
     setSelectedIds(new Set());
-  }, [currentTab, statusFilter, flagFilter, page, loadQueue, loadBannedTerms]);
+  }, [currentTab, statusFilter, flagFilter, page, loadQueue, loadBannedTerms, loadBans]);
+
+  // Handle ban actions (Brief A7)
+  const handleLiftBan = useCallback(
+    async (userId: number) => {
+      if (banActionLoading !== null) return;
+      setBanActionLoading(userId);
+      setBanMessage(null);
+      try {
+        await adminApi.liftBan(userId);
+        setBanMessage(t("admin.banLifted"));
+        await loadBans();
+      } catch (err: any) {
+        setBanMessage(err?.message || t("admin.banActionError"));
+      } finally {
+        setBanActionLoading(null);
+      }
+    },
+    [banActionLoading, loadBans, t]
+  );
+
+  const handleEscalateBan = useCallback(
+    async (userId: number) => {
+      if (banActionLoading !== null) return;
+      if (!confirm(t("admin.banEscalateConfirm"))) return;
+      setBanActionLoading(userId);
+      setBanMessage(null);
+      try {
+        await adminApi.escalateBan(userId);
+        setBanMessage(t("admin.banEscalated"));
+        await loadBans();
+      } catch (err: any) {
+        setBanMessage(err?.message || t("admin.banActionError"));
+      } finally {
+        setBanActionLoading(null);
+      }
+    },
+    [banActionLoading, loadBans, t]
+  );
+
+  const handleNotifyBan = useCallback(
+    async (userId: number) => {
+      if (banActionLoading !== null) return;
+      setBanActionLoading(userId);
+      setBanMessage(null);
+      try {
+        const res = await adminApi.notifyBan(userId);
+        setBanMessage(res.message || (res.success ? t("admin.banNotifySent") : t("admin.banActionError")));
+        await loadBans();
+      } catch (err: any) {
+        setBanMessage(err?.message || t("admin.banActionError"));
+      } finally {
+        setBanActionLoading(null);
+      }
+    },
+    [banActionLoading, loadBans, t]
+  );
 
   // Handle single item moderation action
   const handleModerate = useCallback(
@@ -359,6 +440,20 @@ export default function AdminModerationPage() {
         <button
           type="button"
           onClick={() => {
+            setCurrentTab("review");
+            setPage(1);
+          }}
+          className={`pb-3 border-b-2 transition ${
+            currentTab === "review"
+              ? "border-brand-600 text-brand-600 font-semibold dark:border-brand-400 dark:text-brand-400"
+              : "border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+          }`}
+        >
+          {t("admin.tabReviews", { count: counts.review })}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
             setCurrentTab("book");
             setPage(1);
           }}
@@ -383,6 +478,20 @@ export default function AdminModerationPage() {
           }`}
         >
           {t("admin.tabBannedTerms", { count: bannedTerms.length })}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setCurrentTab("bans");
+            setPage(1);
+          }}
+          className={`pb-3 border-b-2 transition ${
+            currentTab === "bans"
+              ? "border-brand-600 text-brand-600 font-semibold dark:border-brand-400 dark:text-brand-400"
+              : "border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+          }`}
+        >
+          {t("admin.tabBans")}
         </button>
       </div>
 
@@ -497,8 +606,153 @@ export default function AdminModerationPage() {
         </div>
       )}
 
-      {/* Tab content: Queue (Feedback & Comments) */}
-      {(currentTab === "feedback" || currentTab === "comment") && (
+      {/* Tab content: Bans (Brief A7) */}
+      {currentTab === "bans" && (
+        <div className="space-y-4">
+          {banMessage && (
+            <div className="rounded-lg border border-brand-200 bg-brand-50 p-3 text-xs font-medium text-brand-900 dark:border-brand-900 dark:bg-brand-950/40 dark:text-brand-200">
+              {banMessage}
+            </div>
+          )}
+          {bansLoading ? (
+            <div className="py-12">
+              <Loading />
+            </div>
+          ) : (
+            <>
+              <div className="card overflow-hidden border border-slate-200 dark:border-slate-800">
+                <div className="border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-xs font-semibold uppercase text-slate-500 dark:border-slate-800 dark:bg-slate-900">
+                  {t("admin.banUsersTitle")}
+                </div>
+                <table className="w-full text-left text-xs">
+                  <thead className="border-b border-slate-200 bg-slate-50 text-[11px] uppercase text-slate-500 dark:border-slate-800 dark:bg-slate-900">
+                    <tr>
+                      <th className="py-2.5 px-4 font-semibold">{t("admin.banColUser")}</th>
+                      <th className="py-2.5 px-3 font-semibold">{t("admin.banColLevel")}</th>
+                      <th className="py-2.5 px-3 font-semibold">{t("admin.banColReason")}</th>
+                      <th className="py-2.5 px-3 font-semibold">{t("admin.banColExpires")}</th>
+                      <th className="py-2.5 px-3 text-right font-semibold">{t("admin.banColActions")}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                    {!bans || bans.users.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="py-8 text-center text-slate-500">
+                          {t("admin.banUsersEmpty")}
+                        </td>
+                      </tr>
+                    ) : (
+                      bans.users.map((u) => (
+                        <tr key={u.user_id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/50">
+                          <td className="py-2.5 px-4">
+                            <div className="font-medium text-slate-900 dark:text-white">{u.display_name}</div>
+                            <div className="text-[11px] text-slate-500">
+                              {u.provider} · {u.email || t("admin.banNoEmail")}
+                            </div>
+                          </td>
+                          <td className="py-2.5 px-3">
+                            {u.ban_level === "permanent" ? (
+                              <span className="rounded bg-rose-100 px-2 py-0.5 text-[11px] font-semibold text-rose-800 dark:bg-rose-950 dark:text-rose-300">
+                                {t("admin.banLevelPermanent")}
+                              </span>
+                            ) : (
+                              <span className="rounded bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                                {t("admin.banLevelTemporary")}
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-2.5 px-3 max-w-xs text-slate-700 dark:text-slate-300">{u.ban_reason || "—"}</td>
+                          <td className="py-2.5 px-3 whitespace-nowrap text-slate-500">
+                            {u.ban_level === "permanent"
+                              ? t("admin.banLevelPermanent")
+                              : u.ban_expires_at
+                              ? new Date(u.ban_expires_at).toLocaleString("vi-VN")
+                              : "—"}
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                type="button"
+                                disabled={banActionLoading === u.user_id}
+                                onClick={() => handleLiftBan(u.user_id)}
+                                className="rounded bg-emerald-600 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+                              >
+                                {t("admin.banBtnLift")}
+                              </button>
+                              {u.ban_level !== "permanent" && (
+                                <button
+                                  type="button"
+                                  disabled={banActionLoading === u.user_id}
+                                  onClick={() => handleEscalateBan(u.user_id)}
+                                  className="rounded bg-rose-600 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-rose-700 disabled:opacity-50"
+                                >
+                                  {t("admin.banBtnEscalate")}
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                disabled={banActionLoading === u.user_id || !u.email}
+                                title={!u.email ? t("admin.banNoEmail") : undefined}
+                                onClick={() => handleNotifyBan(u.user_id)}
+                                className="rounded bg-slate-600 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-slate-700 disabled:opacity-50"
+                              >
+                                {t("admin.banBtnNotify")}
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="card overflow-hidden border border-slate-200 dark:border-slate-800">
+                <div className="border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-xs font-semibold uppercase text-slate-500 dark:border-slate-800 dark:bg-slate-900">
+                  {t("admin.banIpsTitle")}
+                </div>
+                <table className="w-full text-left text-xs">
+                  <thead className="border-b border-slate-200 bg-slate-50 text-[11px] uppercase text-slate-500 dark:border-slate-800 dark:bg-slate-900">
+                    <tr>
+                      <th className="py-2.5 px-4 font-semibold">{t("admin.banColIpHash")}</th>
+                      <th className="py-2.5 px-3 font-semibold">{t("admin.banColLevel")}</th>
+                      <th className="py-2.5 px-3 font-semibold">{t("admin.banColCreatedBy")}</th>
+                      <th className="py-2.5 px-3 font-semibold">{t("admin.banColExpires")}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                    {!bans || bans.banned_ips.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="py-8 text-center text-slate-500">
+                          {t("admin.banIpsEmpty")}
+                        </td>
+                      </tr>
+                    ) : (
+                      bans.banned_ips.map((ip) => (
+                        <tr key={ip.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/50">
+                          <td className="py-2.5 px-4 font-mono text-[11px] text-slate-700 dark:text-slate-300">
+                            {ip.ip_hash.slice(0, 12)}…
+                          </td>
+                          <td className="py-2.5 px-3">
+                            {ip.level === "permanent" ? t("admin.banLevelPermanent") : t("admin.banLevelTemporary")}
+                          </td>
+                          <td className="py-2.5 px-3 text-slate-500">{ip.created_by}</td>
+                          <td className="py-2.5 px-3 whitespace-nowrap text-slate-500">
+                            {ip.level === "permanent" ? "—" : ip.expires_at ? new Date(ip.expires_at).toLocaleString("vi-VN") : "—"}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Tab content: Queue (Feedback, Comments & Reviews) */}
+      {(currentTab === "feedback" || currentTab === "comment" || currentTab === "review") && (
         <div className="space-y-4">
           {/* Top Filter Bar */}
           <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-slate-900 p-3.5 rounded-lg border border-slate-200 dark:border-slate-800">
@@ -554,8 +808,8 @@ export default function AdminModerationPage() {
             </div>
           </div>
 
-          {/* Bulk Action Bar (when selected) */}
-          {selectedIds.size > 0 && (
+          {/* Bulk Action Bar (when selected) - không áp dụng cho tab review, backend bulk chỉ nhận feedback/comment/book */}
+          {selectedIds.size > 0 && currentTab !== "review" && (
             <div className="flex flex-wrap items-center justify-between gap-3 bg-brand-50 border border-brand-200 dark:bg-brand-950/40 dark:border-brand-900 p-2.5 px-4 rounded-lg">
               <span className="text-xs font-semibold text-brand-900 dark:text-brand-200">
                 {t("admin.bulkSelected", { count: selectedIds.size })}
@@ -606,15 +860,17 @@ export default function AdminModerationPage() {
                   <table className="w-full text-left text-xs">
                     <thead className="border-b border-slate-200 bg-slate-50 text-[11px] uppercase text-slate-500 dark:border-slate-800 dark:bg-slate-900">
                       <tr>
-                        <th className="py-2.5 px-3 w-8">
-                          <input
-                            type="checkbox"
-                            checked={isAllSelected}
-                            onChange={toggleSelectAll}
-                            className="rounded border-slate-300 text-brand-ink focus:ring-brand-focus"
-                            aria-label="Chọn tất cả"
-                          />
-                        </th>
+                        {currentTab !== "review" && (
+                          <th className="py-2.5 px-3 w-8">
+                            <input
+                              type="checkbox"
+                              checked={isAllSelected}
+                              onChange={toggleSelectAll}
+                              className="rounded border-slate-300 text-brand-ink focus:ring-brand-focus"
+                              aria-label="Chọn tất cả"
+                            />
+                          </th>
+                        )}
                         <th className="py-2.5 pr-2 font-semibold">{t("admin.colTime")}</th>
                         <th className="py-2.5 pr-2 font-semibold">{t("admin.colType")}</th>
                         <th className="py-2.5 pr-3 font-semibold">{t("admin.colContent")}</th>
@@ -638,20 +894,22 @@ export default function AdminModerationPage() {
                                 : "hover:bg-slate-50/60 dark:hover:bg-slate-900/40"
                             }`}
                           >
-                            <td className="py-2.5 px-3" onClick={(e) => e.stopPropagation()}>
-                              <input
-                                type="checkbox"
-                                checked={isChecked}
-                                onChange={(e) => toggleSelectRow(row.id, e as any)}
-                                className="rounded border-slate-300 text-brand-ink focus:ring-brand-focus"
-                                aria-label={`Chọn mục ${row.id}`}
-                              />
-                            </td>
+                            {currentTab !== "review" && (
+                              <td className="py-2.5 px-3" onClick={(e) => e.stopPropagation()}>
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={(e) => toggleSelectRow(row.id, e as any)}
+                                  className="rounded border-slate-300 text-brand-ink focus:ring-brand-focus"
+                                  aria-label={`Chọn mục ${row.id}`}
+                                />
+                              </td>
+                            )}
                             <td className="py-2.5 pr-2 whitespace-nowrap text-slate-500 text-[11px]">
                               {row.created_at ? new Date(row.created_at).toLocaleDateString("vi-VN") : "—"}
                             </td>
                             <td className="py-2.5 pr-2 whitespace-nowrap font-medium text-slate-800 dark:text-slate-200">
-                              {row.type === "feedback" ? "Góp ý" : "Bình luận"}
+                              {row.type === "feedback" ? "Góp ý" : row.type === "review" ? "Đánh giá" : "Bình luận"}
                             </td>
                             <td className="py-2.5 pr-3 max-w-xs truncate text-slate-700 dark:text-slate-300">
                               {row.content}
