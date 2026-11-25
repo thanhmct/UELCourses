@@ -168,18 +168,20 @@ class InMemoryFallbackLimiter:
             self._history[key] = timestamps
 
 
-def create_limiter() -> Any:
+def create_limiter(default_limit: str | None = None) -> Any:
+    """Tạo bộ giới hạn tần suất. `default_limit` (vd "3/minute") ghi đè RATE_LIMIT_DEFAULT (dùng trong test)."""
     settings = get_settings()
+    limit = default_limit or settings.rate_limit_default
     if SLOWAPI_AVAILABLE:
         return _SlowLimiter(
             key_func=_rate_limit_key,
-            default_limits=[settings.rate_limit_default],
+            default_limits=[limit],
             enabled=settings.rate_limit_enabled,
             headers_enabled=True,
         )
     return InMemoryFallbackLimiter(
         key_func=_rate_limit_key,
-        default_limits=[settings.rate_limit_default],
+        default_limits=[limit],
         enabled=settings.rate_limit_enabled,
         headers_enabled=True,
     )

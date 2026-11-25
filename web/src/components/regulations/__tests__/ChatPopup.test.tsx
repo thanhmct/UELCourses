@@ -168,7 +168,12 @@ describe("W9: Cửa sổ chat pop-up Quy chế & Hỏi đáp AI", () => {
     expect(api.ask).toHaveBeenLastCalledWith("Khi nào bị buộc thôi học?", undefined);
 
     fireEvent.click(screen.getByRole("button", { name: "K24" }));
-    await waitFor(() => expect(api.ask).toHaveBeenLastCalledWith("Khi nào bị buộc thôi học?", "K24"));
+    await waitFor(() =>
+      expect(api.ask).toHaveBeenLastCalledWith("Khi nào bị buộc thôi học?", "K24", undefined, {
+        lang: "vi",
+        previous: ["Khi nào bị buộc thôi học?"],
+      }),
+    );
     expect(activeConversation(useRegChat.getState())?.cohort).toBe("K24");
     expect(screen.getByText(/Áp dụng khóa 24 bạn đã chọn/)).toBeInTheDocument();
   });
@@ -275,7 +280,9 @@ describe("W9: Cửa sổ chat pop-up Quy chế & Hỏi đáp AI", () => {
     await screen.findByText("Bạn thuộc khóa nào và học chương trình nào?");
     fireEvent.change(input, { target: { value: "Tôi học khóa 26" } });
     fireEvent.click(screen.getByRole("button", { name: "Gửi" }));
-    await waitFor(() => expect(api.ask).toHaveBeenLastCalledWith(question, "K26"));
+    await waitFor(() =>
+      expect(api.ask).toHaveBeenLastCalledWith(question, "K26", undefined, { lang: "vi", previous: [question] }),
+    );
     expect(within(screen.getByRole("log")).getByText("Tôi học khóa 26")).toBeInTheDocument();
   });
 

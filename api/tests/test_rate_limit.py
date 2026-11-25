@@ -62,8 +62,7 @@ def test_get_real_ip_without_forwarded_header():
 def test_rate_limit_exceeded_returns_429_and_retry_after(monkeypatch):
     """Vượt hạn mức trả 429 có header Retry-After và thông báo JSON tiếng Việt."""
     test_app = FastAPI()
-    test_limiter = create_limiter()
-    test_limiter.default_limits = ["3/minute"]
+    test_limiter = create_limiter("3/minute")
     test_limiter.enabled = True
     if hasattr(test_limiter, "reset"):
         test_limiter.reset()
@@ -96,8 +95,7 @@ def test_rate_limit_exceeded_returns_429_and_retry_after(monkeypatch):
 def test_different_ips_have_separate_counters():
     """Hai IP khác nhau có bộ đếm riêng; IP thứ nhất bị 429 không ảnh hưởng IP thứ hai."""
     test_app = FastAPI()
-    test_limiter = create_limiter()
-    test_limiter.default_limits = ["2/minute"]
+    test_limiter = create_limiter("2/minute")
     test_limiter.enabled = True
     if hasattr(test_limiter, "reset"):
         test_limiter.reset()
@@ -126,8 +124,7 @@ def test_different_ips_have_separate_counters():
 def test_health_check_never_rate_limited():
     """Endpoint /api/health được miễn trừ, gọi liên tục không bao giờ bị 429."""
     test_app = FastAPI()
-    test_limiter = create_limiter()
-    test_limiter.default_limits = ["2/minute"]
+    test_limiter = create_limiter("2/minute")
     test_limiter.enabled = True
     if hasattr(test_limiter, "reset"):
         test_limiter.reset()
@@ -153,8 +150,7 @@ def test_health_check_never_rate_limited():
 def test_rate_limit_disabled_allows_unlimited():
     """RATE_LIMIT_ENABLED=false thì tắt hoàn toàn, không giới hạn."""
     test_app = FastAPI()
-    test_limiter = create_limiter()
-    test_limiter.default_limits = ["2/minute"]
+    test_limiter = create_limiter("2/minute")
     test_limiter.enabled = False
     if hasattr(test_limiter, "reset"):
         test_limiter.reset()
