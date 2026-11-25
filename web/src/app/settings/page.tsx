@@ -97,6 +97,90 @@ function ProgramCodeField({ children }: { children: ReactNode }) {
   );
 }
 
+/** Đặt/xóa biệt danh công khai (thay "Sinh viên ẩn danh" cạnh đánh giá và bình luận). */
+function NicknameEditor({ nickname, onChanged }: { nickname: string | null; onChanged: (next: string | null) => void }) {
+  const { t } = useT();
+  const [value, setValue] = useState(nickname ?? "");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
+
+  useEffect(() => {
+    setValue(nickname ?? "");
+  }, [nickname]);
+
+  async function save(next: string | null) {
+    setBusy(true);
+    setMessage(null);
+    try {
+      const res = await api.authSetNickname(next);
+      onChanged(res.nickname);
+      setValue(res.nickname ?? "");
+      setMessage({
+        kind: "ok",
+        text: res.nickname ? t("settings.nicknameSaved", { name: res.nickname }) : t("settings.nicknameRemoved"),
+      });
+    } catch (err) {
+      setMessage({ kind: "error", text: err instanceof Error && err.message && !err.message.startsWith("HTTP") ? err.message : t("settings.nicknameError") });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const unchanged = value.trim() === (nickname ?? "");
+
+  return (
+    <form
+      className="space-y-2 border-t border-slate-200 pt-3 dark:border-slate-800"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!unchanged) void save(value.trim() || null);
+      }}
+    >
+      <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{t("settings.nicknameTitle")}</h3>
+      <p className="text-xs leading-relaxed text-slate-500">{t("settings.nicknameDesc")}</p>
+      <label htmlFor="settings-nickname" className="sr-only">{t("settings.nicknameLabel")}</label>
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          id="settings-nickname"
+          type="text"
+          value={value}
+          maxLength={30}
+          onChange={(e) => {
+            setValue(e.target.value);
+            setMessage(null);
+          }}
+          placeholder={t("settings.nicknamePlaceholder")}
+          className="min-w-0 flex-1 rounded-md border border-slate-300 bg-white p-2 text-sm text-slate-900 placeholder-slate-400 focus:border-brand-focus focus:outline-none focus:ring-1 focus:ring-brand-focus dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:placeholder-slate-500"
+        />
+        <button type="submit" disabled={busy || unchanged} className="btn-primary min-h-9 px-3 text-xs disabled:opacity-50">
+          {t("settings.nicknameSave")}
+        </button>
+        {nickname && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void save(null)}
+            className="btn min-h-9 border border-slate-300 px-3 text-xs disabled:opacity-50 dark:border-slate-700"
+          >
+            {t("settings.nicknameRemove")}
+          </button>
+        )}
+      </div>
+      <p className="text-xs text-slate-600 dark:text-slate-400">
+        {t("settings.nicknameShownAs", { name: nickname ?? t("common.anonymousStudent") })}
+      </p>
+      {message && (
+        <p
+          role={message.kind === "error" ? "alert" : "status"}
+          className={message.kind === "error" ? "text-xs text-red-600 dark:text-red-400" : "text-xs text-emerald-600 dark:text-emerald-400"}
+        >
+          {message.text}
+        </p>
+      )}
+    </form>
+  );
+}
+
 function AccountSection() {
   const { t } = useT();
   const [me, setMe] = useState<AuthMeResponse | null>(null);
@@ -133,14 +217,20 @@ function AccountSection() {
       {loading ? (
         <Loading compact />
       ) : user ? (
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="text-sm text-slate-700 dark:text-slate-300">
-            {t("settings.accountLoggedInAs", { name: user.display_name })}
-          </span>
-          <button type="button" onClick={handleLogout} className="btn min-h-9 border border-slate-300 px-3 text-xs dark:border-slate-700">
-            {t("settings.accountLogout")}
-          </button>
-        </div>
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-sm text-slate-700 dark:text-slate-300">
+              {t("settings.accountLoggedInAs", { name: user.display_name })}
+            </span>
+            <button type="button" onClick={handleLogout} className="btn min-h-9 border border-slate-300 px-3 text-xs dark:border-slate-700">
+              {t("settings.accountLogout")}
+            </button>
+          </div>
+          <NicknameEditor
+            nickname={user.nickname ?? null}
+            onChanged={(next) => setMe((prev) => (prev?.user ? { ...prev, user: { ...prev.user, nickname: next } } : prev))}
+          />
+        </>
       ) : (
         <div className="flex flex-wrap gap-2">
           {providers?.google?.ready && (

@@ -838,6 +838,8 @@ export const api = {
   ) =>
     raw<ModuleComment>(`/api/modules/${encodeURIComponent(code)}/comments`, {
       method: "POST",
+      // Gửi cookie đăng nhập (nếu có) để bình luận hiện biệt danh của tài khoản.
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     }),
@@ -847,6 +849,13 @@ export const api = {
   authMe: () => authFetch<AuthMeResponse>("/api/auth/me"),
 
   authLogout: () => authFetch<{ ok: boolean }>("/api/auth/logout", { method: "POST" }),
+
+  /** Đặt biệt danh công khai; chuỗi rỗng hoặc null = quay về ẩn danh. */
+  authSetNickname: (nickname: string | null) =>
+    authFetch<{ nickname: string | null; public_name: string }>("/api/auth/nickname", {
+      method: "PUT",
+      body: JSON.stringify({ nickname }),
+    }),
 
   reviewGuidelines: () => authFetch<{ items: string[] }>("/api/reviews/guidelines"),
 

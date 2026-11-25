@@ -99,6 +99,25 @@ export function ModuleReviews({ moduleCode }: { moduleCode: string; moduleName?:
     fetchComments();
   }, [moduleCode]);
 
+  // Biết người dùng đã đăng nhập và đã đặt biệt danh chưa để báo trước tên sẽ hiện cạnh bình luận.
+  // undefined = chưa tải/chưa đăng nhập (không hiện gợi ý); null = đã đăng nhập nhưng chưa đặt biệt danh.
+  const [postingNickname, setPostingNickname] = useState<string | null | undefined>(undefined);
+  useEffect(() => {
+    if (!isExpanded) return;
+    let active = true;
+    Promise.resolve()
+      .then(() => api.authMe())
+      .then((me) => {
+        if (active) setPostingNickname(me?.user ? (me.user.nickname ?? null) : undefined);
+      })
+      .catch(() => {
+        if (active) setPostingNickname(undefined);
+      });
+    return () => {
+      active = false;
+    };
+  }, [isExpanded]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormSuccess(false);
@@ -181,6 +200,15 @@ export function ModuleReviews({ moduleCode }: { moduleCode: string; moduleName?:
             <div className="mb-2.5">
               <StarPicker rating={selectedRating} onChange={setSelectedRating} />
             </div>
+
+            {postingNickname !== undefined && (
+              <p className="mb-2 text-[11px] text-slate-500 dark:text-slate-400" data-testid="comment-posting-as">
+                {postingNickname ? t("comments.postingAs", { name: postingNickname }) : t("comments.postingAnonymous")}{" "}
+                <a href="/settings" className="underline hover:text-slate-700 dark:hover:text-slate-200">
+                  {t("comments.setNickname")}
+                </a>
+              </p>
+            )}
 
             <div className="relative">
               <textarea

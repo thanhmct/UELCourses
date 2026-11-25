@@ -5,6 +5,7 @@ from urllib.parse import quote
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import RedirectResponse
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -14,6 +15,7 @@ from app.models import User
 from app.rate_limit import get_real_ip
 from app.services import auth as svc
 from app.services.ip_utils import hash_client_ip
+from app.services.nickname import public_name, validate_nickname
 from app.services.moderation_ban import as_utc, get_active_ip_ban, is_user_ban_active
 
 router = APIRouter(tags=["auth"])
@@ -132,10 +134,27 @@ def me(user: User | None = Depends(current_user)):
         "user": {
             "id": user.id,
             "display_name": user.display_name,
+            "nickname": user.nickname,
             "provider": user.provider,
             "banned": banned,
         }
     }
+
+
+class NicknameIn(BaseModel):
+    nickname: str | None = Field(default=None, max_length=64, description="Biệt danh công khai; để trống để quay về ẩn danh")
+
+
+@router.put("/auth/nickname", summary="Đặt hoặc xóa biệt danh công khai của tài khoản")
+def set_nickname(
+    body: NicknameIn,
+    user: User = Depends(require_active_user),
+    db: Session = Depends(get_db),
+):
+    """Biệt danh dùng cho đánh giá và bình luận mới. Bài đã đăng giữ nguyên tên lúc viết."""
+    user.nickname = validate_nickname(body.nickname, db)
+    db.commit()
+    return {"nickname": user.nickname, "public_name": public_name(user.nickname)}
 
 
 @router.post("/auth/logout", summary="Đăng xuất")

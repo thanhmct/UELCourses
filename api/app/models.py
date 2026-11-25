@@ -728,6 +728,9 @@ class User(Base):
     provider: Mapped[str] = mapped_column(String(16))  # google | facebook
     subject: Mapped[str] = mapped_column(String(128))  # id do nhà cung cấp cấp
     display_name: Mapped[str] = mapped_column(String(128), default="Sinh viên")
+    # Biệt danh công khai do người dùng tự đặt (thay "Sinh viên ẩn danh"); None = dùng tên ẩn danh mặc định.
+    # display_name ở trên là tên do nhà cung cấp trả về và KHÔNG bao giờ hiển thị công khai.
+    nickname: Mapped[str | None] = mapped_column(String(40), nullable=True)
     email: Mapped[str | None] = mapped_column(String(256), nullable=True)
     ban_level: Mapped[str | None] = mapped_column(String(16), nullable=True)  # temporary | permanent
     ban_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -943,6 +946,8 @@ class ModuleComment(Base):
     rating: Mapped[int | None] = mapped_column(Integer, nullable=True)
     status: Mapped[str] = mapped_column(String(16), default="pending", server_default="pending", index=True)  # pending | approved | rejected | hidden
     flag_reasons: Mapped[list[str] | None] = mapped_column(JsonType, nullable=True)
+    # Biệt danh của người gửi tại thời điểm viết (chỉ có khi đã đăng nhập và đã đặt biệt danh); None = ẩn danh.
+    author_name: Mapped[str | None] = mapped_column(String(40), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
     moderated_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
     moderated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

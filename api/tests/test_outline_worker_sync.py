@@ -7,7 +7,10 @@ import pytest
 from app.services.outline_parse import classify_table
 
 pytest.importorskip("pymupdf")
-_spec = importlib.util.spec_from_file_location("outline_worker", Path(__file__).resolve().parents[2] / "colab" / "outline_worker.py")
+_WORKER = Path(__file__).resolve().parents[2] / "colab" / "outline_worker.py"
+if not _WORKER.exists():  # thư mục colab/ không được đưa lên GitHub (công cụ trích đề cương nội bộ)
+    pytest.skip("colab/outline_worker.py không có trong bản này", allow_module_level=True)
+_spec = importlib.util.spec_from_file_location("outline_worker", _WORKER)
 worker = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(worker)
 

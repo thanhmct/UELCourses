@@ -65,6 +65,10 @@ from app.schemas import (
 from app.services.descriptions import normalize_description_line_breaks
 from app.services.faculty_names import canonical_faculty_vi, department_en, faculty_en
 from app.services.moderation import check_content
+from app.services.moderation_ban import is_user_ban_active
+from app.services.nickname import public_name
+from app.routers.auth import current_user
+from app.models import User as AccountUser
 from app.services.outline_email import get_module_lecturer_email
 from app.services.program_tracks import get_program_track_codes
 from app.services.text import search_tokens
@@ -1169,7 +1173,7 @@ def list_module_comments(
             module_code=c.module_code,
             body=c.body,
             rating=c.rating,
-            author_name="Sinh viên ẩn danh",
+            author_name=public_name(c.author_name),
             status=c.status,
             created_at=c.created_at,
         )
@@ -1195,6 +1199,7 @@ def create_module_comment(
     code: str,
     body: ModuleCommentIn,
     db: Session = Depends(get_db),
+    account: AccountUser | None = Depends(current_user),
 ):
     m = _get_module(db, code)
 
@@ -1262,6 +1267,11 @@ def create_module_comment(
     else:
         initial_status = "pending"
 
+    # Người đã đăng nhập và đặt biệt danh thì bình luận hiện biệt danh đó; còn lại vẫn là "Sinh viên ẩn danh".
+    author_name = None
+    if account is not None and account.nickname and not is_user_ban_active(account, datetime.now(timezone.utc)):
+        author_name = account.nickname
+
     comment = ModuleComment(
         module_code=m.code,
         anon_id=body.anon_id,
@@ -1270,6 +1280,7 @@ def create_module_comment(
         rating=body.rating,
         status=initial_status,
         flag_reasons=flags or None,
+        author_name=author_name,
     )
     db.add(comment)
     db.commit()
@@ -1280,7 +1291,7 @@ def create_module_comment(
         module_code=comment.module_code,
         body=comment.body,
         rating=comment.rating,
-        author_name="Sinh viên ẩn danh",
+        author_name=public_name(comment.author_name),
         status=comment.status,
         semester=comment.semester,
         created_at=comment.created_at,

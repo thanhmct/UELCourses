@@ -624,7 +624,10 @@ export interface AuthBanInfo {
 
 export interface AuthUser {
   id: number;
+  /** Tên do nhà cung cấp (Google/Facebook) trả về — chỉ chủ tài khoản thấy, không hiển thị công khai. */
   display_name: string;
+  /** Biệt danh công khai do người dùng đặt; null = hiện "Sinh viên ẩn danh". */
+  nickname?: string | null;
   provider: string;
   banned: AuthBanInfo | null;
 }

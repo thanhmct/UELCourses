@@ -68,7 +68,7 @@ $connectionEnvironment = @{
     PGOPTIONS = $null
 }
 
-$docker = (Get-Command docker -CommandType Application -ErrorAction Stop).Source
+$docker = @(Get-Command docker -CommandType Application -ErrorAction Stop)[0].Source
 # psql chạy BÊN TRONG container db (máy Windows thường không cài psql). Biến PG* được chuyển
 # từ môi trường của tiến trình này vào container bằng `-e TÊN` (không kèm giá trị) nên mật khẩu
 # không xuất hiện trong dòng lệnh.

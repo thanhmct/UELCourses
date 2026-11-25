@@ -13,6 +13,7 @@ from app.services.catalog_visibility import public_module
 from app.services.ip_utils import hash_client_ip
 from app.services.moderation import GUIDELINES_VI, moderate
 from app.services.moderation_ban import apply_autoban_if_needed
+from app.services.nickname import public_name, validate_nickname
 
 router = APIRouter(tags=["reviews"])
 
@@ -23,7 +24,10 @@ class ReviewIn(BaseModel):
     workload: int | None = Field(default=None, ge=1, le=5, description="Khối lượng bài tập/thi: 1 nhẹ … 5 nặng")
     semester: str | None = Field(default=None, max_length=32, description="Học kỳ đã học, vd 2025-2026-1")
     professor: str | None = Field(default=None, max_length=256, description="Giảng viên phụ trách (tùy chọn)")
-    display_name: str | None = Field(default=None, max_length=128, description="Tên hiển thị (mặc định: ẩn danh)")
+    display_name: str | None = Field(
+        default=None, max_length=64,
+        description="Tên hiển thị riêng cho bài này (tùy chọn). Trống: dùng biệt danh tài khoản, nếu chưa có thì ẩn danh",
+    )
     content: str = Field(min_length=20, max_length=2000, description="Nội dung đánh giá và lời khuyên")
 
 
@@ -93,9 +97,11 @@ def create_review(
         raise HTTPException(409, "Bạn đã đánh giá học phần này. Liên hệ quản trị viên nếu cần sửa.")
     ip_hash = hash_client_ip(get_real_ip(request))
     res = moderate(body.content + " " + (body.professor or ""))
+    # Tên riêng cho bài này (nếu nhập) > biệt danh của tài khoản > "Sinh viên ẩn danh". Không bao giờ dùng tên thật từ Google/Facebook.
+    shown_name = public_name(validate_nickname(body.display_name, db) or user.nickname)
     review = Review(
         module_code=mcode, user_id=user.id,
-        display_name=(body.display_name or "Sinh viên ẩn danh").strip()[:128] or "Sinh viên ẩn danh",
+        display_name=shown_name,
         semester=body.semester, professor=body.professor, rating=body.rating, difficulty=body.difficulty,
         workload=body.workload, content=body.content.strip(), status=res.status,
         moderation_reasons=res.reasons or None,

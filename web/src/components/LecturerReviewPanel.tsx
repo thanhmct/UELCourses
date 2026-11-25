@@ -254,7 +254,11 @@ export function LecturerReviewPanel({ moduleCode }: { moduleCode: string }) {
                       type="text"
                       value={displayName}
                       onChange={(e) => setDisplayName(e.target.value)}
-                      placeholder={t("lecturerReview.nicknamePlaceholder")}
+                      placeholder={
+                        user?.nickname
+                          ? t("lecturerReview.nicknameUsing", { name: user.nickname })
+                          : t("lecturerReview.nicknamePlaceholder")
+                      }
                       aria-label={t("lecturerReview.nicknameLabel")}
                       className="rounded-md border border-slate-300 bg-white p-2 text-xs text-slate-900 placeholder-slate-400 focus:border-brand-focus focus:outline-none focus:ring-1 focus:ring-brand-focus dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:placeholder-slate-500"
                     />
