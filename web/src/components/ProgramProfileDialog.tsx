@@ -56,6 +56,7 @@ export function ProgramProfileDialog({
   const storeSecondary = useSettings((s) => s.secondaryProgramCode);
   const setProgramProfile = useSettings((s) => s.setProgramProfile);
   const setProgramPrompted = useSettings((s) => s.setProgramPrompted);
+  const exchangeStudent = useSettings((s) => s.exchangeStudent);
 
   const [primary, setPrimary] = useState(storePrimary);
   const [secondary, setSecondary] = useState(storeSecondary);
@@ -139,9 +140,16 @@ export function ProgramProfileDialog({
     if (waitingForLookup) return;
     let hasErr = false;
 
+    // Sinh viên trao đổi (giao diện tiếng Anh) được lưu mà không cần chọn CTĐT.
+    const exchangeWithoutProgram = !primary.trim() && !secondary.trim() && lang === "en" && exchangeStudent;
+
     if (!primary.trim()) {
-      setPrimaryError(t("profile.errPrimaryRequired"));
-      hasErr = true;
+      if (exchangeWithoutProgram) {
+        setPrimaryError("");
+      } else {
+        setPrimaryError(t("profile.errPrimaryRequired"));
+        hasErr = true;
+      }
     } else if (!primaryParsed) {
       setPrimaryError(t("profile.errInvalidFormat"));
       hasErr = true;
@@ -242,6 +250,7 @@ export function ProgramProfileDialog({
         </div>
 
         <div className="min-h-0 space-y-4 overflow-y-auto overscroll-contain px-4 pt-1 pb-4 sm:px-6">
+          <ExchangeStudentToggle id="profile-exchange-student" variant="button" />
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <label htmlFor="profile-primary" className="label text-sm font-semibold">
@@ -285,7 +294,6 @@ export function ProgramProfileDialog({
                   )}
               </div>
             ) : null}
-            <ExchangeStudentToggle id="profile-exchange-student" programCode={primary} />
           </div>
 
           {/* Cột 2: Ngành 2 */}

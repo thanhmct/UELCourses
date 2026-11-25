@@ -56,6 +56,39 @@ describe("ProgramProfileDialog", () => {
     expect(screen.getByRole("button", { name: "Kế toán · Tiếng Anh · Khóa 26 · K26405E" })).toBeInTheDocument();
   });
 
+  it("shows the exchange-student button in English and lets the user save without a programme", async () => {
+    useLang.getState().setLang("en");
+    useSettings.setState({ exchangeStudent: false });
+    const onClose = vi.fn();
+    render(<ProgramProfileDialog open={true} onClose={onClose} />);
+
+    const btn = screen.getByRole("button", { name: "I am an exchange student at UEL" });
+    expect(btn).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(btn);
+    expect(useSettings.getState().exchangeStudent).toBe(true);
+
+    fireEvent.click(screen.getByRole("button", { name: /Save profile/i }));
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(useSettings.getState().programCode).toBe("");
+  });
+
+  it("still requires a programme when the exchange option is off", async () => {
+    useLang.getState().setLang("en");
+    useSettings.setState({ exchangeStudent: false });
+    const onClose = vi.fn();
+    render(<ProgramProfileDialog open={true} onClose={onClose} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Save profile/i }));
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("hides the exchange-student button in Vietnamese", () => {
+    render(<ProgramProfileDialog open={true} onClose={() => {}} />);
+    expect(screen.queryByRole("button", { name: "I am an exchange student at UEL" })).toBeNull();
+  });
+
   it("expands KDTMHQ in the outer programme filter", async () => {
     render(<ProgramProfileDialog open={true} onClose={() => {}} />);
     const input = screen.getByLabelText(/^Ngành chính$/i);

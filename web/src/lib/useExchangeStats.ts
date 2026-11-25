@@ -5,12 +5,11 @@ import { isExchangeViewActive, type ExchangeStatItem } from "./exchangeStats";
 import { useSettings } from "./store";
 import { useT } from "@/i18n";
 
-/** Đang ở chế độ thống kê SV trao đổi (cửa sổ tiếng Anh + CTĐT tiếng Anh + đã tick). */
+/** Đang ở chế độ thống kê SV trao đổi (giao diện tiếng Anh + đã bật, không cần chọn CTĐT). */
 export function useExchangeViewActive(): boolean {
   const { lang } = useT();
-  const programCode = useSettings((s) => s.programCode);
   const exchangeStudent = useSettings((s) => s.exchangeStudent);
-  return isExchangeViewActive(lang, programCode, exchangeStudent);
+  return isExchangeViewActive(lang, exchangeStudent);
 }
 
 /**

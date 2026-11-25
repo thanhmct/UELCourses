@@ -1,5 +1,3 @@
-import { parseProgramCode } from "./programCode";
-
 /** Số SV trao đổi đã học một học phần trong một học kỳ (API GET /api/exchange-stats). */
 export interface ExchangeSemesterCount {
   semester_id: string;
@@ -17,12 +15,15 @@ export interface ExchangeStatList {
   items: ExchangeStatItem[];
 }
 
-/** Ô tick "SV trao đổi" chỉ hiện trong cửa sổ tiếng Anh, khi CTĐT đang chọn là CTĐT tiếng Anh. */
-export function canOfferExchangeTick(lang: string, programCode: string): boolean {
-  return lang === "en" && parseProgramCode(programCode)?.english === true;
+/**
+ * Nút "Tôi là sinh viên trao đổi" chỉ hiện trong giao diện tiếng Anh.
+ * Không bắt buộc chọn CTĐT (sinh viên trao đổi thường chưa có CTĐT tại UEL).
+ */
+export function canOfferExchangeTick(lang: string): boolean {
+  return lang === "en";
 }
 
-/** Thông tin thống kê chỉ hiện khi đủ điều kiện và sinh viên đã tick. */
-export function isExchangeViewActive(lang: string, programCode: string, exchangeStudent: boolean): boolean {
-  return exchangeStudent && canOfferExchangeTick(lang, programCode);
+/** Thông tin thống kê chỉ hiện ở giao diện tiếng Anh khi sinh viên đã bật chế độ trao đổi. */
+export function isExchangeViewActive(lang: string, exchangeStudent: boolean): boolean {
+  return exchangeStudent && canOfferExchangeTick(lang);
 }

@@ -2,14 +2,14 @@ import { describe, expect, it } from "vitest";
 import { canOfferExchangeTick, isExchangeViewActive } from "@/lib/exchangeStats";
 
 describe("exchange stats gating helpers", () => {
-  it("requires English UI and an English program for the tick", () => {
-    expect(canOfferExchangeTick("en", "K23406E")).toBe(true);
-    expect(canOfferExchangeTick("vi", "K23406E")).toBe(false);
-    expect(canOfferExchangeTick("en", "K23406")).toBe(false);
+  it("offers the exchange option in English UI only, without needing a program", () => {
+    expect(canOfferExchangeTick("en")).toBe(true);
+    expect(canOfferExchangeTick("vi")).toBe(false);
   });
 
-  it("requires the tick as well for the statistics", () => {
-    expect(isExchangeViewActive("en", "K23406E", true)).toBe(true);
-    expect(isExchangeViewActive("en", "K23406E", false)).toBe(false);
+  it("activates the statistics when English UI and the option is on", () => {
+    expect(isExchangeViewActive("en", true)).toBe(true);
+    expect(isExchangeViewActive("en", false)).toBe(false);
+    expect(isExchangeViewActive("vi", true)).toBe(false);
   });
 });
