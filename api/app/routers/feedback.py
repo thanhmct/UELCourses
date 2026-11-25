@@ -1,40 +1,85 @@
 from __future__ import annotations
 
 import csv
+import hashlib
+import hmac
 import io
+import secrets
 from collections import defaultdict
 from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import StreamingResponse
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
+from app.config import get_settings
 from app.db import get_db
 from app.deps import require_admin
-from app.models import Feedback
-from app.rate_limit import heavy_rate_limit, limiter
+from app.models import Feedback, User
+from app.rate_limit import get_real_ip, heavy_rate_limit, limiter
+from app.routers.auth import current_user
 from app.schemas import CategoryStat, DayStat, FeedbackIn, FeedbackItem, FeedbackOut, FeedbackStats, PageStat
 from app.services.moderation import check_content
 
 router = APIRouter(prefix="/feedback", tags=["feedback"])
 
+_local_ip_hash_secret = secrets.token_hex(32)
+
+
+def _quick_rating_ip_hash(request: Request) -> str:
+    """Hash IP ổn định lâu dài (không xoay theo ngày) bằng HMAC-SHA256 để chống hiện lại popup đánh giá nhanh."""
+    settings = get_settings()
+    secret = (
+        settings.llm_hash_secret
+        or settings.codex_api_key
+        or settings.anthropic_api_key
+        or (settings.session_secret if settings.env == "production" else _local_ip_hash_secret)
+    )
+    ip = get_real_ip(request)
+    return hmac.new(secret.encode("utf-8"), f"quick_rating:{ip}".encode("utf-8"), hashlib.sha256).hexdigest()
+
 
 @router.post("", response_model=FeedbackOut, status_code=201, summary="Gửi phản hồi từ widget")
-def create_feedback(body: FeedbackIn, db: Session = Depends(get_db)):
+def create_feedback(
+    body: FeedbackIn,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User | None = Depends(current_user),
+):
     flags: list[str] = []
     if body.message and body.message.strip():
         flags = check_content(body.message, db=db, min_len=1, max_len=5000)
 
+    is_quick = bool(body.quick_rating)
     fb = Feedback(
-        **body.model_dump(),
+        **body.model_dump(exclude={"quick_rating"}),
         status="pending",
         flag_reasons=flags or None,
+        is_quick_rating=is_quick,
+        rater_ip_hash=_quick_rating_ip_hash(request) if is_quick else None,
+        account_id=(user.id if user else None) if is_quick else None,
     )
     db.add(fb)
     db.commit()
     db.refresh(fb)
     return fb
+
+
+@router.get("/satisfaction-status", summary="Kiểm tra người dùng đã từng gửi đánh giá nhanh hay chưa")
+def satisfaction_status(
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User | None = Depends(current_user),
+):
+    ip_hash = _quick_rating_ip_hash(request)
+    cond = Feedback.rater_ip_hash == ip_hash
+    if user is not None:
+        cond = or_(Feedback.account_id == user.id, Feedback.rater_ip_hash == ip_hash)
+    already_rated = (
+        db.scalar(select(Feedback.id).where(Feedback.is_quick_rating.is_(True), cond).limit(1)) is not None
+    )
+    return {"already_rated": already_rated}
 
 
 def _filtered(db: Session, since: date | None, until: date | None) -> list[Feedback]:

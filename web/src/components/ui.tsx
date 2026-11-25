@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import type { EffectiveBadge } from "@/lib/regulations";
-import { useT } from "@/i18n";
+import { translate, useLang, useT } from "@/i18n";
 import { formatModuleType } from "@/lib/moduleFormat";
 import { BackButton } from "./BackButton";
 
@@ -35,12 +35,28 @@ export function BouncingChick() {
   return <span className="inline-block shrink-0 text-4xl leading-none motion-safe:animate-bounce" aria-hidden="true">🐣</span>;
 }
 
-export function Loading({ compact = false, className = "" }: { compact?: boolean; className?: string }) {
-  const { t } = useT();
+/** Ba dấu chấm nhảy lần lượt, đặt sau chữ "chờ xíu nhe". */
+export function LoadingDots() {
   return (
-    <span className={`${compact ? "inline-flex" : "flex min-h-40 justify-center py-8"} items-center gap-2 font-sans text-[1.75rem] leading-tight font-medium text-slate-600 dark:text-slate-400 ${className}`} role="status">
+    <span aria-hidden="true" className="ml-1.5 inline-flex">
+      {[0, 1, 2].map((i) => (
+        <span key={i} className="inline-block motion-safe:animate-bounce" style={{ animationDelay: `${i * 150}ms` }}>.</span>
+      ))}
+    </span>
+  );
+}
+
+/** `page`: the whole page is loading, so the chick sits in the middle of the screen (clicks pass through). */
+export function Loading({ compact = false, page = false, className = "" }: { compact?: boolean; page?: boolean; className?: string }) {
+  // Đọc ngôn ngữ đã lưu ngay (không đợi mounted) để màn chờ không hiện tiếng Việt khi giao diện đang là tiếng Anh.
+  const lang = useLang((s) => s.lang);
+  const layout = page
+    ? "pointer-events-none fixed inset-0 z-10 flex justify-center px-3 text-center"
+    : compact ? "inline-flex" : "flex min-h-40 justify-center py-8";
+  return (
+    <span className={`${layout} items-center gap-2 font-sans text-[1.75rem] leading-tight font-medium text-slate-600 dark:text-slate-400 ${className}`} role="status">
       <BouncingChick />
-      <span>{t("common.loading")}</span>
+      <span suppressHydrationWarning>{translate(lang, "common.loading")}<LoadingDots /></span>
     </span>
   );
 }

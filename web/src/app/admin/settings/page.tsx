@@ -11,7 +11,7 @@ export default function AdminSettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  const [moderationMode, setModerationMode] = useState<"pre" | "post">("pre");
+  const [moderationMode, setModerationMode] = useState<"auto" | "pre" | "post">("auto");
   const [analyticsEnabled, setAnalyticsEnabled] = useState(true);
   const [retentionDays, setRetentionDays] = useState(180);
   const [lastUpdated, setLastUpdated] = useState<{ by?: string | null; at?: string | null }>({});
@@ -21,7 +21,7 @@ export default function AdminSettingsPage() {
     setError(null);
     try {
       const data = await adminApi.getSettings();
-      setModerationMode(data.moderation_mode || "pre");
+      setModerationMode(data.moderation_mode || "auto");
       setAnalyticsEnabled(data.analytics_enabled !== false);
       setRetentionDays(data.analytics_retention_days || 180);
       setLastUpdated({ by: data.updated_by, at: data.updated_at });
@@ -115,6 +115,25 @@ export default function AdminSettingsPage() {
               {t("admin.settingModMode")}
             </h2>
             <div className="space-y-2.5">
+              <label className="flex items-start gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-800 hover:bg-gray-50/60 dark:hover:bg-gray-800/40 cursor-pointer transition">
+                <input
+                  type="radio"
+                  name="moderation_mode"
+                  value="auto"
+                  checked={moderationMode === "auto"}
+                  onChange={() => setModerationMode("auto")}
+                  className="mt-0.5 text-primary-600 focus:ring-primary-500"
+                />
+                <div>
+                  <span className="font-semibold text-gray-900 dark:text-white block">
+                    Tự duyệt (Auto-moderation)
+                  </span>
+                  <span className="text-gray-500 dark:text-gray-400 block mt-0.5">
+                    {t("admin.modAuto")}
+                  </span>
+                </div>
+              </label>
+
               <label className="flex items-start gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-800 hover:bg-gray-50/60 dark:hover:bg-gray-800/40 cursor-pointer transition">
                 <input
                   type="radio"

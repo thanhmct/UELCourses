@@ -201,6 +201,8 @@ def test_trend_slots_has_data_with_class_code(db):
         weekday=2,  # Thứ Hai
         start_period=1,
         end_period=3,
+        start_time="07:00",
+        end_time="09:30",
     )
     db.add(lesson)
 

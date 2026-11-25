@@ -270,8 +270,47 @@ export function applyOneDayOverrides(occurrences: ClassOccurrence[]): ClassOccur
   for (const o of occurrences) {
     if (isOneDayLesson(o.lesson)) overridden.add(weekKey(o));
   }
-  if (overridden.size === 0) return occurrences;
-  return occurrences.filter((o) => isOneDayLesson(o.lesson) || !overridden.has(weekKey(o)));
+  const base =
+    overridden.size === 0
+      ? occurrences
+      : occurrences.filter((o) => isOneDayLesson(o.lesson) || !overridden.has(weekKey(o)));
+  return collapseOverlappingSameDay(base);
+}
+
+/** Lower = more specific: a one-day lesson, then a shorter date range, beats the regular weekly one. */
+function specificity(o: ClassOccurrence): number {
+  const s = parseDateOnly(o.lesson.date_start);
+  if (!s) return Number.MAX_SAFE_INTEGER;
+  const e = parseDateOnly(o.lesson.date_end) ?? s;
+  return Math.round((e.getTime() - s.getTime()) / 86_400_000);
+}
+
+/**
+ * Same class, same date, overlapping times → the more specific lesson (one day, else the shorter
+ * date range) replaces the regular weekly one on that day, like a one-day override. Equal
+ * specificity (the school listing the same session twice with different end times) → the longer wins.
+ */
+function collapseOverlappingSameDay(occurrences: ClassOccurrence[]): ClassOccurrence[] {
+  const groups = new Map<string, ClassOccurrence[]>();
+  for (const o of occurrences) {
+    const key = `${o.module_code}\u0000${o.class_code}\u0000${o.date}`;
+    const list = groups.get(key);
+    if (list) list.push(o);
+    else groups.set(key, [o]);
+  }
+  const drop = new Set<ClassOccurrence>();
+  for (const list of groups.values()) {
+    if (list.length < 2) continue;
+    const kept: ClassOccurrence[] = [];
+    for (const o of [...list].sort((a, b) => specificity(a) - specificity(b) || b.durationHours - a.durationHours)) {
+      const overlaps = kept.some(
+        (k) => toMinutes(o.start) < toMinutes(k.end) && toMinutes(k.start) < toMinutes(o.end),
+      );
+      if (overlaps) drop.add(o);
+      else kept.push(o);
+    }
+  }
+  return drop.size === 0 ? occurrences : occurrences.filter((o) => !drop.has(o));
 }
 
 /**

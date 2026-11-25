@@ -6,6 +6,7 @@ import { ProgramProfileDialog } from "@/components/ProgramProfileDialog";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  usePathname: () => "/programs",
   useSearchParams: () => new URLSearchParams(),
 }));
 

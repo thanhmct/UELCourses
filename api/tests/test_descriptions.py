@@ -3,6 +3,7 @@ from app.services.descriptions import (
     clean_description,
     detect_lang,
     fill_descriptions,
+    normalize_description_line_breaks,
     strip_description_artifacts,
     strip_material_sections,
 )
@@ -46,6 +47,37 @@ def test_clean_description_rejoins_words_split_by_pdf_extraction():
 
     paragraphs = f"{EN}\n\n{VI}\n• Phân tích thị trường.\n• Dự báo nhu cầu."
     assert clean_description(paragraphs) == paragraphs
+
+
+def test_normalize_unwraps_pdf_hard_line_breaks():
+    # Kiểu học phần EAU4058: xuống dòng theo độ rộng trang, một dòng trống giữa câu khi qua trang.
+    wrapped = (
+        "The content of this course introduces independent audit activities and financial statement\n"
+        "audits, focusing on auditing concepts and a risk-oriented audit approach. In addition,\n"
+        "students are instructed on how to identify fraud and errors related to financial statements,\n"
+        "risks, collect specific evidence to ensure the auditor can collect sufficient appropriate\n"
+        "\n"
+        "evidence to issue a reasonable audit report. The module introduces the process of\n"
+        "performing a financial statement audit including three stages of planning,\n"
+        "implementation, completion and audit report preparation."
+    )
+    assert normalize_description_line_breaks(wrapped) == (
+        "The content of this course introduces independent audit activities and financial statement "
+        "audits, focusing on auditing concepts and a risk-oriented audit approach. In addition, "
+        "students are instructed on how to identify fraud and errors related to financial statements, "
+        "risks, collect specific evidence to ensure the auditor can collect sufficient appropriate "
+        "evidence to issue a reasonable audit report. The module introduces the process of "
+        "performing a financial statement audit including three stages of planning, "
+        "implementation, completion and audit report preparation."
+    )
+
+    # Dòng bullet và dòng kết bằng dấu hai chấm giữ nguyên xuống dòng.
+    listed = "Course objectives:\n• Analyse financial data.\n• Write audit reports."
+    assert normalize_description_line_breaks(listed) == listed
+
+    # Hai đoạn văn thật (khối trước kết thúc câu, khối sau bắt đầu bằng chữ hoa) vẫn là hai đoạn.
+    two_paragraphs = "First paragraph ends here.\n\nSecond paragraph starts here."
+    assert normalize_description_line_breaks(two_paragraphs) == two_paragraphs
 
 
 def test_clean_description_removes_pdf_instructions_and_page_markers():

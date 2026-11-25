@@ -42,13 +42,13 @@ export function CourseReportForm({ course, onReportSiteBug }: { course: CourseRe
     const email = data.get("schoolEmail")?.toString().trim();
     const issue = data.get("issue")?.toString().trim();
     const faculty = facultyContacts.find((contact) => contact.email === recipient);
-    if ((!faculty && recipient !== otherContact) || !fullName || !studentId || !email || !issue) return;
+    if ((!faculty && recipient !== otherContact) || !fullName || !email || !issue) return;
 
     const subject = `Báo lỗi học phần ${course.code}`;
     const details = [
       `Học phần: ${course.code} — ${moduleName(course, "vi")}`,
       `Họ và tên: ${fullName}`,
-      `Mã số sinh viên: ${studentId}`,
+      ...(studentId ? [`Mã số sinh viên: ${studentId}`] : []),
       `Khoa/bộ môn: ${faculty?.name ?? (facultyName(course, "vi") || "Chưa xác định")}`,
       `Email trường: ${email}`,
       "",
@@ -77,7 +77,7 @@ export function CourseReportForm({ course, onReportSiteBug }: { course: CourseRe
 
       <div>
         <label className="label" htmlFor={`${id}-student`}>{t("fb.course.studentId")}</label>
-        <input id={`${id}-student`} name="studentId" className="input" autoCapitalize="characters" required pattern={String.raw`.*\S.*`} />
+        <input id={`${id}-student`} name="studentId" className="input" autoCapitalize="characters" />
       </div>
 
       <div>

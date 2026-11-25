@@ -96,7 +96,7 @@ export default function ProgramDetailPage() {
       });
   }, [selectedCode, graph, byCode, lang]);
 
-  if (!mounted || progReq.loading) return <Loading />;
+  if (!mounted || progReq.loading) return <Loading page />;
   if (progReq.offline) return <ErrorBox>{t("api.connectionError")}</ErrorBox>;
   if (!p) {
     return (

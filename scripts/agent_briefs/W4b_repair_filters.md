@@ -1,8 +1,0 @@
-# W4b — repair verified W4 failures
-Follow docs/PROMPT_DIEU_PHOI_ANTIGRAVITY.md. No shell commands, no commit.
-Allowed files ONLY: web/src/components/FacetFilter.tsx, web/src/components/__tests__/facetFilter.test.tsx, web/src/components/__tests__/moduleFilters.test.tsx, api/app/routers/modules.py, api/tests/test_module_multi_filters.py.
-1. npx tsc --noEmit fails TS18048/TS2722 in FacetFilter lines136-198 because Boolean(props.multiple) loses discriminated union narrowing. Use direct discriminant narrowing, keep type safety, no non-null assertions/casts to hide problem.
-2. Six facetFilter tests fail: labels All/Tat ca depend on actual i18n default. Read existing test setup and component tests, initialize i18n deterministically and assert real labels. Do not weaken behavioral assertions. Existing npm test:132 pass,6 fail.
-3. API pytest: test_type_multi_and_legacy_filter legacy type=Đồ án returns0 expected1. SQLite lower() only ASCII while Python lower turns Đ into đ. Fix comparisons consistently across SQLite and Postgres for faculty/type without breaking backward compatibility. Compare values using equivalent database normalization on both operands; preserve case-insensitive intent. Add accented uppercase regression covering single and multiple filters.
-4. moduleFilters test currently only initial render. Add meaningful interaction test: activate multiple credits/type/faculty, search query; reset should clear facets and faculty search while retain module search and personal program context. Mock APIs/router/context using existing patterns. No fabricated mocks in production.
-Acceptance GPT runs Docker: web npx tsc --noEmit, npm test; api python -m pytest -q tests/test_module_multi_filters.py. Do not run commands yourself. Report changes.

@@ -335,7 +335,7 @@ describe("W6 & W11: Profile filter banner text and real-time synchronization", (
 
     await waitFor(() => {
       expect(
-        screen.getByText(/Hệ thống thông tin quản lý khóa 23, chương trình Coop/i),
+        screen.getByText(/Hệ thống thông tin quản lý khóa 23, Coop Khóa 23/i),
       ).toBeInTheDocument();
     });
   });

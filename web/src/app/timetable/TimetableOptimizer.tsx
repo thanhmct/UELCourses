@@ -139,13 +139,13 @@ export function TimetableOptimizer({ courses, loading, loadError, onRetry, semes
             {courses.map(({ code, name, currentClass }) => {
               const selfStudy = asynchronous.includes(code);
               return (
-                <li key={code} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-2 first:pt-1 last:pb-0">
-                  <div className="min-w-0 break-words text-sm">
+                <li key={code} className="flex items-center justify-between gap-x-4 gap-y-2 py-2 first:pt-1 last:pb-0">
+                  <div className="min-w-0 flex-1 break-words text-sm">
                     <strong className="text-brand-ink">{code}</strong>{name !== code && ` · ${name}`}
                     {currentClass && <p className="font-mono text-xs text-slate-500 dark:text-slate-400">{currentClass}</p>}
                   </div>
-                  <div className="flex flex-wrap gap-x-3 gap-y-2 text-xs">
-                    <label className="flex cursor-pointer items-center gap-1.5">
+                  <div className="ml-auto flex shrink-0 flex-col items-start gap-x-3 gap-y-1.5 text-xs sm:flex-row sm:items-center">
+                    <label className="flex cursor-pointer items-center gap-1.5 whitespace-nowrap">
                       <input className={checkboxClass} type="checkbox" checked={selfStudy}
                         aria-label={t("tt.optimize.selfStudyFor", { code })}
                         onChange={() => {
@@ -154,7 +154,7 @@ export function TimetableOptimizer({ courses, loading, loadError, onRetry, semes
                         }} />
                       {t("tt.optimize.selfStudy")}
                     </label>
-                    <label className="flex cursor-pointer items-center gap-1.5 has-disabled:cursor-default has-disabled:opacity-50">
+                    <label className="flex cursor-pointer items-center gap-1.5 whitespace-nowrap has-disabled:cursor-default has-disabled:opacity-50">
                       <input className={checkboxClass} type="checkbox" checked={!selfStudy && pinned.includes(code)}
                         disabled={selfStudy || !currentClass} aria-label={t("tt.optimize.pinFor", { code })}
                         onChange={(event) => {

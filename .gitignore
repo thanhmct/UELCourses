@@ -24,6 +24,20 @@ reference/nusmodifications/
 # mọi thư mục build Next riêng (UEL_PREVIEW_DIST_DIR=.next-xxx) của từng AI/CI
 .next-*/
 
+# Ẩn khỏi GitHub (vẫn giữ trên máy): tài liệu nội bộ, công cụ AI, nghiên cứu, bản sao kiểm tra
+colab/
+research/
+docs/
+kiemtra/
+.agents/
+.claude/
+scripts/agent_briefs/
+fetch_courses.py
+UEL_DKHP_API.md
+CLAUDE.md
+AGENTS.md
+GEMINI.md
+
 tmp/
 *.err
 .vscode/
@@ -31,3 +45,5 @@ tmp/
 regulations/raw/*.pdf
 
 .claude/
+
+api/tmp_*.json

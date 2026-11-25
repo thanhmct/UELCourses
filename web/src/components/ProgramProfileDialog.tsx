@@ -16,6 +16,7 @@ import { useT } from "@/i18n";
 import { api } from "@/lib/api";
 import { useApi } from "@/lib/useApi";
 import { track } from "@/lib/analytics";
+import { ExchangeStudentToggle } from "@/components/ExchangeStudentToggle";
 import { buildProgramLookup, hasVerifiedUndergraduateTrack } from "@/lib/programLookup";
 import { ProgramLookup } from "./ProgramLookup";
 import {
@@ -284,6 +285,7 @@ export function ProgramProfileDialog({
                   )}
               </div>
             ) : null}
+            <ExchangeStudentToggle id="profile-exchange-student" programCode={primary} />
           </div>
 
           {/* Cột 2: Ngành 2 */}

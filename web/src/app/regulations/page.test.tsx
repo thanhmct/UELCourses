@@ -10,6 +10,7 @@ const router = { replace };
 vi.mock("next/navigation", () => ({
   useParams: () => ({ docId: "qd-2022" }),
   useRouter: () => router,
+  usePathname: () => "/regulations/qd-2022",
 }));
 vi.mock("@/lib/api", () => ({ api: { ask, regulation } }));
 

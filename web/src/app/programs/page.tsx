@@ -266,7 +266,7 @@ export default function ProgramsPage() {
 
   const renderLocalDialog = !hasGlobalProfileDialogHost();
 
-  if (!mounted) return <Loading />;
+  if (!mounted) return <Loading page />;
 
   return (
     <div className="space-y-4">

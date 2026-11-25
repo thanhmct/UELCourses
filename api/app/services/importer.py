@@ -120,6 +120,16 @@ def clip(v, n: int) -> str | None:
     return s[:n] if s else None
 
 
+_PLACEHOLDER_SUFFIX = re.compile(r"\s*[-–]\s*\*+\s*$")
+
+
+def clean_module_name(name: str | None) -> str | None:
+    """Bỏ hậu tố ô trống kiểu ' - *' còn sót trong file nguồn (vd 'Kế toán tài chính - *' -> 'Kế toán tài chính')."""
+    if name is None:
+        return None
+    return _PLACEHOLDER_SUFFIX.sub("", name).strip() or name
+
+
 def split_student_groups(value) -> list[str]:
     if not value:
         return []
@@ -244,6 +254,7 @@ class ImportContext:
     def module(self, code: str, *, name=None, credits=None, type=None, faculty=None,
                department=None, is_english: bool | None = None,
                overwrite_faculty: bool = False, overwrite_department: bool = False) -> Module:
+        name = clean_module_name(name)
         m = self.modules.get(code) or self.db.get(Module, code)
         if m is None:
             init_fac = None

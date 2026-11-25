@@ -8,7 +8,6 @@ import {
   formatSectionClassroom,
   formatSectionSchedule,
   formatSectionStartEndDate,
-  formatTime12h,
   type TimetableExportRow,
 } from "../timetableExport";
 import type { ClassSection, Lesson } from "../types";
@@ -68,32 +67,10 @@ describe("timetableExport", () => {
     },
   };
 
-  describe("formatTime12h", () => {
-    it("converts 24h strings to 12h AM/PM strings with 2-digit hour", () => {
-      expect(formatTime12h("07:00")).toBe("07:00 AM");
-      expect(formatTime12h("11:00")).toBe("11:00 AM");
-      expect(formatTime12h("12:30")).toBe("12:30 PM");
-      expect(formatTime12h("15:05")).toBe("03:05 PM");
-      expect(formatTime12h("00:15")).toBe("12:15 AM");
-      expect(formatTime12h("")).toBe("");
-    });
-  });
-
   describe("formatLessonSchedule", () => {
-    it("formats a single lesson as Weekday, HH:MM AM/PM - HH:MM AM/PM", () => {
+    it("formats a single lesson with weekday, periods and GMT+7 time", () => {
       const res = formatLessonSchedule(sampleLesson1, mockT);
-      expect(res).toBe("Monday, 07:00 AM - 09:35 AM");
-    });
-
-    it("formats exactly as requested: Monday, 07:00 AM - 11:00 AM", () => {
-      const userLesson: Lesson = {
-        weekday: 2,
-        start_period: 1,
-        end_period: 5,
-        start_time: "07:00",
-        end_time: "11:00",
-      };
-      expect(formatLessonSchedule(userLesson)).toBe("Monday, 07:00 AM - 11:00 AM");
+      expect(res).toBe("Thứ Hai, tiết 1–3 (07:00 - 09:35)");
     });
   });
 
@@ -101,7 +78,7 @@ describe("timetableExport", () => {
     it("joins multiple lessons with semicolon", () => {
       const res = formatSectionSchedule(sampleSection, mockT);
       expect(res).toBe(
-        "Monday, 07:00 AM - 09:35 AM; Wednesday, 12:30 PM - 03:05 PM",
+        "Thứ Hai, tiết 1–3 (07:00 - 09:35); Thứ Tư, tiết 7–9 (12:30 - 15:05)",
       );
     });
 
@@ -112,7 +89,7 @@ describe("timetableExport", () => {
         lessons: [],
         schedule_raw: "Thứ 6, tiết 1-3",
       };
-      expect(formatSectionSchedule(noLessonsSection, mockT)).toBe("Friday, 07:00 AM - 09:30 AM");
+      expect(formatSectionSchedule(noLessonsSection, mockT)).toBe("Thứ 6, tiết 1-3");
     });
   });
 
@@ -169,7 +146,7 @@ describe("timetableExport", () => {
       expect(r.courseCode).toBe("251ECO10101");
       expect(r.courseName).toBe("Kinh tế vi mô");
       expect(r.credit).toBe(3);
-      expect(r.schedule).toBe("Monday, 07:00 AM - 09:35 AM; Wednesday, 12:30 PM - 03:05 PM");
+      expect(r.schedule).toBe("Thứ Hai, tiết 1–3 (07:00 - 09:35); Thứ Tư, tiết 7–9 (12:30 - 15:05)");
       expect(r.classroom).toBe("B1.406, B1.502");
       expect(r.startEndDate).toBe("08/09/2025 - 12/11/2025");
       expect(r.lecturer).toBe("TS. Nguyễn Văn A");

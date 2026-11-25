@@ -148,13 +148,13 @@ function span(l: Lesson): { left: number; width: number } {
   return { left, width: right - left };
 }
 
-function posStyle(l: Lesson, lane: number, lanes: number, rowHeight: number) {
+function posStyle(l: Lesson, lane: number, lanes: number, rowHeight: number, colW: number) {
   const { left, width } = span(l);
   const laneHeight = lanes > 1 ? OVERLAP_LANE_H : Math.min(rowHeight, OVERLAP_LANE_H);
   const laneTop = lanes > 1 ? lane * laneHeight : (rowHeight - laneHeight) / 2;
   return {
-    left: left * COL_W + 1,
-    width: width * COL_W - 2,
+    left: left * colW + 1,
+    width: width * colW - 2,
     top: laneTop + 2,
     height: laneHeight - 4,
   };
@@ -525,6 +525,7 @@ function Block({
   const day = weekdayName(t, l.weekday);
   const hasDetails = schedules.length > 1;
   const titleLayout = position.width >= 2 * COL_W - 2 ? "line-clamp-2" : "truncate";
+  // (COL_W là cột tối thiểu; cột có thể giãn rộng hơn nên so sánh này chỉ nới thêm, không thu hẹp.)
   const { start, end } = getLessonTimes(l);
   const clockRange = Number.isInteger(l.end_period) ? "" : `${start}–${end}`;
   const rooms = [...new Set(schedules.map(({ lesson }) => lesson.room).filter(Boolean))].join(" · ");
@@ -822,10 +823,23 @@ export const TimetableGrid = forwardRef<HTMLDivElement, Props>(function Timetabl
 
   // Lưới cắt tại GRID_END (không hiển thị phần tiết sau mốc này); chỉ ghi giờ ở tiêu đề.
   const visibleColumns = timeToColumn(GRID_END) ?? PERIOD_COUNT;
-  const width = LABEL_W + visibleColumns * COL_W;
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  // Cột giãn đều để lưới lấp đầy bề rộng khung chứa (không để khoảng trắng bên phải); tối thiểu COL_W, hẹp hơn thì cuộn ngang.
+  const [available, setAvailable] = useState(0);
+  useLayoutEffect(() => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+    const measure = () => setAvailable(scroller.clientWidth);
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(scroller);
+    return () => observer.disconnect();
+  }, []);
+  const colW = available > 0 ? Math.max(COL_W, (available - LABEL_W) / visibleColumns) : COL_W;
+  const width = LABEL_W + visibleColumns * colW;
 
   // On phones, open the grid at the period happening now (once, on first load; later scrolling is the user's).
-  const scrollerRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const scroller = scrollerRef.current;
     if (!scroller || typeof window === "undefined" || !window.matchMedia(PHONE_QUERY).matches) return;
@@ -836,7 +850,7 @@ export const TimetableGrid = forwardRef<HTMLDivElement, Props>(function Timetabl
     <div className="space-y-3">
       <div
         ref={scrollerRef}
-        className="w-fit max-w-full overflow-x-auto rounded-md border border-slate-200 dark:border-slate-800"
+        className="w-full min-w-0 max-w-full overflow-x-auto rounded-md border border-slate-200 dark:border-slate-800"
         role="region"
         aria-label={t("tt.gridAria")}
         tabIndex={0}
@@ -857,11 +871,11 @@ export const TimetableGrid = forwardRef<HTMLDivElement, Props>(function Timetabl
                 className={`shrink-0 border-l ${
                   isBoundary(i) ? "border-slate-300 dark:border-slate-600" : "border-slate-100 dark:border-slate-800"
                 }`}
-                style={{ width: COL_W }}
+                style={{ width: colW }}
               />
             ))}
             {Array.from({ length: Math.ceil(visibleColumns) }, (_, i) => (
-              <span key={`tick-${i}`} className="absolute top-1 -translate-x-1/2 leading-4" style={{ left: LABEL_W + i * COL_W }}>
+              <span key={`tick-${i}`} className="absolute top-1 -translate-x-1/2 leading-4" style={{ left: LABEL_W + i * colW }}>
                 {periodStartTime(i + 1)}
               </span>
             ))}
@@ -955,7 +969,7 @@ export const TimetableGrid = forwardRef<HTMLDivElement, Props>(function Timetabl
                       </MarqueeText>
                     </div>
                   </div>
-                ) : <div className="relative" style={{ width: PERIOD_COUNT * COL_W, height: rowHeight }}>
+                ) : <div className="relative" style={{ width: PERIOD_COUNT * colW, height: rowHeight }}>
                   {Array.from({ length: PERIOD_COUNT }, (_, i) => (
                     <div
                       key={i}
@@ -968,7 +982,7 @@ export const TimetableGrid = forwardRef<HTMLDivElement, Props>(function Timetabl
                           ? "bg-white dark:bg-slate-900"
                           : "bg-slate-50/70 dark:bg-slate-800/30"
                       }`}
-                      style={{ left: i * COL_W, width: COL_W }}
+                      style={{ left: i * colW, width: colW }}
                     />
                   ))}
                   {laid.filter(({ lane }) => lane < MAX_VISIBLE_LANES).map(({ item, lane, lanes }) => {
@@ -982,7 +996,7 @@ export const TimetableGrid = forwardRef<HTMLDivElement, Props>(function Timetabl
                         <Block
                           key={item.slotKey}
                           slot={slot}
-                          position={posStyle(item.lesson, lane, lanes, rowHeight)}
+                          position={posStyle(item.lesson, lane, lanes, rowHeight, colW)}
                           isSelected={isSelected}
                           dimmed={dimmed}
                           showName={showNames}
@@ -994,7 +1008,7 @@ export const TimetableGrid = forwardRef<HTMLDivElement, Props>(function Timetabl
                       <GhostBlock
                         key={item.ghost.key}
                         ghost={item.ghost}
-                        position={posStyle(item.ghost.lesson, lane, lanes, rowHeight)}
+                        position={posStyle(item.ghost.lesson, lane, lanes, rowHeight, colW)}
                         onChoose={() => {
                           onChangeClass(item.ghost.moduleCode, item.ghost.classCode);
                           setSelectedKey(null);

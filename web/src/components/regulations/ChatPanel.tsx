@@ -5,11 +5,12 @@ import { useWorkspace } from "@/lib/workspace";
 import { effectiveBadge } from "@/lib/regulations";
 import { articleClauseAnchor, wikilinkHref } from "@/lib/vault";
 import type { Citation } from "@/lib/types";
-import { Loading, EffectiveBadgeChip } from "@/components/ui";
+import { Loading, LoadingDots, EffectiveBadgeChip } from "@/components/ui";
 import { useT } from "@/i18n";
 import { activeConversation, useRegChat, type ChatMsg } from "@/lib/regChatStore";
 import { findRegulationChatTargets, regulationQuery, type RegulationChatTarget } from "@/lib/chatLookup";
 import { useMounted } from "@/lib/useMounted";
+import { WarningText } from "./WarningText";
 import { COHORTS, useSettings } from "@/lib/store";
 
 export function CitationChip({ c, i }: { c: Citation; i: number }) {
@@ -57,19 +58,17 @@ export function CitationChip({ c, i }: { c: Citation; i: number }) {
           <EffectiveBadgeChip badge={badge} />
         </span>
       )}
-      {c.metadata_verified !== true && (
-        <span
-          className="chip ml-1 bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-200"
-          title={t("cit.unverifiedTitle")}
-        >
-          {t("cit.unverified")}
-        </span>
-      )}
       <blockquote className="mt-1 border-l-2 border-violet-300 pl-2 italic text-slate-700 dark:text-slate-300">
         “{c.quote}”
       </blockquote>
     </div>
   );
+}
+
+/** Readable link text for a passage the assistant could not confirm: "Tên văn bản · Điều x, Khoản y". */
+function relatedLabel(r: Citation): string {
+  const place = [r.article && `Điều ${r.article}`, r.clause && `Khoản ${r.clause}`].filter(Boolean).join(", ");
+  return [r.label, r.title ?? r.decision_no ?? r.doc_id, place].filter(Boolean).join(" · ");
 }
 
 const EMPTY_MESSAGES: ChatMsg[] = [];
@@ -85,9 +84,11 @@ export function ChatCohortHint() {
   return (
     <p className="mb-2 text-[11px] text-slate-500">
       {cohort
-        ? t(profileCohort ? "chat.cohortProfile" : "chat.cohortSession", { c: cohort })
+        ? t(profileCohort ? "chat.cohortProfile" : "chat.cohortSession", { c: cohort.replace(/^K/i, "") })
         : t("chat.cohortAsk")}
-      {t("chat.rule")}
+      <span className="mt-1 block whitespace-pre-line rounded-md bg-brand-50 px-2 py-1.5 text-[11px] leading-snug text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
+        {t("chat.disclaimer")}
+      </span>
     </p>
   );
 }
@@ -224,7 +225,7 @@ export function ChatPanel() {
             >
               {(m.res ?? m.moduleRes)?.warnings.map((w, k) => (
                 <p key={k} className="text-xs text-amber-700 dark:text-amber-300">
-                  ⚠ {w}
+                  ⚠ <WarningText text={w} onNavigate={() => useRegChat.getState().closeChat()} />
                 </p>
               ))}
               {m.res?.mode === "context" && <p className="text-xs font-medium text-slate-500">{t("chat.workspaceContext")}</p>}
@@ -267,6 +268,25 @@ export function ChatPanel() {
                     </button>
                   ))}
                 </div>
+              )}
+              {m.res?.related && m.res.related.length > 0 && (
+                <ul className="space-y-1 text-xs">
+                  {m.res.related.map((r, k) => (
+                    <li key={k}>
+                      {r.source_url ? (
+                        <a href={r.source_url} target="_blank" rel="noopener noreferrer"
+                          className="text-brand-ink underline">{relatedLabel(r)}</a>
+                      ) : (
+                        <Link href={wikilinkHref(r.doc_id, r.anchor ?? (r.article ? articleClauseAnchor(r.article, r.clause) : undefined))}
+                          onNavigate={() => {
+                            useRegChat.getState().closeChat();
+                            useWorkspace.getState().open(r.doc_id, r.anchor ?? undefined);
+                          }}
+                          className="text-brand-ink underline">{relatedLabel(r)}</Link>
+                      )}
+                    </li>
+                  ))}
+                </ul>
               )}
               {m.res?.citations && m.res.citations.length > 0 && (
                 <div className="mt-2 space-y-1.5 border-t border-slate-200/60 pt-2 dark:border-slate-700/60">
@@ -353,6 +373,7 @@ export function ChatPanel() {
           {!result?.targets?.length && (
             <p role="status" className="px-2 py-1 text-xs text-slate-500">
               {t(!result ? "common.loading" : result.targets ? "chat.noSuggestions" : "chat.lookupFailed")}
+              {!result && <LoadingDots />}
             </p>
           )}
           {result?.targets?.map((target) => (

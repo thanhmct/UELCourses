@@ -65,15 +65,6 @@ function ModuleCard({
       </div>
       <div className="mt-1 line-clamp-2 text-[13px] font-medium leading-snug text-slate-800 dark:text-slate-100">{moduleName(node, lang)}</div>
       <div className="mt-2 flex items-center justify-between gap-2">
-        <span
-          className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
-            node.required
-              ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
-              : "bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-300"
-          }`}
-        >
-          {node.required ? t("pd.required") : t("pd.elective")}
-        </span>
         {prereqs.length > 0 && (
           <span className="truncate text-[10px] text-slate-600 dark:text-slate-300" title={t("flow.previousCodes", { codes: prereqs.join(", ") })}>
             {t("flow.previousLabel")} <span className="font-mono">{prereqs.join(", ")}</span>
@@ -110,33 +101,21 @@ export function ProgramFlowchart({
     (!q || n.code.toLowerCase().includes(q) || n.name.toLowerCase().includes(q)) &&
     (blockFilter === "all" || n.block === blockFilter);
 
-  // Cột kỳ bắt buộc
+  // Mọi môn được xếp theo học kỳ gợi ý (không còn tách bắt buộc / tự chọn)
   const terms = useMemo(() => {
     const set = new Set<string>();
-    graph.nodes.forEach((n) => n.required && n.suggested_term && set.add(String(n.suggested_term)));
+    graph.nodes.forEach((n) => n.suggested_term && set.add(String(n.suggested_term)));
     return Array.from(set).sort((a, b) => termOrder(a) - termOrder(b) || a.localeCompare(b, "vi"));
   }, [graph.nodes]);
 
   const columns = useMemo(() => {
     const map = new Map<string, ProgramGraphNode[]>();
     for (const n of graph.nodes) {
-      if (!n.required) continue;
       const key = n.suggested_term ? String(n.suggested_term) : UNPLACED;
       map.set(key, [...(map.get(key) ?? []), n]);
     }
     return map;
   }, [graph.nodes]);
-
-  // Môn tự chọn nhóm theo khối kiến thức
-  const electiveGroups = useMemo(() => {
-    const map = new Map<string, ProgramGraphNode[]>();
-    for (const n of graph.nodes) {
-      if (n.required) continue;
-      const key = n.block || t("common.other");
-      map.set(key, [...(map.get(key) ?? []), n]);
-    }
-    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0], "vi"));
-  }, [graph.nodes, t]);
 
   // Kỳ hiện tại tự động: học kỳ đang diễn ra (api.semesters, is_current) ghép với nhãn kỳ của CTĐT.
   // Ví dụ: học kỳ 1 năm học 2026-2027 → nhãn "HK01 năm học 2026-2027".
@@ -150,7 +129,7 @@ export function ProgramFlowchart({
   // Khi người dùng lọc theo mã/tên: tự cuộn tới kỳ của môn khớp đầu tiên; mặc định cuộn tới kỳ hiện tại
   const firstMatchTerm = useMemo(() => {
     if (!q) return null;
-    const hit = graph.nodes.find((n) => n.required && matches(n));
+    const hit = graph.nodes.find((n) => matches(n));
     return hit ? (hit.suggested_term ? String(hit.suggested_term) : UNPLACED) : null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [graph.nodes, q, blockFilter]);
@@ -222,8 +201,6 @@ export function ProgramFlowchart({
           </button>
         ))}
         <span className="ml-auto flex gap-3 text-slate-500">
-          <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm bg-emerald-300" /> {t("pd.required")}</span>
-          <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm bg-violet-300" /> {t("pd.elective")}</span>
           <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm border border-amber-500 bg-amber-100" /> {t("flow.selectedChain")}</span>
         </span>
       </div>
@@ -273,38 +250,6 @@ export function ProgramFlowchart({
         </div>
       </div>
 
-      {/* Môn tự chọn: nhóm theo khối kiến thức */}
-      <section className="space-y-3">
-        <h3 className="text-sm font-bold text-slate-900 dark:text-white">{t("flow.electivesTitle")}</h3>
-        {electiveGroups.map(([block, nodes]) => {
-          const shown = nodes.filter(matches);
-          if (shown.length === 0) return null;
-          const credits = nodes.reduce((s, n) => s + (n.credits || 0), 0);
-          return (
-            <div key={block} className="card space-y-2 p-3">
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">{block}</span>
-                <span className="text-[11px] text-slate-500">
-                  {formatPlannerTermStats(nodes.length, credits, lang)}
-                </span>
-              </div>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3" style={{ zoom }}>
-                {shown.map((n) => (
-                  <ModuleCard
-                    key={n.code}
-                    node={n}
-                    prereqs={prereqs.get(n.code) ?? []}
-                    selected={selectedCode === n.code}
-                    inChain={!!chain?.has(n.code) && selectedCode !== n.code}
-                    dimmed={!!chain && !chain.has(n.code)}
-                    onClick={() => clickNode(n.code)}
-                  />
-                ))}
-              </div>
-            </div>
-          );
-        })}
-      </section>
     </div>
   );
 }

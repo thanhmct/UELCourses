@@ -7,6 +7,7 @@ import { completePlannerYears, moveModule, plannerEnrollmentYear, plannerSemeste
 
 import { parseProgramCode } from "./programCode";
 import { DEFAULT_PLANNER_TERM_COLOR, normalizeHex } from "./appearance";
+import { track } from "./analytics";
 
 export { COHORTS } from "./cohort";
 export type Theme = "system" | "light" | "dark";
@@ -27,6 +28,9 @@ interface SettingsState {
   tetFlower: "mai" | "dao";
   winterMascot: "snowman" | "reindeer" | "custom";
   winterImage: string;
+  /** Bản đồ ở trang Hôm nay: mặc định hiện hay ẩn (lưu bền, nhớ lựa chọn gần nhất) */
+  defaultShowMap: boolean;
+  setDefaultShowMap: (show: boolean) => void;
   setBrandGradient: (gradient: [string, string] | null) => void;
   setTimetableColor: (slot: number, color: string) => void;
   resetTimetableColors: () => void;
@@ -54,6 +58,9 @@ interface SettingsState {
   /** đã có chứng chỉ đầu ra tiếng Anh → miễn Tiếng Anh 1–4 (tính là hoàn thành, không tính GPA) */
   englishCertExempt: boolean;
   setEnglishCertExempt: (v: boolean) => void;
+  /** SV trao đổi tự khai: chỉ có tác dụng khi cửa sổ tiếng Anh + CTĐT tiếng Anh (xem lib/exchangeStats.ts) */
+  exchangeStudent: boolean;
+  setExchangeStudent: (v: boolean) => void;
 }
 
 export const useSettings = create<SettingsState>()(
@@ -69,11 +76,14 @@ export const useSettings = create<SettingsState>()(
       tetFlower: "mai",
       winterMascot: "snowman",
       winterImage: "",
+      defaultShowMap: false,
+      setDefaultShowMap: (defaultShowMap) => set({ defaultShowMap }),
       degree: "dai_hoc",
       programCode: "",
       secondaryProgramCode: "",
       programPrompted: false,
       englishCertExempt: false,
+      exchangeStudent: true,
       setCohort: (cohort) => set({ cohort }),
       setMajor: (major) => set({ major }),
       setTheme: (theme) => set({ theme }),
@@ -123,6 +133,7 @@ export const useSettings = create<SettingsState>()(
       },
       setProgramPrompted: (programPrompted) => set({ programPrompted }),
       setEnglishCertExempt: (englishCertExempt) => set({ englishCertExempt }),
+      setExchangeStudent: (exchangeStudent) => set({ exchangeStudent }),
     }),
     { name: "uelcourses-settings" },
   ),
@@ -142,6 +153,8 @@ interface TimetableState {
   activeDrafts: Record<string, string>;
   info: Record<string, TimetableModuleInfo>;
   plannerAssignments: Record<string, string[]>;
+  /** Môn của TKB đã được đối chiếu sang Kế hoạch học tập, theo học kỳ; chỉ môn mới thêm vào TKB mới được đẩy sang. */
+  plannerMirrored: Record<string, string[]>;
   setSemester: (s: string) => void;
   addModule: (m: ModuleRef, classCode?: string | null, semester?: string) => void;
   removeModule: (code: string, semester?: string) => void;
@@ -155,9 +168,10 @@ interface TimetableState {
   createDraft: (semester: string, draftName: string, source?: boolean | TimetableEntry[]) => void;
   deleteDraft: (semester: string, draftName: string) => void;
   renameDraft: (semester: string, oldName: string, newName: string) => void;
+  resetAll: () => void;
 }
 
-function currentTimetableDraft(s: TimetableState, sem: string) {
+export function currentTimetableDraft(s: TimetableState, sem: string) {
   const draftName = s.activeDrafts?.[sem] || "Phương án 1";
   const semDrafts = s.drafts?.[sem] || { [draftName]: s.bySemester[sem] ?? [] };
   const currentEntries = semDrafts[draftName] ?? s.bySemester[sem] ?? [];
@@ -210,6 +224,7 @@ export const useTimetable = create<TimetableState>()(
       activeDrafts: {},
       info: {},
       plannerAssignments: {},
+      plannerMirrored: {},
       setSemester: (semester) => set({ semester }),
       addModule: (m, classCode = null, semester) =>
         set((s) => {
@@ -217,6 +232,9 @@ export const useTimetable = create<TimetableState>()(
           const { currentEntries } = currentTimetableDraft(s, sem);
           const entries = appendTimetableModule(currentEntries, m.code, classCode);
           if (entries === currentEntries) return s;
+          if (classCode) {
+            track("timetable_add", { module_code: m.code, class_code: classCode, semester_id: sem || undefined });
+          }
           return {
             semester: s.semester || sem,
             info: { ...s.info, [m.code]: timetableModuleInfo(m) },
@@ -305,6 +323,7 @@ export const useTimetable = create<TimetableState>()(
             drafts: { ...(s.drafts || {}), [semester]: renamed },
           };
         }),
+      resetAll: () => set({ bySemester: {}, drafts: {}, activeDrafts: {}, info: {}, plannerAssignments: {}, plannerMirrored: {} }),
     }),
     { name: "uelcourses-timetable" },
   ),
@@ -324,6 +343,9 @@ interface PlannerStore extends PlanState {
   toggleCompleted: (code: string) => void;
   replaceModule: (oldCode: string, m: PlannedModule) => void;
   syncProgram: (modules: PlannedModule[], exemptCodes?: string[]) => void;
+  resetPlan: () => void;
+  /** Làm mới dữ liệu học phần (tiên quyết, tín chỉ, tên...) từ nguồn thật, không đụng vào backlog/terms/completed. */
+  refreshCatalog: (modules: PlannedModule[]) => void;
 }
 
 /** 4 năm × 3 học kỳ chính thức (HK1, HK2, HK3) = 12 học kỳ, từ "Năm 1 – HK1" đến "Năm 4 – HK3". HK3 không phải học kỳ hè. */
@@ -361,7 +383,9 @@ export const usePlanner = create<PlannerStore>()(
       addAcademicYears: (years) => set((s) => {
         const { programCode, cohort } = useSettings.getState();
         const previousAdmission = s.academicYears?.admission ?? plannerEnrollmentYear(programCode, cohort) ?? years.admission;
-        return { academicYears: years, terms: completePlannerYears(s.terms, years, previousAdmission) };
+        const { terms, movedToBacklog } = completePlannerYears(s.terms, years, previousAdmission);
+        const additions = movedToBacklog.filter((code) => !s.completed.includes(code) && !s.backlog.includes(code));
+        return { academicYears: years, terms, backlog: additions.length ? [...s.backlog, ...additions] : s.backlog };
       }),
       addTerm: (name) => set((s) => ({ terms: [...s.terms, { id: `t${Date.now().toString(36)}`, name, modules: [] }] })),
       removeTerm: (id) =>
@@ -415,6 +439,30 @@ export const usePlanner = create<PlannerStore>()(
           const terms = untouched ? PROGRAM_TERMS.map((t) => ({ ...t, modules: [] as string[] })) : s.terms;
           return { catalog, backlog, terms, completed };
         }),
+      resetPlan: () => {
+        useTimetable.getState().resetAll();
+        set({ terms: defaultTerms, academicYears: null, backlog: [], completed: [], catalog: {} });
+      },
+      refreshCatalog: (modules) =>
+        set((s) => {
+          let changed = false;
+          const catalog = { ...s.catalog };
+          for (const m of modules) {
+            const prev = catalog[m.code];
+            const next = { ...prev, ...m };
+            if (!prev
+              || prev.name !== next.name
+              || prev.name_en !== next.name_en
+              || prev.credits !== next.credits
+              || JSON.stringify(prev.prerequisites ?? []) !== JSON.stringify(next.prerequisites ?? [])
+              || JSON.stringify(prev.equivalents ?? []) !== JSON.stringify(next.equivalents ?? [])
+            ) {
+              catalog[m.code] = next;
+              changed = true;
+            }
+          }
+          return changed ? { catalog } : s;
+        }),
     }),
     { name: "uelcourses-planner", version: 3, migrate: migratePlannerState as never },
   ),
@@ -466,23 +514,85 @@ function reconcilePlannerTimetable(timetable: TimetableState, plan: PlanState, e
   return next;
 }
 
-/** Reconcile saved plans at startup and apply subsequent planner changes on this device. */
+/**
+ * Chiều ngược lại: môn mới thêm vào TKB của một học kỳ được xếp vào học kỳ tương ứng trong Kế hoạch học tập.
+ * Chỉ thêm, không gỡ; môn đã nằm ở học kỳ khác hoặc đã hoàn thành thì giữ nguyên.
+ * `plannerMirrored` ghi nhớ môn đã đối chiếu để môn người dùng cố ý gỡ khỏi kế hoạch không tự quay lại.
+ */
+function reconcileTimetablePlanner(timetable: TimetableState, plan: PlanState, enrollmentYear: number | null) {
+  const mirrored = timetable.plannerMirrored ?? {};
+  const placed = new Set(plan.terms.flatMap((term) => term.modules));
+  const completed = new Set(plan.completed);
+  let terms = plan.terms;
+  let catalog = plan.catalog;
+  let backlog = plan.backlog;
+  let planChanged = false;
+  const nextMirrored: Record<string, string[]> = {};
+
+  for (const [semester, entries] of Object.entries(timetable.bySemester)) {
+    const codes = [...new Set(entries.map((entry) => entry.code))];
+    if (codes.length) nextMirrored[semester] = codes;
+    const match = /^(\d{4}-\d{4})-([1-3])$/.exec(semester);
+    if (!match) continue;
+    const seen = new Set(mirrored[semester] ?? []);
+    for (const code of codes) {
+      if (seen.has(code) || placed.has(code) || completed.has(code)) continue;
+      let index = terms.findIndex((term) => plannerSemesterId(term.name, enrollmentYear) === semester);
+      if (index < 0) {
+        const id = `academic-${semester}`;
+        const taken = new Set(terms.map((term) => term.id));
+        let unique = id;
+        for (let suffix = 2; taken.has(unique); suffix++) unique = `${id}-${suffix}`;
+        terms = [...terms, { id: unique, name: `HK${match[2]} ${match[1]}`, modules: [] }];
+        index = terms.length - 1;
+      }
+      terms = terms.map((term, i) => (i === index ? { ...term, modules: [...term.modules, code] } : term));
+      placed.add(code);
+      planChanged = true;
+      const info = timetable.info[code];
+      if (!catalog[code] && info) catalog = { ...catalog, [code]: info };
+      if (backlog.includes(code)) backlog = backlog.filter((item) => item !== code);
+    }
+  }
+
+  const mirroredChanged = JSON.stringify(nextMirrored) !== JSON.stringify(mirrored);
+  if (!planChanged && !mirroredChanged) return undefined;
+  return { plannerMirrored: mirroredChanged ? nextMirrored : undefined, plan: planChanged ? { terms, catalog, backlog } : undefined };
+}
+
+/** Reconcile saved plans at startup and apply subsequent planner and timetable changes on this device. */
 export function startPlannerTimetableSync() {
-  const sync = () => {
+  const enrollmentYear = () => {
     const settings = useSettings.getState();
-    const enrollmentYear = plannerEnrollmentYear(settings.programCode, settings.cohort);
-    const next = reconcilePlannerTimetable(useTimetable.getState(), usePlanner.getState(), enrollmentYear);
+    return plannerEnrollmentYear(settings.programCode, settings.cohort);
+  };
+  const sync = () => {
+    const next = reconcilePlannerTimetable(useTimetable.getState(), usePlanner.getState(), enrollmentYear());
     if (next) useTimetable.setState(next);
+  };
+  const syncBack = () => {
+    const next = reconcileTimetablePlanner(useTimetable.getState(), usePlanner.getState(), enrollmentYear());
+    if (!next) return;
+    if (next.plannerMirrored) useTimetable.setState({ plannerMirrored: next.plannerMirrored });
+    if (next.plan) usePlanner.setState(next.plan);
   };
   const stopPlanner = usePlanner.subscribe((state, previous) => {
     if (state.terms !== previous.terms) sync();
   });
+  const stopTimetable = useTimetable.subscribe((state, previous) => {
+    if (state.bySemester !== previous.bySemester) syncBack();
+  });
   const stopSettings = useSettings.subscribe((state, previous) => {
-    if (state.programCode !== previous.programCode || state.cohort !== previous.cohort) sync();
+    if (state.programCode !== previous.programCode || state.cohort !== previous.cohort) {
+      sync();
+      syncBack();
+    }
   });
   sync();
+  syncBack();
   return () => {
     stopPlanner();
+    stopTimetable();
     stopSettings();
   };
 }

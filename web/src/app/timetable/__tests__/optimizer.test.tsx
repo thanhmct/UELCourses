@@ -204,3 +204,25 @@ it.each([
   fireEvent.click(run);
   expect(screen.getByText("BMA2045 chưa có lớp với lịch học trong học kỳ này.")).toBeInTheDocument();
 });
+
+it("keeps audit and keep-class checkboxes pinned to the far right for long course names", async () => {
+  const semester = "2026-2027-1";
+  vi.spyOn(api, "semesters").mockResolvedValue({ data: [], mock: false });
+  vi.spyOn(api, "classes").mockResolvedValue({ data: [], mock: false });
+  const timetable = useTimetable.getState();
+  timetable.setSemester(semester);
+  timetable.addModule(
+    { code: "BFB4007", name: "Công nghệ tiền điện tử và hệ thống thanh toán điện tử", credits: 3 },
+    "261BFB400701",
+  );
+
+  render(<OptimizeTimetablePage />, { wrapper: TimetableLayout });
+  const courseList = screen.getByRole("group", { name: "Học phần trong phương án" });
+  const row = within(courseList).getByRole("listitem");
+  const info = within(row).getByText("BFB4007").closest("div");
+  const controls = within(row).getByRole("checkbox", { name: "Dự thính BFB4007" }).closest("div");
+
+  expect(row).not.toHaveClass("flex-wrap");
+  expect(info).toHaveClass("min-w-0", "flex-1");
+  expect(controls).toHaveClass("ml-auto", "shrink-0");
+});

@@ -208,6 +208,9 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("report-db-consolidated", help="Sinh DB_CONSOLIDATED_REPORT.md (X5 Bước E)")
     p.add_argument("--data-dir", help="Thư mục data (mặc định: data)")
     p.add_argument("--pending-imports", action="store_true", help="Ghi chú rằng các lượt nạp còn bị chặn")
+    p = sub.add_parser("import-exchange-stats", help="Nạp số SV trao đổi đã học từng học phần theo học kỳ (exchange_<học kỳ>.json)")
+    p.add_argument("--dir", default="data/processed", help="Thư mục chứa exchange_<học kỳ>.json (mặc định: data/processed)")
+    p.add_argument("--dry-run", action="store_true", help="Chỉ tổng hợp và in báo cáo, không ghi DB")
     sub.add_parser("clear-sample", help="Xóa dữ liệu mẫu")
     args = parser.parse_args(argv)
 
@@ -229,6 +232,21 @@ def main(argv: list[str] | None = None) -> int:
                 dry_run=args.dry_run,
             )
         print(json.dumps(res, ensure_ascii=False, default=str))
+        return 0
+
+    if args.cmd == "import-exchange-stats":
+        from app.services.exchange_stats import import_exchange_stats
+
+        data_dir = Path(args.dir)
+        if not data_dir.is_dir():
+            sys.exit(f"Không tìm thấy thư mục: {data_dir}")
+        if args.dry_run:
+            res = import_exchange_stats(None, data_dir, dry_run=True)
+        else:
+            init_db()
+            with SessionLocal() as db:
+                res = import_exchange_stats(db, data_dir, dry_run=False)
+        print(json.dumps(res, ensure_ascii=False, indent=2, default=str))
         return 0
 
     ctdt_preview = args.cmd == "import-ctdt-files" and args.dry_run

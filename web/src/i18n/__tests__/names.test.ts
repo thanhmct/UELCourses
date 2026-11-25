@@ -3,6 +3,7 @@ import {
   academicYearLabel,
   departmentName,
   facultyName,
+  isEnglishCode,
   formatPlannerTerm,
   formatPlannerTermStats,
   moduleDescription,
@@ -48,6 +49,16 @@ describe("semesterName", () => {
   it("giữ nguyên tên gốc tiếng Việt khi lang === 'vi'", () => {
     expect(semesterName(sem1, "vi")).toBe("Học kỳ 1 năm học 2026-2027");
     expect(semesterName(sem3, "vi")).toBe("Học kỳ 3 năm học 2025-2026");
+  });
+
+  it("bỏ hậu tố (E) khi mã học phần bắt đầu bằng E, giữ nguyên với mã khác", () => {
+    expect(moduleName({ code: "EBB1067", name: "Quản trị học (E)" }, "vi")).toBe("Quản trị học");
+    expect(moduleName({ code: "EBB1067", name: "Quản trị học (E)", name_en: "Management (E)" }, "en")).toBe("Management");
+    expect(moduleName({ code: "BAC1001", name: "Quản trị học (E)" }, "vi")).toBe("Quản trị học (E)");
+    expect(moduleName({ code: "ECO1001", name: "Kinh tế học (E)" }, "vi")).toBe("Kinh tế học (E)");
+    expect(isEnglishCode("EBB1067")).toBe(true);
+    expect(isEnglishCode("ECO1001")).toBe(false);
+    expect(isEnglishCode(undefined)).toBe(false);
   });
 
   it("chuyển sang định dạng tiếng Anh 'Semester {term}, {year}' khi lang === 'en'", () => {

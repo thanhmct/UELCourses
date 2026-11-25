@@ -1,31 +1,64 @@
 "use client";
 import Link from "next/link";
-import { Search } from "lucide-react";
+import { Filter, Search, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, type ModuleFilter } from "@/lib/api";
+import { usePlanner, useTimetable } from "@/lib/store";
 import { useProgramProfile } from "@/lib/myProgram";
 import { useApi } from "@/lib/useApi";
 import { isConnectionError } from "@/lib/dataSource";
 import { useSemesters } from "@/lib/semesters";
 import { useDebounced } from "@/lib/useDebounced";
 import { EnBadge, ErrorBox, Loading, RequiredBadge } from "@/components/ui";
-import { ModuleActions } from "@/components/ModuleActions";
-import { EquivalentsHover } from "@/components/EquivalentsHover";
+import { ModuleActions, NoClassWarning } from "@/components/ModuleActions";
 import { CheckFacet, FacetFilter } from "@/components/FacetFilter";
 import { SemesterFilterSquares } from "@/components/SemesterPicker";
 import { openClassesByTerm, parseSemesterId } from "@/lib/modules";
 import type { FacetCount, ModuleFacets, ModuleSummary } from "@/lib/types";
 import { useT } from "@/i18n";
-import { creditsLine, departmentName, facultyName, moduleDescription, moduleName, semesterShort } from "@/i18n/names";
-import { finalAssessmentKind, getCachedFinalAssessmentKind, setCachedFinalAssessmentKind } from "@/lib/finalAssessment";
+import { creditsLine, departmentName, facultyName, isEnglishCode, moduleDescription, moduleName, semesterShort } from "@/i18n/names";
+import { finalAssessmentKind, formatFinalAssessment, getCachedFinalAssessmentKind, setCachedFinalAssessmentKind } from "@/lib/finalAssessment";
 import { formatModuleType } from "@/lib/moduleFormat";
 import { ProgramFilterBar } from "@/components/ProgramFilterBar";
 import { hasVerifiedUndergraduateTrack } from "@/lib/programLookup";
 import { track } from "@/lib/analytics";
+import { useExchangeStats, useExchangeViewActive } from "@/lib/useExchangeStats";
+import { ExchangeStatBadge } from "@/components/ExchangeStatBadge";
 
 
 const PAGE = 30;
 const TERMS = [1, 2, 3];
+
+/** Inline HK1 / HK2 / HK3 semester strip showing class count per term. */
+function TermStrip({ m, year }: { m: ModuleSummary; year?: string }) {
+  const { t, lang } = useT();
+  const open = openClassesByTerm(m, year);
+  return (
+    <div
+      role="group"
+      aria-label={t("mod.termsTitle")}
+      className="grid grid-cols-3 gap-px overflow-hidden rounded-md border border-slate-200 bg-slate-200 text-xs font-bold dark:border-slate-700 dark:bg-slate-700"
+    >
+      {TERMS.map((term) => {
+        const n = open.get(term) ?? 0;
+        const label = n === 1 ? t("mod.termClassCountOne") : t("mod.termClassCount", { n });
+        const termName = lang === "en" ? semesterShort({ term }, lang) : `HK${term}`;
+        return (
+          <span
+            key={term}
+            title={n ? label : t("mod.termNoClass")}
+            className={`flex min-w-0 flex-wrap items-center justify-center gap-x-1 break-words px-1 py-1.5 text-center leading-tight ${
+              n ? "bg-brand-600 text-white" : "bg-white text-slate-400 dark:bg-slate-900 dark:text-slate-500"
+            }`}
+          >
+            {termName}
+            {n ? <span className="font-normal opacity-90">{label}</span> : null}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
 
 /** HK1 / HK2 / HK3 tabs for the academic year; a term with open classes is filled and shows the class count. */
 function TermTabs({ m, year }: { m: ModuleSummary; year?: string }) {
@@ -61,8 +94,16 @@ export default function ModulesPage() {
   const [faculties, setFaculties] = useState<string[]>([]);
   const [departments, setDepartments] = useState<string[]>([]);
   const [types, setTypes] = useState<string[]>([]);
-  const [facultySearch, setFacultySearch] = useState("");
-  const [departmentSearch, setDepartmentSearch] = useState("");
+  const [finalAssessments, setFinalAssessments] = useState<string[]>([]);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  // Tăng số này khi thoát bộ lọc để các danh sách khoa/bộ môn trên điện thoại về trạng thái thu gọn ban đầu.
+  const [filterUiKey, setFilterUiKey] = useState(0);
+  const toggleFilters = () => {
+    if (filtersOpen) {
+      setFilterUiKey((k) => k + 1);
+    }
+    setFiltersOpen((v) => !v);
+  };
 
   // CTĐT được chọn ở trang /start hoặc từ hồ sơ sinh viên (ngành chính + ngành 2 nếu có)
   // Lọc theo union các CTĐT của sinh viên; bấm "Bỏ lọc CTĐT" để xem toàn bộ trường.
@@ -210,6 +251,29 @@ export default function ModulesPage() {
   const facetsReqId = useRef(0);
 
   const [items, setItems] = useState<ModuleSummary[]>([]);
+  const exchangeActive = useExchangeViewActive();
+  const exchangeStats = useExchangeStats(items.map((m) => m.code), exchangeActive);
+  // Chế độ SV trao đổi: mặc định lọc môn tiếng Anh (chỉ lần đầu bật), và đưa môn đã chọn/đã học lên đầu
+  const langDefaulted = useRef(false);
+  useEffect(() => {
+    if (exchangeActive && !langDefaulted.current) {
+      langDefaulted.current = true;
+      setLanguage((prev) => prev || "en");
+    }
+  }, [exchangeActive]);
+  const ttBySemester = useTimetable((s) => s.bySemester);
+  const plannedTerms = usePlanner((s) => s.terms);
+  const plannerBacklog = usePlanner((s) => s.backlog);
+  const studiedCodes = usePlanner((s) => s.completed);
+  const priorityCodes = useMemo(() => {
+    const codes = new Set<string>();
+    for (const entries of Object.values(ttBySemester)) for (const e of entries) codes.add(e.code);
+    for (const term of plannedTerms) for (const c of term.modules) codes.add(c);
+    for (const c of plannerBacklog) codes.add(c);
+    for (const c of studiedCodes) codes.add(c);
+    return Array.from(codes);
+  }, [ttBySemester, plannedTerms, plannerBacklog, studiedCodes]);
+  const prioritySet = useMemo(() => new Set(priorityCodes), [priorityCodes]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -224,12 +288,13 @@ export default function ModulesPage() {
       faculty_in: faculties.length > 0 ? faculties : undefined,
       department_in: departments.length > 0 ? departments : undefined,
       type_in: types.length > 0 ? types : undefined,
+      final_assessment_in: finalAssessments.length > 0 ? finalAssessments : undefined,
       semester: semester || undefined,
       degree: moduleDegree,
       program_ids: activeProgramIds.length > 0 ? activeProgramIds : undefined,
       has_outline: outline ? "true" : undefined,
     }),
-    [dq, language, credits, faculties, departments, types, semester, moduleDegree, activeProgramIds, outline],
+    [dq, language, credits, faculties, departments, types, finalAssessments, semester, moduleDegree, activeProgramIds, outline],
   );
   const facetParamsKey = JSON.stringify(facetFilterParams);
 
@@ -273,6 +338,13 @@ export default function ModulesPage() {
               return next.length !== prev.length ? next : prev;
             });
           }
+          if (finalAssessments.length > 0) {
+            const valid = new Set((data.final_assessment ?? []).filter((f) => f.count > 0).map((f) => f.value));
+            setFinalAssessments((prev) => {
+              const next = prev.filter((f) => valid.has(f));
+              return next.length !== prev.length ? next : prev;
+            });
+          }
           if (language) {
             const valid = new Set(data.language.filter((l) => l.count > 0).map((l) => l.value));
             if (!valid.has(language)) setLanguage("");
@@ -311,13 +383,16 @@ export default function ModulesPage() {
       faculty_in: faculties.length > 0 ? faculties : undefined,
       department_in: departments.length > 0 ? departments : undefined,
       type_in: types.length > 0 ? types : undefined,
+      final_assessment_in: finalAssessments.length > 0 ? finalAssessments : undefined,
       semester: semester || undefined,
       degree: moduleDegree,
       program_ids: activeProgramIds.length > 0 ? activeProgramIds : undefined,
       has_outline: outline ? "true" : undefined,
+      priority_codes: exchangeActive && priorityCodes.length > 0 ? priorityCodes.join(",") : undefined,
+      exchange_rank: exchangeActive ? true : undefined,
       size: PAGE,
     }),
-    [dq, language, credits, faculties, departments, types, semester, moduleDegree, activeProgramIds, outline],
+    [dq, language, credits, faculties, departments, types, finalAssessments, semester, moduleDegree, activeProgramIds, outline, exchangeActive, priorityCodes],
   );
   const filterKey = JSON.stringify(filter);
 
@@ -411,6 +486,7 @@ export default function ModulesPage() {
     faculties.length +
     departments.length +
     types.length +
+    finalAssessments.length +
     visibleSemesters.length +
     (outline ? 1 : 0);
 
@@ -420,46 +496,16 @@ export default function ModulesPage() {
     setFaculties([]);
     setDepartments([]);
     setTypes([]);
+    setFinalAssessments([]);
     setSemesters([]);
     setOutline(false);
-    setFacultySearch("");
-    setDepartmentSearch("");
   };
 
-  const countNote = useMemo(() => {
-    if (activeProgramIds.length === 0) {
-      return t("mod.filterCountsGlobal");
-    }
-    if (activeProgramIds.length === 1) {
-      return t("mod.filterCountsProgram");
-    }
-    return t("mod.filterCountsPrograms");
-  }, [activeProgramIds.length, t]);
-
-  const facultyItems = useMemo(() => {
-    const raw = facetsData?.faculty ?? [];
-    const counts = new Map<string, number>();
-    for (const item of raw) {
-      if (!item.value || !item.value.trim()) continue;
-      const val = item.value.trim();
-      const isEnd =
-        /^(trường đại học kinh tế - luật|chưa rõ|khác)/i.test(val);
-      const canon = isEnd
-        ? "Khác / Chưa rõ khoa"
-        : val.startsWith("Khoa ") || val.startsWith("Phòng ")
-        ? val
-        : `Khoa ${val}`;
-      counts.set(canon, (counts.get(canon) ?? 0) + item.count);
-    }
-    return [...counts.entries()]
-      .map(([value, count]) => ({ value, count }))
-      .sort((a, b) => {
-        const isEndA = /^(trường đại học|chưa rõ|khác)/i.test(a.value) ? 1 : 0;
-        const isEndB = /^(trường đại học|chưa rõ|khác)/i.test(b.value) ? 1 : 0;
-        if (isEndA !== isEndB) return isEndA - isEndB;
-        return b.count - a.count || a.value.localeCompare(b.value);
-      });
-  }, [facetsData?.faculty]);
+  // Faculty items are the API facet index as-is: the server already canonicalizes and orders them.
+  const facultyItems = useMemo(
+    () => (facetsData?.faculty ?? []).filter((i: FacetCount) => i.value && i.value.trim() && i.count > 0),
+    [facetsData?.faculty],
+  );
 
   const departmentItems = useMemo(() => {
     return (facetsData?.department ?? []).filter((i: FacetCount) => i.value && i.value.trim() && i.count > 0);
@@ -467,24 +513,48 @@ export default function ModulesPage() {
 
   const creditLabel = useCallback((v: string) => t("common.credits", { n: v }), [t]);
   const langLabel = useCallback((v: string) => (v === "en" ? t("mod.filterLangEn") : t("mod.filterLangVi")), [t]);
-  const facultyLabel = useCallback((v: string) => facultyName(v, lang), [lang]);
+  const facultyLabel = useCallback((v: string) => facultyName(v, lang) || t("common.unknownFaculty"), [lang, t]);
   const departmentLabel = useCallback((v: string) => departmentName(v, lang), [lang]);
+  const finalAssessmentLabel = useCallback(
+    (v: string) => formatFinalAssessment(v, lang) ?? (v === "Khác" ? t("common.other") : v),
+    [lang, t],
+  );
   const count = (list: { value: string; count: number }[] | undefined, value: string) => list?.find((x) => x.value === value)?.count;
 
   return (
-    <div className="space-y-3">
-      <div className="relative border-b border-slate-300 focus-within:border-brand-600 dark:border-slate-700">
-        <Search className="pointer-events-none absolute left-0 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" aria-hidden />
-        <input
-          id="q"
-          type="search"
-          className="w-full bg-transparent py-3 pl-9 text-lg outline-none placeholder:text-slate-400"
-          placeholder={t("mod.searchPlaceholder")}
-          aria-label={t("mod.searchAria")}
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          autoFocus
-        />
+    <div className="relative desk:static">
+      {/* Thanh tìm kiếm nằm trong cột trái; "Lọc theo" ở cột phải bắt đầu ngang hàng với nó và dính khi cuộn. */}
+      <div className="grid items-start gap-8 desk:grid-cols-[minmax(0,1fr)_260px]">
+        <div className="min-w-0 min-h-[500px] space-y-3">
+      <div className="sticky top-[var(--app-header-h,4.125rem)] z-20 -mx-1 flex items-center gap-2 bg-[#f7f8fa] px-1 dark:bg-slate-950">
+        <div className="relative min-w-0 flex-1 border-b border-slate-300 focus-within:border-brand-600 dark:border-slate-700">
+          <Search className="pointer-events-none absolute left-0 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" aria-hidden />
+          <input
+            id="q"
+            type="search"
+            className="w-full bg-transparent py-3 pl-9 text-lg outline-none placeholder:text-slate-400"
+            placeholder={t("mod.searchPlaceholder")}
+            aria-label={t("mod.searchAria")}
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            autoFocus
+          />
+        </div>
+        <button
+          type="button"
+          aria-label={t("mod.filterTitle")}
+          title={t("mod.filterTitle")}
+          aria-expanded={filtersOpen}
+          onClick={toggleFilters}
+          className="desk:hidden fixed bottom-20 right-4 z-40 flex size-12 items-center justify-center rounded-full bg-accent text-white hover:bg-accent-hover"
+        >
+          {filtersOpen ? <X className="size-6" aria-hidden /> : <Filter className="size-6" aria-hidden />}
+          {!filtersOpen && activeCount > 0 && (
+            <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-slate-900 px-1 text-[11px] font-bold text-white dark:bg-white dark:text-slate-900">
+              {activeCount}
+            </span>
+          )}
+        </button>
       </div>
       <ProgramFilterBar
         showCard={false}
@@ -499,15 +569,30 @@ export default function ModulesPage() {
       )}
       {error && <ErrorBox>{"offline" in error ? t("api.connectionError") : t("common.error", { message: error.message })}</ErrorBox>}
 
-      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_260px]">
-        <div className="min-w-0 min-h-[500px]">
-          {loading && items.length === 0 ? <Loading /> : !error && items.length === 0 ? (
+          {loading && items.length === 0 ? <Loading page /> : !error && items.length === 0 ? (
             <p className="rounded-md border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500 dark:border-slate-700">{t("mod.empty")}</p>
           ) : (
             <ul>
               {items.map((m) => {
                 const descInfo = moduleDescription(m, lang); // VI → description, EN → description_en (thiếu thì dùng bản còn lại)
                 const desc = descInfo.text;
+                const targetOutlineUrl = lang === "en" ? (m.outline_url_en || m.outline_url) : (m.outline_url || m.outline_url_en);
+                // Nút đề cương: luôn đặt ngay sau loại học phần; bộ môn · khoa xuống dòng riêng khi không đủ chỗ.
+                const outlineChip = targetOutlineUrl ? (
+                  <a
+                    href={targetOutlineUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="chip gap-1 bg-indigo-50 text-indigo-700 hover:underline dark:bg-indigo-950 dark:text-indigo-300"
+                    aria-label={t("badge.outlinePdf")}
+                    title={t("badge.outlinePdf")}
+                  >
+                    {t("badge.outlineLink")}
+                    <span aria-hidden="true">↗</span>
+                  </a>
+                ) : m.has_outline ? (
+                  <span className="chip bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">{t("badge.outline")}</span>
+                ) : null;
                 return (
                   <li key={m.code} className="flex flex-col gap-4 border-b border-slate-200 py-5 sm:flex-row sm:justify-between sm:gap-8 dark:border-slate-800">
                     <div className="min-w-0 flex-1 space-y-2">
@@ -520,16 +605,25 @@ export default function ModulesPage() {
                           if (!progStatus) return null;
                           return <RequiredBadge required={progStatus.required} lang={lang} />;
                         })()}
+                        <ExchangeStatBadge stat={exchangeStats[m.code]} />
                       </div>
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-500">
-                        <span>
-                          {creditsLine({
-                            credits: m.credits,
-                            finalAssessment: m.final_assessment || finalAssessmentMap[m.code] || getCachedFinalAssessmentKind(m.code),
-                            faculty: facultyName(m, lang) || t("common.unknownFaculty"),
-                            type: m.type,
-                          }, lang)}
-                        </span>
+                        {(() => {
+                          const finalAssessment = m.final_assessment || finalAssessmentMap[m.code] || getCachedFinalAssessmentKind(m.code);
+                          const department = m.department ? departmentName(m, lang) : undefined;
+                          const faculty = facultyName(m, lang) || t("common.unknownFaculty");
+                          const deptFaculty = [department, faculty].filter(Boolean).join(" · ");
+                          return (
+                            <>
+                              {/* Tín chỉ · thi · loại và nút đề cương luôn đi cùng nhau; bộ môn · khoa xuống dòng riêng khi không đủ chỗ. */}
+                              <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+                                <span>{creditsLine({ credits: m.credits, finalAssessment, type: m.type }, lang)}</span>
+                                {outlineChip}
+                              </span>
+                              {deptFaculty && <span>{deptFaculty}</span>}
+                            </>
+                          );
+                        })()}
                         {(() => {
                           const progStatus = moduleProgramStatus.get(m.code);
                           if (!progStatus?.electiveRequirement) return null;
@@ -539,29 +633,16 @@ export default function ModulesPage() {
                             </span>
                           );
                         })()}
-                        {(m.language_track === "en" || (!m.language_track && m.is_english)) && <EnBadge />}
-                        {(() => {
-                          const targetOutlineUrl = lang === "en" ? (m.outline_url_en || m.outline_url) : (m.outline_url || m.outline_url_en);
-                          if (targetOutlineUrl) {
-                            return (
-                              <a
-                                href={targetOutlineUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="chip gap-1 bg-emerald-100 text-emerald-800 hover:underline dark:bg-emerald-900/40 dark:text-emerald-200"
-                                aria-label={t("badge.outlinePdf")}
-                                title={t("badge.outlinePdf")}
-                              >
-                                {t("badge.outlineLink")}
-                                <span aria-hidden="true">↗</span>
-                              </a>
-                            );
-                          }
-                          return m.has_outline ? (
-                            <span className="chip bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">{t("badge.outline")}</span>
-                          ) : null;
-                        })()}
-                        {m.has_equivalents && <EquivalentsHover code={m.code} />}
+                        {(m.language_track === "en" || (!m.language_track && m.is_english)) && !isEnglishCode(m.code) && <EnBadge />}
+                        {exchangeActive && prioritySet.has(m.code) && (
+                          <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                            {t("exchange.chip.selected")}
+                          </span>
+                        )}
+                      </div>
+                      <div className="sm:hidden">
+                        <TermStrip m={m} year={yearStr} />
+                        <div className="mt-1.5"><NoClassWarning module={m} timetableSemester={currentYearSecondTerm} /></div>
                       </div>
                       {desc ? (
                         <p lang={descInfo.fallback ? (lang === "en" ? "vi" : "en") : lang} className="whitespace-pre-line wrap-anywhere text-sm leading-relaxed text-slate-600 dark:text-slate-300">
@@ -571,10 +652,12 @@ export default function ModulesPage() {
                       ) : (
                         <p className="text-xs italic text-slate-400">{t("det.noDescription")}</p>
                       )}
-                      <ModuleActions module={m} timetableSemester={currentYearSecondTerm} compact />
                     </div>
-                    <div className="w-full shrink-0 space-y-1.5 sm:w-60">
-                      <TermTabs m={m} year={yearStr} />
+                    <div className="w-full shrink-0 space-y-2 sm:w-60">
+                      <div className="hidden space-y-1.5 sm:block">
+                        <TermTabs m={m} year={yearStr} />
+                      </div>
+                      <ModuleActions module={m} timetableSemester={currentYearSecondTerm} compact stacked />
                     </div>
                   </li>
                 );
@@ -590,29 +673,20 @@ export default function ModulesPage() {
         </div>
 
         <aside
-          className={`space-y-6 lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto lg:pr-1 ${
-            facetsLoading ? "opacity-60 transition-opacity" : "transition-opacity"
-          }`}
+          // Điện thoại: khung kết thúc phía trên nút tròn cam (top-14 = 3.5rem; nút ở bottom-20 cao 3rem → 8rem + 0.5rem khe)
+          // nên nút không bao giờ đè lên nội dung bộ lọc.
+          className={`space-y-3 max-h-[calc(100dvh-12rem)] overflow-y-auto desk:sticky desk:top-[calc(var(--app-header-h,4.125rem)+0.5rem)] desk:max-h-[calc(100vh-var(--app-header-h,4.125rem)-1rem)] desk:overflow-y-auto desk:pr-1 desk:order-none desk:block desk:z-auto desk:rounded-none desk:border-0 desk:bg-transparent desk:p-0 desk:shadow-none ${
+            filtersOpen ? "fixed inset-x-0 top-14 z-[35] block rounded-lg border border-slate-200 bg-white p-4 shadow-xl dark:border-slate-700 dark:bg-slate-900 desk:inset-x-auto desk:top-6" : "hidden"
+          } ${facetsLoading ? "opacity-60 transition-opacity" : "transition-opacity"}`}
           aria-label={t("mod.filterTitle")}
         >
-          <div className="space-y-2">
-            <div className="flex items-baseline justify-between">
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{t("mod.filterTitle")}</h2>
-              {activeCount > 0 && (
-                <button
-                  type="button"
-                  className="text-sm font-medium text-brand-600 hover:underline dark:text-brand-300"
-                  onClick={reset}
-                >
-                  {t("common.clear")}
-                </button>
-              )}
-            </div>
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{t("mod.filterTitle")}</h2>
             <button
               type="button"
-              disabled={activeCount === 0 && !facultySearch && !departmentSearch}
+              disabled={activeCount === 0}
               onClick={reset}
-              className="w-full rounded border border-slate-300 bg-white py-1.5 text-center text-sm font-medium transition hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-slate-300 disabled:hover:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-700 dark:disabled:hover:bg-slate-800"
+              className="shrink-0 rounded bg-blue-600 px-3 py-1.5 text-center text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-blue-600"
             >
               {activeCount > 0 ? t("mod.filterResetCount", { n: activeCount }) : t("mod.filterReset")}
             </button>
@@ -625,9 +699,7 @@ export default function ModulesPage() {
             onChange={setLanguage}
             labelOf={langLabel}
             sort="none"
-            total={facetsData?.total}
-            countNote={countNote}
-          />
+            total={facetsData?.total}          />
           <FacetFilter
             title={t("mod.filterCredits")}
             items={facetsData?.credits ?? []}
@@ -636,39 +708,33 @@ export default function ModulesPage() {
             onValuesChange={setCredits}
             labelOf={creditLabel}
             sort="none"
-            total={facetsData?.total}
-            countNote={countNote}
-          />
+            total={facetsData?.total}          />
           <FacetFilter
+            key={`faculty-${filterUiKey}`}
             title={t("mod.filterFaculty")}
             items={facultyItems}
             multiple
             values={faculties}
             onValuesChange={setFaculties}
             labelOf={facultyLabel}
-            searchable
-            searchPlaceholder={t("mod.filterFacultySearch")}
-            searchQuery={facultySearch}
-            onSearchQueryChange={setFacultySearch}
-            sort="none"
-            total={facetsData?.total}
-            countNote={countNote}
-          />
+            sort="alpha"
+            collapsibleOnMobile
+            headerInToggle
+            expandLabel={t("facet.addFacultyFilter")}
+            total={facetsData?.total}          />
           <FacetFilter
+            key={`department-${filterUiKey}`}
             title={t("mod.filterDepartment")}
             items={departmentItems}
             multiple
             values={departments}
             onValuesChange={setDepartments}
             labelOf={departmentLabel}
-            searchable
-            searchPlaceholder={t("mod.filterDepartmentSearch")}
-            searchQuery={departmentSearch}
-            onSearchQueryChange={setDepartmentSearch}
-            sort="count"
-            total={facetsData?.total}
-            countNote={countNote}
-          />
+            sort="alpha"
+            collapsibleOnMobile
+            headerInToggle
+            expandLabel={t("facet.addDepartmentFilter")}
+            total={facetsData?.total}          />
           <FacetFilter
             title={t("mod.filterType")}
             items={facetsData?.type ?? []}
@@ -677,25 +743,19 @@ export default function ModulesPage() {
             onValuesChange={setTypes}
             labelOf={(value) => formatModuleType(value, lang)}
             sort="none"
-            total={facetsData?.total}
-            countNote={countNote}
-          />
+            total={facetsData?.total}          />
           <SemesterFilterSquares
             title={t("mod.filterSemester")}
             items={facetsData?.semester.filter((item) => isCatalogSemester(item.value)) ?? []}
             values={visibleSemesters}
-            onValuesChange={setSemesters}
-            countNote={countNote}
+            onValuesChange={setSemesters}          />
+          {/* Một dòng: ô chọn + "Có đề cương" + số môn có đề cương */}
+          <CheckFacet
+            label={t("badge.outline")}
+            count={count(facetsData?.has_outline, "true")}
+            checked={outline}
+            onChange={setOutline}
           />
-          <fieldset>
-            <legend className="label mb-1">{t("mod.filterOutline")}</legend>
-            <CheckFacet
-              label={t("badge.outline")}
-              count={count(facetsData?.has_outline, "true")}
-              checked={outline}
-              onChange={setOutline}
-            />
-          </fieldset>
 
           {/* Final assessment: chỉ hiện khi có dữ liệu thật (Requirement 5) */}
           {facetsData?.final_assessment && facetsData.final_assessment.some((x: FacetCount) => x.count > 0) && (
@@ -703,11 +763,12 @@ export default function ModulesPage() {
               title={t("mod.filterFinalAssessment")}
               items={facetsData.final_assessment}
               multiple
-              values={types}
-              onValuesChange={() => {}}
+              values={finalAssessments}
+              onValuesChange={setFinalAssessments}
+              labelOf={finalAssessmentLabel}
               sort="count"
+              noScroll
               total={facetsData.total}
-              countNote={countNote}
             />
           )}
         </aside>

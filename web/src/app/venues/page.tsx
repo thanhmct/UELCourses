@@ -1,16 +1,15 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { api } from "@/lib/api";
 import { useApi } from "@/lib/useApi";
 import { latestEnrollmentCohort, scopeSemesters, useSemesters } from "@/lib/semesters";
 import { useProgramProfile } from "@/lib/myProgram";
 import { buildingOf, filterVenues } from "@/lib/venues";
-import { SemesterPicker } from "@/components/SemesterPicker";
-import { CampusTour360 } from "@/components/CampusTour360";
 import { CloseIcon } from "@/components/icons/CloseIcon";
 import { WEEKDAYS } from "@/lib/periods";
+import { useBackToClose } from "@/lib/useBackToClose";
 import {
   countOccurrences,
   dateKey,
@@ -332,32 +331,6 @@ export default function VenuesPage() {
     }
   }, [semesters, semester]);
 
-  const goToCurrentSemester = () => {
-    if (!semesters.length) return;
-    const nowIso = new Date().toISOString().slice(0, 10);
-    const target =
-      semesters.find((s) => s.is_current) ??
-      semesters.find((s) => {
-        const start = s.teaching_start || s.start_date;
-        const end = s.teaching_end || s.end_date;
-        return start && end && start <= nowIso && nowIso <= end;
-      }) ??
-      semesters[0];
-    if (target) {
-      setSemester(target.id);
-      setMonthPick(null);
-    }
-  };
-
-  const semIdx = semesters.findIndex((s) => s.id === semester);
-  const stepSem = (d: number) => {
-    const n = semesters[semIdx + d];
-    if (n) {
-      setSemester(n.id);
-      setMonthPick(null);
-    }
-  };
-
   const semObj: Semester | undefined = semesters.find((s) => s.id === semester);
   // Các tháng của học kỳ; thiếu ngày học kỳ thì chỉ hiện tháng hiện tại.
   const months = useMemo(() => monthsOf(semObj), [semObj]);
@@ -370,7 +343,11 @@ export default function VenuesPage() {
     [semester],
   );
   const [q, setQ] = useState("");
+  const [listOpen, setListOpen] = useState(false);
   const [room, setRoom] = useState<string | null>(null);
+
+  // Bấm nút quay lại của điện thoại thì đóng danh sách phòng, không rời khỏi trang.
+  useBackToClose(listOpen, () => setListOpen(false));
 
   // Toàn bộ phòng (kể cả phòng không có buổi học trong tháng), kèm số buổi trong tháng đang chọn.
   const list = useMemo(() => filterVenues(venues.data ?? [], q), [venues.data, q]);
@@ -384,54 +361,24 @@ export default function VenuesPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title={t("venues.title")} />
-      <div className="flex flex-wrap items-center justify-center gap-2">
-            <button
-              type="button"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-100 text-brand-700 transition hover:bg-brand-200 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-brand-900/50 dark:text-brand-200 dark:hover:bg-brand-800"
-              onClick={() => stepSem(-1)}
-              disabled={semIdx <= 0}
-              aria-label={t("tt.prevSem")}
-            >
-              <ChevronLeft className="h-5 w-5" aria-hidden="true" />
-            </button>
-            <SemesterPicker
-              semesters={semesters}
-              value={semester}
-              onChange={(v) => {
-                setSemester(v);
-                setMonthPick(null);
-              }}
-              ariaLabel={t("venues.semester")}
-              className="min-w-0"
-              align="center"
-            />
-            <button
-              type="button"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-100 text-brand-700 transition hover:bg-brand-200 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-brand-900/50 dark:text-brand-200 dark:hover:bg-brand-800"
-              onClick={() => stepSem(1)}
-              disabled={semIdx < 0 || semIdx >= semesters.length - 1}
-              aria-label={t("tt.nextSem")}
-            >
-              <ChevronRight className="h-5 w-5" aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              className="btn-outline h-9 px-3 text-xs whitespace-nowrap shrink-0"
-              onClick={goToCurrentSemester}
-              title={t("sem.goToCurrentTitle")}
-            >
-              {t("sem.goToCurrent")}
-            </button>
+      {/* Tiêu đề "Phòng học" chỉ hiện trên điện thoại; máy tính ẩn (desk:hidden). */}
+      <div className="desk:hidden">
+        <PageHeader title={t("venues.title")} />
       </div>
       <div className="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
-        <section className="card min-h-[480px]" aria-labelledby="venue-list-title">
+        <section className={`card desk:min-h-[480px] ${listOpen ? "fixed inset-0 z-[60] flex flex-col overflow-hidden rounded-none desk:static desk:z-auto desk:block desk:rounded-xl" : ""}`} aria-labelledby="venue-list-title">
           <h2 id="venue-list-title" className="mb-2 font-semibold">{t("venues.listTitle", { n: list.length })}</h2>
+          <button type="button" aria-expanded={listOpen} onClick={() => setListOpen((v) => !v)}
+            className="desk:hidden mb-1 flex w-full items-center justify-between gap-2 rounded border border-slate-200 px-2 py-1.5 text-sm text-slate-600 dark:border-slate-700 dark:text-slate-300">
+            <span className="truncate">{listOpen ? t("common.collapse") : t("common.expand")}</span>
+            <ChevronDown className={`size-3.5 shrink-0 transition-transform ${listOpen ? "rotate-180" : ""}`} aria-hidden />
+          </button>
+          <div className={`${listOpen ? "flex min-h-0 flex-1 flex-col" : "hidden"} desk:flex desk:min-h-0 desk:flex-1 desk:flex-col`}>
           <label className="sr-only" htmlFor="vq">{t("venues.find")}</label>
           <input id="vq" type="search" className="input mb-3" placeholder={t("venues.find")}
             value={q} onChange={(e) => setQ(e.target.value)} />
           {venues.loading ? <Loading /> : list.length === 0 ? <Empty>{t("venues.noRooms")}</Empty> : (
-            <ul className="max-h-[560px] space-y-1 overflow-auto text-sm">
+            <ul className={`space-y-1 overflow-auto rounded border border-slate-200 p-1 text-sm dark:border-slate-700 ${listOpen ? "min-h-0 flex-1 desk:max-h-[560px] desk:border-0 desk:p-0" : "max-h-[560px] desk:border-0 desk:p-0"}`}>
               {list.map((v) => {
                 const n = counts.get(v.room) ?? 0;
                 return (
@@ -440,9 +387,12 @@ export default function VenuesPage() {
                       className={`flex w-full justify-between gap-2 rounded px-2 py-1 text-left hover:bg-slate-100 dark:hover:bg-slate-800 ${
                         room === v.room ? "bg-brand-50 font-semibold dark:bg-brand-900/40" : ""
                       }`}
-                      onClick={() => setRoom(v.room)}
+                      onClick={() => {
+                        setRoom(v.room);
+                        setListOpen(false);
+                      }}
                     >
-                      <span className="min-w-0 truncate">
+                      <span className="min-w-0 break-words desk:truncate">
                         {v.room} <span className="text-xs text-slate-400">({buildingOf(v.room)})</span>
                       </span>
                       <span className={`shrink-0 text-xs ${n > 0 ? "text-slate-600 dark:text-slate-300" : "text-slate-400"}`}>
@@ -454,6 +404,7 @@ export default function VenuesPage() {
               })}
             </ul>
           )}
+          </div>
         </section>
         <section className="@container card relative min-h-[480px] min-w-0" aria-labelledby="venue-calendar-title">
           <header className="mb-3 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 border-b border-slate-100 pb-2 @lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] dark:border-slate-800">
@@ -486,7 +437,6 @@ export default function VenuesPage() {
           </header>
           {selected ? (
             <>
-              <CampusTour360 room={selected.room} />
               <RoomMonth key={`${selected.room}-${month}`} venue={selected} sem={semObj} month={month} />
             </>
           ) : (

@@ -200,6 +200,59 @@ describe("FacetFilter", () => {
       );
       expect(screen.getByText("Số lượng trong chương trình đang lọc")).toBeInTheDocument();
     });
+
+    it("uses default common.expand/collapse labels when collapsibleOnMobile is set without custom labels", () => {
+      render(
+        <FacetFilter
+          title="Khoa"
+          items={sampleItems}
+          multiple
+          values={[]}
+          onValuesChange={() => {}}
+          collapsibleOnMobile
+        />,
+      );
+
+      const toggleBtn = screen.getByRole("button", { name: "Mở danh sách" });
+      expect(toggleBtn).toHaveAttribute("aria-expanded", "false");
+      fireEvent.click(toggleBtn);
+      expect(screen.getByRole("button", { name: "Thu gọn" })).toHaveAttribute("aria-expanded", "true");
+    });
+
+    it("uses custom expandLabel when collapsed and keeps collapse label when expanded in VI and EN", () => {
+      const { rerender } = render(
+        <FacetFilter
+          title="Khoa quản lý"
+          items={sampleItems}
+          multiple
+          values={[]}
+          onValuesChange={() => {}}
+          collapsibleOnMobile
+          expandLabel="Thêm bộ lọc khoa quản lý"
+        />,
+      );
+
+      const toggleVi = screen.getByRole("button", { name: "Thêm bộ lọc khoa quản lý" });
+      expect(toggleVi).toHaveAttribute("aria-expanded", "false");
+      fireEvent.click(toggleVi);
+      expect(screen.getByRole("button", { name: "Thu gọn" })).toHaveAttribute("aria-expanded", "true");
+
+      useLang.getState().setLang("en");
+      rerender(
+        <FacetFilter
+          title="Faculty"
+          items={sampleItems}
+          multiple
+          values={[]}
+          onValuesChange={() => {}}
+          collapsibleOnMobile
+          expandLabel="Add faculty filter"
+        />,
+      );
+      expect(screen.getByRole("button", { name: "Collapse" })).toHaveAttribute("aria-expanded", "true");
+      fireEvent.click(screen.getByRole("button", { name: "Collapse" }));
+      expect(screen.getByRole("button", { name: "Add faculty filter" })).toHaveAttribute("aria-expanded", "false");
+    });
   });
 
   describe("Single mode (radios)", () => {

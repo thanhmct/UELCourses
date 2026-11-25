@@ -3,12 +3,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronDown, Download, RefreshCw, TrendingDown, TrendingUp } from "lucide-react";
 import { SemesterPicker } from "@/components/SemesterPicker";
+import { LoadingDots } from "@/components/ui";
 import { useSemesters } from "@/lib/semesters";
 import { adminApi } from "@/lib/adminApi";
 import type {
   TrendClassItem,
   TrendChatTopic,
-  TrendConflictData,
   TrendModuleItem,
   TrendPairItem,
   TrendSearchItem,
@@ -43,7 +43,6 @@ export default function AdminTrendsPage() {
   const [modules, setModules] = useState<TrendModuleItem[]>([]);
   const [pairs, setPairs] = useState<TrendPairItem[]>([]);
   const [slots, setSlots] = useState<TrendSlotItem[]>([]);
-  const [conflicts, setConflicts] = useState<TrendConflictData | null>(null);
   const [searches, setSearches] = useState<TrendSearchItem[]>([]);
   const [chatTopics, setChatTopics] = useState<TrendChatTopic[] | null>([]);
   const [activity, setActivity] = useState<{ date: string; count: number }[]>([]);
@@ -67,7 +66,7 @@ export default function AdminTrendsPage() {
     const tDate = rangeOption === "custom" ? toDate || undefined : undefined;
 
     try {
-      const [modsRes, pairsRes, slotsRes, confRes, searchRes, overviewRes, chatRes] = await Promise.all([
+      const [modsRes, pairsRes, slotsRes, searchRes, overviewRes, chatRes] = await Promise.all([
         adminApi.getTrendsModules({
           semester: semester || undefined,
           program: program || undefined,
@@ -84,9 +83,6 @@ export default function AdminTrendsPage() {
           from: fDate,
           to: tDate,
         }),
-        adminApi.getTrendsConflicts({
-          semester: semester || undefined,
-        }),
         adminApi.getTrendsSearch({
           from: fDate,
           to: tDate,
@@ -98,7 +94,6 @@ export default function AdminTrendsPage() {
       setModules(modsRes.modules || []);
       setPairs(pairsRes.pairs || []);
       setSlots(slotsRes.slots || []);
-      setConflicts(confRes);
       setSearches(searchRes.searches || []);
       setChatTopics(chatRes?.topics ?? null);
       setActivity(overviewRes.activity_30d || []);
@@ -107,7 +102,6 @@ export default function AdminTrendsPage() {
       setModules([]);
       setPairs([]);
       setSlots([]);
-      setConflicts(null);
       setSearches([]);
       setChatTopics(null);
       setActivity([]);
@@ -283,106 +277,63 @@ export default function AdminTrendsPage() {
         </div>
       </section>
 
-      {/* Khối (g) & (f): Xu hướng hoạt động 30 ngày & Tỷ lệ xung đột TKB */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Biểu đồ đường hoạt động */}
-        <section className="card p-5 lg:col-span-2 space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold text-slate-800 dark:text-slate-200">
-              {t("admin.activityTitle")}
-            </h2>
-            <span className="text-xs text-slate-500">
-              {activity.length} ngày gần nhất
-            </span>
-          </div>
+      {/* Khối: Xu hướng hoạt động 30 ngày */}
+      <section className="card p-5 space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-bold text-slate-800 dark:text-slate-200">
+            {t("admin.activityTitle")}
+          </h2>
+          <span className="text-xs text-slate-500">
+            {activity.length} ngày gần nhất
+          </span>
+        </div>
 
-          {loading ? (
-            <div className="h-40 bg-slate-100 dark:bg-slate-800 animate-pulse rounded-md" />
-          ) : activity.length > 0 ? (
-            <div className="w-full overflow-x-auto">
-              <svg
-                viewBox={`0 0 ${activitySvgData.width || 600} ${activitySvgData.height || 140}`}
-                className="w-full h-36 overflow-visible"
-                role="img"
-                aria-label={t("admin.activityTitle")}
-              >
-                {/* Đường biểu đồ */}
-                <polyline
-                  fill="none"
-                  className="stroke-brand-focus"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  points={activitySvgData.points}
-                />
-                {/* Các điểm tròn */}
-                {activity.map((item, idx) => {
-                  const width = activitySvgData.width || 600;
-                  const height = activitySvgData.height || 140;
-                  const padding = activitySvgData.padding || 20;
-                  const x = padding + (idx / (activity.length - 1)) * (width - 2 * padding);
-                  const y = height - padding - (item.count / activitySvgData.max) * (height - 2 * padding);
-                  return (
-                    <circle
-                      key={item.date}
-                      cx={x}
-                      cy={y}
-                      r="3.5"
-                      className="fill-brand-focus stroke-white dark:stroke-slate-900 cursor-pointer hover:r-5 transition-all"
-                    >
-                      <title>{`${item.date}: ${item.count} sự kiện`}</title>
-                    </circle>
-                  );
-                })}
-              </svg>
-            </div>
-          ) : (
-            <div className="h-36 flex items-center justify-center text-xs text-slate-500">
-              {t("admin.emptyTrendData")}
-            </div>
-          )}
-        </section>
-
-        {/* Khối (f): Tỷ lệ TKB có xung đột */}
-        <section className="card p-5 space-y-4 flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold text-slate-800 dark:text-slate-200">
-              {t("admin.conflictsTitle")}
-            </h2>
-            <a
-              href={adminApi.getExportCsvUrl("conflicts", { semester })}
-              target="_blank"
-              rel="noreferrer"
-              className="btn-outline text-xs px-2 py-1 flex items-center gap-1"
+        {loading ? (
+          <div className="h-40 bg-slate-100 dark:bg-slate-800 animate-pulse rounded-md" />
+        ) : activity.length > 0 ? (
+          <div className="w-full overflow-x-auto">
+            <svg
+              viewBox={`0 0 ${activitySvgData.width || 600} ${activitySvgData.height || 140}`}
+              className="w-full h-36 overflow-visible"
+              role="img"
+              aria-label={t("admin.activityTitle")}
             >
-              <Download className="w-3.5 h-3.5" />
-              {t("admin.exportCsv")}
-            </a>
+              {/* Đường biểu đồ */}
+              <polyline
+                fill="none"
+                className="stroke-brand-focus"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                points={activitySvgData.points}
+              />
+              {/* Các điểm tròn */}
+              {activity.map((item, idx) => {
+                const width = activitySvgData.width || 600;
+                const height = activitySvgData.height || 140;
+                const padding = activitySvgData.padding || 20;
+                const x = padding + (idx / (activity.length - 1)) * (width - 2 * padding);
+                const y = height - padding - (item.count / activitySvgData.max) * (height - 2 * padding);
+                return (
+                  <circle
+                    key={item.date}
+                    cx={x}
+                    cy={y}
+                    r="3.5"
+                    className="fill-brand-focus stroke-white dark:stroke-slate-900 cursor-pointer hover:r-5 transition-all"
+                  >
+                    <title>{`${item.date}: ${item.count} sự kiện`}</title>
+                  </circle>
+                );
+              })}
+            </svg>
           </div>
-
-          <div className="space-y-3">
-            <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 text-center">
-              <span className="text-3xl font-extrabold text-brand-600 dark:text-brand-400">
-                {conflicts?.conflict_rate_pct ?? 0}%
-              </span>
-              <p className="text-xs text-slate-500 mt-1">
-                {t("admin.conflictRate")}
-              </p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div className="p-2.5 rounded bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                <span className="text-slate-400 block">{t("admin.conflictedSchedules")}</span>
-                <span className="font-bold text-sm">{conflicts?.conflicted_schedules ?? 0}</span>
-              </div>
-              <div className="p-2.5 rounded bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                <span className="text-slate-400 block">{t("admin.totalSchedules")}</span>
-                <span className="font-bold text-sm">{conflicts?.total_schedules ?? 0}</span>
-              </div>
-            </div>
+        ) : (
+          <div className="h-36 flex items-center justify-center text-xs text-slate-500">
+            {t("admin.emptyTrendData")}
           </div>
-        </section>
-      </div>
+        )}
+      </section>
 
       {/* Khối (a): Bảng Top môn */}
       <section className="card p-5 space-y-4">
@@ -726,7 +677,7 @@ export default function AdminTrendsPage() {
 
         <section className="card space-y-3 p-5">
           <h2 className="text-sm font-bold">{t("admin.chatTopicsTitle")}</h2>
-          {loading ? <p role="status" className="text-xs text-slate-500">{t("common.loading")}</p> : chatTopics === null ? (
+          {loading ? <p role="status" className="text-xs text-slate-500">{t("common.loading")}<LoadingDots /></p> : chatTopics === null ? (
             <p className="text-xs text-slate-500">{t("admin.chatTopicsError")}</p>
           ) : chatTopics.length ? (
             <table className="w-full text-left text-xs">

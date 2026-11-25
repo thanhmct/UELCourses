@@ -37,16 +37,16 @@ const base = (): PlanState => ({
 });
 
 describe("planner", () => {
-  it("warns when prerequisites are not in earlier terms", () => {
+  it("warns when prerequisites are not completed yet, even if placed in an earlier term", () => {
     const w = prerequisiteWarnings(base());
     expect(w).toEqual([
       { termId: "t1", code: "TKE2001", missing: ["TOA1001"] },
-      { termId: "t2", code: "KTL3001", missing: ["KTE1001"] },
+      { termId: "t2", code: "KTL3001", missing: ["TKE2001", "KTE1001"] },
     ]);
   });
   it("accepts completed modules and equivalents", () => {
     const s = base();
-    s.completed = ["TOA1001", "KTE1001E"];
+    s.completed = ["TOA1001", "TKE2001", "KTE1001E"];
     expect(prerequisiteWarnings(s)).toEqual([]);
   });
   it("moves modules between terms and backlog", () => {

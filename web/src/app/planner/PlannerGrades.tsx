@@ -64,7 +64,7 @@ export function PlannerGpaSummary({
   const progress = total > 0 ? Math.min(100, Math.round((completed / total) * 100)) : 0;
 
   return (
-    <section className="grid gap-3 sm:grid-cols-2">
+    <section className="grid grid-cols-2 gap-3">
       <div className="card min-w-0 border-brand-200 bg-brand-50/70 p-4 dark:border-brand-800 dark:bg-brand-950/40">
         <h2 className="text-sm font-semibold text-brand-ink">{t("gpa.cumulative10")}</h2>
         <div aria-live="polite" className="mt-2 flex flex-wrap items-baseline gap-2">
@@ -86,7 +86,7 @@ export function PlannerGpaSummary({
         </div>
       </div>
 
-      <div className="card grid items-center gap-4 p-4 sm:col-span-2 lg:grid-cols-[minmax(16rem,1fr)_auto_auto]">
+      <div className="card col-span-2 grid items-center gap-4 p-4 lg:grid-cols-[minmax(16rem,1fr)_auto_auto]">
         <div className="min-w-0">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-100">{t("pl.creditProgressTitle")}</h2>
@@ -105,14 +105,14 @@ export function PlannerGpaSummary({
             <div className="h-full rounded-full bg-emerald-500 transition-[width]" style={{ width: `${progress}%` }} />
           </div>
         </div>
-        <dl className="contents">
-          <div className="min-w-40 rounded-lg bg-slate-100 px-4 py-3 dark:bg-slate-800">
+        <dl className="grid grid-cols-2 gap-3 lg:contents">
+          <div className="min-w-0 rounded-lg bg-slate-100 px-4 py-3 lg:min-w-40 dark:bg-slate-800">
             <dt className="text-xs font-medium text-slate-600 dark:text-slate-300">{t("pl.totalCreditsLabel")}</dt>
             <dd className="mt-1 whitespace-nowrap text-2xl font-bold text-slate-900 dark:text-white">
               {total} {t("common.unitCr")}
             </dd>
           </div>
-          <div className="min-w-40 rounded-lg bg-emerald-50 px-4 py-3 dark:bg-emerald-950/40">
+          <div className="min-w-0 rounded-lg bg-emerald-50 px-4 py-3 lg:min-w-40 dark:bg-emerald-950/40">
             <dt className="text-xs font-medium text-emerald-800 dark:text-emerald-300">{t("pl.completedCreditsLabel")}</dt>
             <dd className="mt-1 whitespace-nowrap text-2xl font-bold text-emerald-700 dark:text-emerald-300">
               {completed} {t("common.unitCr")}

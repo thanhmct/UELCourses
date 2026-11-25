@@ -254,16 +254,22 @@ def _citation_warnings(index: RagIndex, citations: list[dict[str, Any]], today: 
     if all(c.get("source_type") == "handbook" for c in citations):
         return [SUMMARY_WARNING]
     out: list[str] = []
+    seen_base: set[str] = set()
     for doc_id in dict.fromkeys(c["doc_id"] for c in citations):
         doc = index.docs_by_id.get(doc_id)
         if doc and doc.source_type != "handbook":
-            where = "; ".join(dict.fromkeys(
-                locator(c.get("article"), c.get("clause"), c.get("point")) for c in citations
-                if c["doc_id"] == doc_id and c.get("article")))
+            places = dict.fromkeys(
+                (locator(c.get("article"), c.get("clause"), c.get("point")), c.get("anchor")) for c in citations
+                if c["doc_id"] == doc_id and c.get("article"))
+            where = "; ".join(
+                f"[[{doc_id}#^{anchor}|{loc} ({doc_label(doc)})]]" if anchor else f"{loc} ({doc_label(doc)})"
+                for loc, anchor in places)
             for w in validity_warnings(doc, today, docs_by_id=index.docs_by_id):
                 if doc.metadata_unverified and w.startswith(f"{doc.title}: cần đối chiếu lại") and where:
-                    w = w.rstrip(".") + f". Bạn hãy tự kiểm tra tại {where} của văn bản gốc."
-                if w not in out:
+                    w = w.rstrip(".") + f". Bạn hãy tự kiểm tra tại {where}."
+                base = w.split(" Bạn hãy tự kiểm tra tại ")[0]
+                if base not in seen_base:
+                    seen_base.add(base)
                     out.append(w)
     return out
 
@@ -487,7 +493,7 @@ def answer_llm(index: RagIndex, question: str, cohort: str | None = None, today:
                 f"({doc_label(index.docs_by_id[c['doc_id']])})".strip()
                 for c in related if c.get("label") or c["doc_id"] in index.docs_by_id))
             answer = UNSURE + (f"\n\nCó thể liên quan: {names}." if names else "")
-            return {"answer": answer, "citations": [], "related": related, "warnings": base["warnings"],
+            return {"answer": answer, "citations": [], "related": related, "warnings": [],
                     "mode": "llm", "found": False, "abstained": True, "abstain_reason": reason,
                     "provider": getattr(provider, "used", None) or provider.name}
         return base | {"llm_fallback": True, "fallback_reason": reason}
@@ -659,8 +665,9 @@ def _ask_understood(index: RagIndex, understood: Any, cohort: str | None, mode: 
         # The model could not check the passages (provider error, budget). For a rewritten forum question the
         # top extractive hit was off-topic in 4 of 4 real cases, so abstain instead of showing it as the answer.
         result = {"answer": UNSURE, "citations": [], "related": result.get("citations", []),
-                  "warnings": result.get("warnings", []), "mode": "llm", "found": False, "abstained": True,
+                  "warnings": [], "mode": "llm", "found": False, "abstained": True,
                   "abstain_reason": result.get("fallback_reason")}
+        # The abstain answer is not based on this passage, so the "check the original text" note would mislead.
     return result | {"understood": understood.query}
 
 

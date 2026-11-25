@@ -110,7 +110,7 @@ describe("ProgramProfileDialog", () => {
     await waitFor(() => {
       expect(
         screen.getByText(
-          /→ Khóa 2023, chương trình đào tạo ngành Hệ thống thông tin quản lý, chương trình Coop \(hợp tác doanh nghiệp\)\./,
+          /→ Khóa 2023, chương trình đào tạo ngành Hệ thống thông tin quản lý, Coop Khóa 23\./,
         ),
       ).toBeInTheDocument();
     });

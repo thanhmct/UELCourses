@@ -104,7 +104,8 @@ def _parse(raw: str, allow_clarify: bool) -> Understanding | None:
     query = _clean(data.get("query"), 300)
     if intent not in INTENTS or query is None or len(query) < 5:
         return None
-    clarify = _clean(data.get("clarify"), 200) if allow_clarify else None
+    # Only regulation questions are asked back; "who are you" or small talk never gets a clarification.
+    clarify = _clean(data.get("clarify"), 200) if allow_clarify and intent == "regulation" else None
     options = [o for o in (_clean(x, 60) for x in (data.get("options") or [])[:4]) if o] if clarify else []
     if clarify and len(options) < 2:
         clarify, options = None, []

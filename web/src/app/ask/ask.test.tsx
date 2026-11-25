@@ -71,7 +71,7 @@ describe("Ask UEL", () => {
     fireEvent.click(await screen.findByRole("button", { name: "K25" }));
     expect(await screen.findByText("Theo Điều 34 …")).toBeInTheDocument();
     expect(ask).toHaveBeenLastCalledWith("regulations", "Khi nào bị buộc thôi học?", "K25", "vi");
-    expect(screen.getByText(/Áp dụng khóa K25 bạn đã chọn/)).toBeInTheDocument();
+    expect(screen.getByText(/Áp dụng khóa 25 bạn đã chọn/)).toBeInTheDocument();
   });
 
   it("labels a handbook citation and links to its rendered page segment", async () => {

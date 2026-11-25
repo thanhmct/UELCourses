@@ -286,23 +286,25 @@ export function ProgramFilterBar({
       );
     } else if (parsed.kind === "coop") {
       const label = coopName?.trim() || t("profile.coopTrack");
+      // Phones: the full co-op name repeats the major, so show only "Co-op" (full name stays in the tooltip).
       specialChip = (
-        <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[11px] font-medium text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-          {label}
+        <span className="shrink-0 whitespace-nowrap rounded bg-emerald-100 px-1.5 py-0.5 text-[11px] font-medium text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300" title={label}>
+          <span className="sm:hidden">{t("profile.coopTrack")}</span>
+          <span className="hidden sm:inline">{label}</span>
         </span>
       );
     }
 
     return (
-      <span className="inline-flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5">
+      <span className="inline-flex min-w-0 items-center gap-x-1.5 gap-y-0.5">
         {isLoading ? (
           <Loading compact />
         ) : (
-          <span className="min-w-0 wrap-anywhere font-semibold text-slate-900 dark:text-slate-100">
+          <span className="min-w-0 truncate font-semibold text-slate-900 dark:text-slate-100" title={majorDisplay}>
             {majorDisplay}
           </span>
         )}
-        <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+        <span className="shrink-0 whitespace-nowrap rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">
           {parsed.degree === "dai_hoc" ? (
             <><span className="sm:hidden">{parsed.cohort}</span><span className="hidden sm:inline">{cohortLabel}</span></>
           ) : cohortLabel}

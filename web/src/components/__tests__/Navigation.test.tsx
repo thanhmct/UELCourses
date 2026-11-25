@@ -64,17 +64,19 @@ describe("W9: Menu Navigation Order & Structure", () => {
     expect(regVi?.labelKey).toBe("nav.regulations");
     expect(booksVi?.labelKey).toBe("nav.books");
 
-    // SideNav renders "Hỏi đáp AI" and "Trao đổi sách" in Vietnamese
+    // Both entries are hidden from the menus for now
+    expect(regVi?.hidden).toBe(true);
+    expect(booksVi?.hidden).toBe(true);
     render(<SideNav />);
-    expect(screen.getByText("Hỏi đáp AI")).toBeInTheDocument();
-    expect(screen.getByText("Trao đổi sách")).toBeInTheDocument();
+    expect(screen.queryByText("Hỏi đáp AI")).not.toBeInTheDocument();
+    expect(screen.queryByText("Trao đổi sách")).not.toBeInTheDocument();
 
     cleanup();
 
     useLang.getState().setLang("en");
     render(<SideNav />);
-    expect(screen.getByText("AI Q&A")).toBeInTheDocument();
-    expect(screen.getByText("Book Exchange")).toBeInTheDocument();
+    expect(screen.queryByText("AI Q&A")).not.toBeInTheDocument();
+    expect(screen.queryByText("Book Exchange")).not.toBeInTheDocument();
   });
 
   it("SideNav ẩn tab CTĐT và giữ đúng thứ tự các mục còn lại", () => {
@@ -96,12 +98,11 @@ describe("W9: Menu Navigation Order & Structure", () => {
       "/modules",
       "/planner",
       "/venues",
-      "/regulations",
-      "/books",
+      "/feedback",
       "/settings",
     ]);
 
-    // Check Feedback button exists and is positioned between /books and /settings
+    // Feedback entry exists before /settings
     const feedbackBtn = screen.getByText("Góp ý");
     expect(feedbackBtn).toBeInTheDocument();
 
@@ -111,7 +112,7 @@ describe("W9: Menu Navigation Order & Structure", () => {
     expect(container.querySelector('a[href="/equivalents"]')).not.toBeInTheDocument();
   });
 
-  it("BottomNav mở menu Thêm hiển thị vạch phân cách và nhóm Trao đổi sách → Góp ý → Cài đặt", () => {
+  it("BottomNav mở menu Thêm hiển thị vạch phân cách và nhóm Góp ý → Cài đặt, ẩn Trao đổi sách", () => {
     render(<BottomNav />);
 
     // Click "Thêm" button
@@ -122,8 +123,9 @@ describe("W9: Menu Navigation Order & Structure", () => {
     const separator = screen.getByRole("separator");
     expect(separator).toBeInTheDocument();
 
-    // Books and Settings links exist in popup
-    expect(screen.getByText("Trao đổi sách")).toBeInTheDocument();
+    // Books and AI Q&A are hidden; Settings stays
+    expect(screen.queryByText("Trao đổi sách")).not.toBeInTheDocument();
+    expect(screen.queryByText("Hỏi đáp AI")).not.toBeInTheDocument();
     expect(screen.getByText("Cài đặt")).toBeInTheDocument();
     expect(screen.getAllByText("Góp ý").length).toBeGreaterThan(0);
   });

@@ -555,7 +555,7 @@ def change_my_password(
 # =============================================================================
 
 DEFAULT_SETTINGS = {
-    "moderation.mode": "pre",
+    "moderation.mode": "auto",
     "analytics.enabled": True,
     "analytics.retention_days": 180,
 }
@@ -599,10 +599,10 @@ def update_admin_settings(
     # 1. Kiểm tra validation
     if moderation_mode is not None:
         mode_clean = moderation_mode.strip().lower()
-        if mode_clean not in ("pre", "post"):
+        if mode_clean not in ("auto", "pre", "post"):
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="Chế độ kiểm duyệt không hợp lệ. Phải là 'pre' (kiểm duyệt trước) hoặc 'post' (kiểm duyệt sau).",
+                detail="Chế độ kiểm duyệt không hợp lệ. Phải là 'auto' (tự duyệt nếu không vi phạm), 'pre' (kiểm duyệt trước) hoặc 'post' (duyệt ngay, kiểm duyệt sau).",
             )
 
     if analytics_retention_days is not None:

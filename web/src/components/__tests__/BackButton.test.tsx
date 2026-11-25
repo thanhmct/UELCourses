@@ -2,21 +2,26 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BackButton } from "../BackButton";
 import { useLang } from "@/i18n";
+import { recordVisit } from "@/lib/navHistory";
 
 const mockBack = vi.fn();
 const mockPush = vi.fn();
+let mockPathname = "/modules/ABC123";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
     back: mockBack,
     push: mockPush,
   }),
+  usePathname: () => mockPathname,
 }));
 
 describe("BackButton component (Brief W17)", () => {
   beforeEach(() => {
     mockBack.mockClear();
     mockPush.mockClear();
+    mockPathname = "/modules/ABC123";
+    window.sessionStorage.clear();
     useLang.getState().setLang("vi");
   });
 
@@ -85,22 +90,26 @@ describe("BackButton component (Brief W17)", () => {
     expect(mockBack).toHaveBeenCalledTimes(1);
   });
 
-  it("6. Gọi router.back() khi document.referrer có cùng origin", () => {
-    // Giả lập referrer cùng origin
-    Object.defineProperty(document, "referrer", {
-      value: `${window.location.origin}/modules?query=kt`,
-      configurable: true,
-    });
-    // Giả lập history length > 1
-    Object.defineProperty(window.history, "length", {
-      value: 3,
-      configurable: true,
-    });
+  it("6. Điều hướng đúng về trang trước đó đã lưu trong ngăn xếp phiên, bỏ qua href mặc định", () => {
+    // Giả lập người dùng đã ghé /programs rồi mới sang trang hiện tại (/modules/ABC123)
+    recordVisit("/programs");
+    recordVisit(mockPathname);
 
     render(<BackButton href="/modules" label="Quay lại danh sách học phần" />);
     const link = screen.getByRole("link", { name: "Quay lại danh sách học phần" });
 
     fireEvent.click(link);
-    expect(mockBack).toHaveBeenCalledTimes(1);
+    expect(mockPush).toHaveBeenCalledWith("/programs");
+    expect(mockBack).not.toHaveBeenCalled();
+  });
+
+  it("7. Không có lịch sử trong phiên (mở thẳng bằng URL): dùng href mặc định, không gọi router", () => {
+    render(<BackButton href="/modules" label="Quay lại danh sách học phần" />);
+    const link = screen.getByRole("link", { name: "Quay lại danh sách học phần" });
+
+    fireEvent.click(link);
+    expect(mockPush).not.toHaveBeenCalled();
+    expect(mockBack).not.toHaveBeenCalled();
+    expect(link).toHaveAttribute("href", "/modules");
   });
 });

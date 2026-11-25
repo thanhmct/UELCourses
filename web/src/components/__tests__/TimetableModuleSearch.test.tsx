@@ -140,10 +140,10 @@ describe("Brief W32: Ô tìm môn ở Thời khóa biểu: dời nhãn 'Không c
     expect(leftCluster).toBeDefined();
     expect(rightCluster).toBeDefined();
 
-    // Cụm trái chứa mã, tên môn và nhãn Bắt buộc
+    // Cụm trái chứa mã và tên môn; nhãn Bắt buộc/Tự chọn đã ẩn
     expect(within(leftCluster).getByText("BAA2029")).toBeInTheDocument();
     expect(within(leftCluster).getByText("Kế toán tài chính")).toBeInTheDocument();
-    expect(within(leftCluster).getByText("Bắt buộc")).toBeInTheDocument();
+    expect(within(leftCluster).queryByText("Bắt buộc")).toBeNull();
     // Cụm trái TUYỆT ĐỐI KHÔNG chứa nhãn "Không có lịch"
     expect(within(leftCluster).queryByText("Không có lịch")).toBeNull();
 
@@ -158,13 +158,13 @@ describe("Brief W32: Ô tìm môn ở Thời khóa biểu: dời nhãn 'Không c
     expect(noScheduleBadge.className).toContain("text-amber-800");
   });
 
-  it("2. Môn tự chọn → nhãn có lớp màu khác với nhãn 'Không có lịch' (khẳng định bằng class và data-variant)", async () => {
+  it("2. Môn tự chọn → không hiện nhãn 'Tự chọn' ở cụm trái; nhãn 'Không có lịch' vẫn ở cụm phải", async () => {
     const onPick = vi.fn();
     render(
       <TimetableModuleSearch
         onPick={onPick}
         semester="2026-2027-1"
-        programRequiredMap={{ BAA2029: false }} // Môn tự chọn
+        programRequiredMap={{ BAA2029: false }} // Môn tự chọn (dữ liệu vẫn có, nhãn đã ẩn)
       />,
     );
 
@@ -176,22 +176,11 @@ describe("Brief W32: Ô tìm môn ở Thời khóa biểu: dời nhãn 'Không c
     const button = within(option).getByRole("button");
     const [leftCluster, rightCluster] = Array.from(button.children) as HTMLElement[];
 
-    const electiveBadge = within(leftCluster).getByText("Tự chọn");
+    expect(within(leftCluster).queryByText("Tự chọn")).toBeNull();
     const noScheduleBadge = within(rightCluster).getByText("Không có lịch");
-
-    // Khẳng định data-variant khác nhau
-    expect(electiveBadge.getAttribute("data-variant")).toBe("elective");
     expect(noScheduleBadge.getAttribute("data-variant")).toBe("no-schedule");
-
-    // Khẳng định lớp màu khác biệt hoàn toàn: Tự chọn dùng indigo (chàm nhạt), Không có lịch dùng amber (vàng/hổ phách)
-    expect(electiveBadge.className).toContain("bg-indigo-50");
-    expect(electiveBadge.className).toContain("text-indigo-700");
-    expect(electiveBadge.className).not.toContain("bg-amber-100");
-    expect(electiveBadge.className).not.toContain("text-amber-800");
-
     expect(noScheduleBadge.className).toContain("bg-amber-100");
-    expect(noScheduleBadge.className).toContain("text-amber-800");
-    expect(noScheduleBadge.className).not.toContain("bg-indigo-50");
+    expect(noScheduleBadge.className).not.toContain("bg-emerald-100");
   });
 
   it("3. Môn có lịch → không có nhãn 'Không có lịch' và layout không đổi chiều cao", async () => {
@@ -224,7 +213,7 @@ describe("Brief W32: Ô tìm môn ở Thời khóa biểu: dời nhãn 'Không c
     expect(button.className).toContain("min-h-[38px]");
   });
 
-  it("4. Hỗ trợ ngôn ngữ tiếng Anh: nhãn 'No schedule' và 'Elective' / 'Required'", async () => {
+  it("4. Hỗ trợ ngôn ngữ tiếng Anh: nhãn 'No schedule'; không hiện 'Elective' / 'Required'", async () => {
     useLang.getState().setLang("en");
     const onPick = vi.fn();
     render(
@@ -243,7 +232,7 @@ describe("Brief W32: Ô tìm môn ở Thời khóa biểu: dời nhãn 'Không c
     const button = within(option).getByRole("button");
     const [leftCluster, rightCluster] = Array.from(button.children) as HTMLElement[];
 
-    expect(within(leftCluster).getByText("Elective")).toBeInTheDocument();
+    expect(within(leftCluster).queryByText("Elective")).toBeNull();
     expect(within(rightCluster).getByText("No schedule")).toBeInTheDocument();
     expect(within(rightCluster).getByText(/3 cr/)).toBeInTheDocument();
   });

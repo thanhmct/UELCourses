@@ -1,18 +1,24 @@
 /**
- * Thu thập xu hướng sử dụng ẩn danh (Brief A2, D-A5).
+ * Thu thập xu hướng sử dụng ẩn danh (Brief A2, D-A5, N2).
  * - Sử dụng anon_id ngẫu nhiên (UUID v4 lưu trong localStorage).
  * - KHÔNG BAO GIỜ lưu hay gửi: tên, email, token, mật khẩu, MSSV, IP, user-agent.
  * - Tôn trọng tín hiệu Do Not Track (DNT) và công tắc người dùng trong Cài đặt.
- * - Hàng đợi trong bộ nhớ, tự động gửi theo lô mỗi 10 giây hoặc khi đóng/ẩn trang (sendBeacon).
- * - Bỏ qua khi chạy môi trường test hoặc NEXT_PUBLIC_USE_MOCKS=true.
+ * - Hàng đợi bền vững lưu trong localStorage (giới hạn tối đa ~500 sự kiện).
+ * - Tự động gửi lại sau thất bại (exponential backoff, tối đa 5 lần) và gửi nốt khi mở trang.
+ * - Chỉ xóa khỏi hàng đợi khi server trả mã 2xx.
+ * - Vẫn dùng sendBeacon khi ẩn trang; bỏ qua khi chạy môi trường test/mock.
  */
 
 import { API_URL } from "./api";
 
 const ANON_ID_STORAGE_KEY = "uelcourses_anon_id";
 const ANALYTICS_ENABLED_STORAGE_KEY = "uelcourses_analytics_enabled";
-const BATCH_INTERVAL_MS = 10000;
-const MAX_BATCH_SIZE = 50;
+export const QUEUE_STORAGE_KEY = "uelcourses_analytics_queue";
+
+export const BATCH_INTERVAL_MS = 10000;
+export const MAX_BATCH_SIZE = 50;
+export const MAX_QUEUE_SIZE = 500;
+export const MAX_RETRIES = 5;
 
 export interface AnalyticsEventItem {
   type: string;
@@ -27,9 +33,14 @@ export interface AnalyticsEventItem {
   ts?: string | number;
 }
 
-let eventQueue: AnalyticsEventItem[] = [];
+export interface QueuedEventItem extends AnalyticsEventItem {
+  _retries?: number;
+}
+
 let batchTimer: any = null;
 let listenersAttached = false;
+let isFlushing = false;
+let failureCount = 0;
 
 function generateUUID(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -86,12 +97,46 @@ export function isAnalyticsEnabled(): boolean {
   return true;
 }
 
+export function loadQueue(): QueuedEventItem[] {
+  if (typeof window === "undefined" || !window.localStorage) return [];
+  try {
+    const raw = localStorage.getItem(QUEUE_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveQueue(queue: QueuedEventItem[]): void {
+  if (typeof window === "undefined" || !window.localStorage) return;
+  try {
+    if (queue.length === 0) {
+      localStorage.removeItem(QUEUE_STORAGE_KEY);
+    } else {
+      localStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(queue.slice(-MAX_QUEUE_SIZE)));
+    }
+  } catch {
+    // Bỏ qua lỗi vượt hạn mức lưu trữ
+  }
+}
+
+export function clearQueue(): void {
+  if (typeof window === "undefined" || !window.localStorage) return;
+  try {
+    localStorage.removeItem(QUEUE_STORAGE_KEY);
+  } catch {
+    // Bỏ qua lỗi
+  }
+}
+
 export function setAnalyticsEnabled(enabled: boolean): void {
   if (typeof window === "undefined" || !window.localStorage) return;
   try {
     localStorage.setItem(ANALYTICS_ENABLED_STORAGE_KEY, enabled ? "true" : "false");
     if (!enabled) {
-      eventQueue = [];
+      clearQueue();
     }
   } catch {
     // Bỏ qua lỗi hạn chế lưu trữ
@@ -106,38 +151,51 @@ function attachPageListeners(): void {
   if (typeof document !== "undefined") {
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "hidden") {
-        flushAnalytics();
+        void flushAnalytics();
       }
     });
   }
 
   window.addEventListener("pagehide", () => {
-    flushAnalytics();
+    void flushAnalytics();
   });
+
+  // Gửi nốt sự kiện tồn đọng khi vừa mở/tải trang
+  if (loadQueue().length > 0) {
+    scheduleBatch(1000);
+  }
 }
 
-function scheduleBatch(): void {
+function scheduleBatch(delay: number = BATCH_INTERVAL_MS): void {
   if (batchTimer) return;
   batchTimer = setTimeout(() => {
     batchTimer = null;
-    flushAnalytics();
-  }, BATCH_INTERVAL_MS);
+    void flushAnalytics();
+  }, delay);
 }
 
-export function flushAnalytics(): void {
-  if (eventQueue.length === 0) return;
+export async function flushAnalytics(): Promise<void> {
+  if (isFlushing) return;
+
   if (!isAnalyticsEnabled()) {
-    eventQueue = [];
+    clearQueue();
     return;
   }
 
-  const batch = eventQueue.slice(0, MAX_BATCH_SIZE);
-  eventQueue = eventQueue.slice(MAX_BATCH_SIZE);
+  const queue = loadQueue();
+  if (queue.length === 0) {
+    failureCount = 0;
+    return;
+  }
 
+  const batch = queue.slice(0, MAX_BATCH_SIZE);
   const anonId = getAnonId();
+
+  // Loại bỏ các trường nội bộ như _retries trước khi gửi lên API
+  const cleanEvents = batch.map(({ _retries, ...item }) => item);
   const payload = JSON.stringify({
     anon_id: anonId,
-    events: batch,
+    events: cleanEvents,
   });
 
   const url = `${API_URL}/api/analytics/events`;
@@ -152,15 +210,22 @@ export function flushAnalytics(): void {
     try {
       const blob = new Blob([payload], { type: "application/json" });
       const sent = navigator.sendBeacon(url, blob);
-      if (sent) return;
+      if (sent) {
+        // Beacon được trình duyệt xếp hàng gửi thành công
+        const remaining = queue.slice(batch.length);
+        saveQueue(remaining);
+        return;
+      }
     } catch {
-      // Fallback fetch
+      // Fallback sang fetch bên dưới
     }
   }
 
-  // Fetch chuẩn với keepalive
-  if (typeof fetch !== "undefined") {
-    fetch(url, {
+  if (typeof fetch === "undefined") return;
+
+  isFlushing = true;
+  try {
+    const res = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -168,10 +233,50 @@ export function flushAnalytics(): void {
       body: payload,
       keepalive: true,
       credentials: "omit",
-    }).catch(() => {
-      // Bỏ qua lỗi mạng
     });
+
+    if (res.ok) {
+      // Chỉ xóa khỏi hàng đợi khi server trả 2xx
+      failureCount = 0;
+      const latestQueue = loadQueue();
+      // Loại bỏ đúng số lượng phần tử của batch từ đầu hàng đợi
+      const remaining = latestQueue.slice(batch.length);
+      saveQueue(remaining);
+
+      // Nếu vẫn còn sự kiện trong hàng đợi, tiếp tục gửi lô tiếp theo
+      if (remaining.length > 0) {
+        scheduleBatch(500);
+      }
+    } else {
+      // Thất bại HTTP (429, 500, etc.): tăng số lần retry và thực hiện backoff
+      handleFlushFailure(batch.length);
+    }
+  } catch {
+    // Lỗi mạng hoặc Render ngủ
+    handleFlushFailure(batch.length);
+  } finally {
+    isFlushing = false;
   }
+}
+
+function handleFlushFailure(batchLength: number): void {
+  failureCount++;
+  const latestQueue = loadQueue();
+
+  // Tăng số lần thử _retries cho các phần tử trong batch
+  const updatedBatch: QueuedEventItem[] = latestQueue.slice(0, batchLength).map((item) => ({
+    ...item,
+    _retries: (item._retries ?? 0) + 1,
+  }));
+
+  // Loại bỏ các sự kiện đã vượt quá MAX_RETRIES (tối đa 5 lần)
+  const keptBatch = updatedBatch.filter((item) => (item._retries ?? 0) < MAX_RETRIES);
+  const remaining = latestQueue.slice(batchLength);
+  saveQueue([...keptBatch, ...remaining]);
+
+  // Exponential backoff: tối đa 60 giây
+  const backoffDelay = Math.min(60000, 2000 * Math.pow(2, Math.min(failureCount - 1, 5)));
+  scheduleBatch(backoffDelay);
 }
 
 /**
@@ -185,7 +290,7 @@ export function track(
 
   attachPageListeners();
 
-  const item: AnalyticsEventItem = {
+  const item: QueuedEventItem = {
     type: eventType,
     module_code: data.module_code || null,
     class_code: data.class_code || null,
@@ -195,12 +300,15 @@ export function track(
     filters: data.filters || null,
     page: data.page || (typeof window !== "undefined" ? window.location.pathname : null),
     ts: new Date().toISOString(),
+    _retries: 0,
   };
 
-  eventQueue.push(item);
+  const queue = loadQueue();
+  queue.push(item);
+  saveQueue(queue);
 
-  if (eventQueue.length >= 20) {
-    flushAnalytics();
+  if (queue.length >= 20) {
+    void flushAnalytics();
   } else {
     scheduleBatch();
   }

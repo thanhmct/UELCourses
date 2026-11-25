@@ -306,10 +306,12 @@ describe("Brief W19: SemesterFilterSquares component (Modules page facet filter)
 
     expect(screen.getByText("Học kỳ có lớp mở")).toBeInTheDocument();
 
-    // Ô Kỳ 1 năm 2026–2027 hiển thị "Kỳ 1" và "· 651"
+    // Ô Kỳ 1 năm 2026–2027 hiển thị "Kỳ 1" ở dòng trên và "· 651" ở dòng dưới
     const btn1 = screen.getByRole("checkbox", { name: /Học kỳ 1.*2026–2027/i });
+    expect(btn1).toHaveClass("flex-col");
     expect(btn1).toHaveTextContent("Kỳ 1");
-    expect(btn1).toHaveTextContent("· 651");
+    expect(btn1).toHaveTextContent("651");
+    expect(btn1).not.toHaveTextContent("·");
     expect(btn1).toHaveAttribute("aria-checked", "true");
 
     // Ô Kỳ 3 có count 0 không hiển thị
@@ -338,6 +340,7 @@ describe("Brief W19: SemesterFilterSquares component (Modules page facet filter)
     expect(screen.getByText("Semesters with open classes")).toBeInTheDocument();
     const btnEn = screen.getByRole("checkbox", { name: /Semester 1.*2026–2027/i });
     expect(btnEn).toHaveTextContent("Term 1");
-    expect(btnEn).toHaveTextContent("· 651");
+    expect(btnEn).toHaveTextContent("651");
+    expect(btnEn).not.toHaveTextContent("·");
   });
 });

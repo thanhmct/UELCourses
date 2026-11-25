@@ -73,8 +73,8 @@ describe("Brief A2: Admin Trends Page (/admin/trends)", () => {
     expect(screen.getAllByText("Toán cao cấp 1")[0]).toBeInTheDocument();
     expect(screen.getAllByText("Kinh tế vi mô")[0]).toBeInTheDocument();
 
-    // Khối xung đột TKB
-    expect(screen.getByText("4.9%")).toBeInTheDocument();
+    // Khối xung đột TKB đã được gỡ bỏ
+    expect(screen.queryByText("4.9%")).not.toBeInTheDocument();
 
     // Khối từ khóa không ra kết quả
     expect(screen.getByText("machine learning")).toBeInTheDocument();

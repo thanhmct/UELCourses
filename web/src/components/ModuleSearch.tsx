@@ -1,5 +1,7 @@
 "use client";
-import { useEffect, useId, useMemo, useState } from "react";
+import { Check } from "lucide-react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useMaxVisibleItems } from "@/lib/useMaxVisibleItems";
 import { api } from "@/lib/api";
 import { useApi } from "@/lib/useApi";
 import { useDebounced } from "@/lib/useDebounced";
@@ -13,7 +15,9 @@ import { getCachedFinalAssessmentKind } from "@/lib/finalAssessment";
 /** Search box with a dropdown of matching modules. */
 export function ModuleSearch({
   onPick,
+  onPickAdded,
   exclude = [],
+  addedCodes = [],
   placeholder,
   programId,
   programIds,
@@ -22,7 +26,11 @@ export function ModuleSearch({
   inheritProgramProfile = true,
 }: {
   onPick: (m: ModuleSummary) => void;
+  /** Gọi thay cho onPick khi người dùng chọn (Enter/bấm) một môn đã có trong addedCodes: dùng để cuộn tới và nhấp nháy môn đó thay vì thêm lại. */
+  onPickAdded?: (m: ModuleSummary) => void;
   exclude?: string[];
+  /** Mã đã có trong kế hoạch: vẫn hiện trong kết quả (không ẩn như `exclude`) nhưng đánh dấu "Đã thêm". */
+  addedCodes?: string[];
   placeholder?: string;
   /** chỉ tìm học phần trong CTĐT này (vd K23406) */
   programId?: string;
@@ -39,8 +47,14 @@ export function ModuleSearch({
   const listId = useId();
   const [q, setQ] = useState("");
   const [focus, setFocus] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const listRef = useRef<HTMLUListElement>(null);
   const dq = useDebounced(q, 250);
   const pidsKey = programIds ? programIds.join(",") : "";
+
+  useEffect(() => {
+    setActiveIndex(0);
+  }, [dq]);
 
   // Tự động phân giải trạng thái Bắt buộc / Tự chọn nếu không truyền trực tiếp map
   const profile = useProgramProfile();
@@ -96,7 +110,20 @@ export function ModuleSearch({
         : Promise.resolve({ data: { items: [], total: 0 }, mock: false }),
     [dq, programId, pidsKey],
   );
-  const items = (data?.items ?? []).filter((m) => !exclude.includes(m.code));
+  const items = (data?.items ?? []).filter((m) => !exclude.includes(m.code) || addedCodes.includes(m.code));
+  const listOpen = !!(focus && q.trim());
+  const safeActiveIndex = Math.min(activeIndex, Math.max(items.length - 1, 0));
+  useMaxVisibleItems(listRef, listOpen);
+
+  function selectItem(m: ModuleSummary) {
+    if (addedCodes.includes(m.code) && onPickAdded) {
+      onPickAdded(m);
+    } else {
+      onPick(m);
+    }
+    setQ("");
+  }
+
   return (
     <div className="relative">
       <input
@@ -106,37 +133,59 @@ export function ModuleSearch({
         onChange={(e) => setQ(e.target.value)}
         onFocus={() => setFocus(true)}
         onBlur={() => setTimeout(() => setFocus(false), 150)}
+        onKeyDown={(e) => {
+          if (!listOpen || items.length === 0) return;
+          if (e.key === "ArrowDown") {
+            e.preventDefault();
+            setActiveIndex((i) => Math.min(i + 1, items.length - 1));
+          } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            setActiveIndex((i) => Math.max(i - 1, 0));
+          } else if (e.key === "Enter") {
+            e.preventDefault();
+            const m = items[safeActiveIndex];
+            if (m) selectItem(m);
+          }
+        }}
         aria-label={t("mod.searchAria")}
         role="combobox"
         aria-controls={listId}
         aria-expanded={!!(focus && q.trim())}
         aria-autocomplete="list"
+        aria-activedescendant={listOpen && items[safeActiveIndex] ? `${listId}-opt-${safeActiveIndex}` : undefined}
       />
-      {focus && q.trim() && (
-        <ul id={listId} className="absolute z-30 mt-1 max-h-72 w-full overflow-auto rounded-md border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900" role="listbox">
+      {listOpen && (
+        <ul ref={listRef} id={listId} className="absolute z-30 mt-1 max-h-72 w-full overflow-auto rounded-md border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900" role="listbox">
           {loading && <li className="px-3 py-2 text-sm text-slate-500"><Loading compact /></li>}
           {!loading && items.length === 0 && <li className="px-3 py-2 text-sm text-slate-500">{t("mod.facetNone")}</li>}
-          {items.map((m) => {
+          {items.map((m, idx) => {
             // Không có lớp mở (có lịch) trong học kỳ đang xem thì ghi chú ngay trong danh sách.
             const open = (m.open_semesters ?? []).filter((o) => o.classes > 0);
             const noSchedule = semester ? !open.some((o) => o.semester === semester) : open.length === 0;
             const req = getRequired(m.code);
+            const added = addedCodes.includes(m.code);
+            const isActive = idx === safeActiveIndex;
 
             return (
-              <li key={m.code} role="option" aria-selected={false}>
+              <li key={m.code} id={`${listId}-opt-${idx}`} role="option" aria-selected={isActive}>
                 <button
                   type="button"
-                  className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm hover:bg-brand-50 dark:hover:bg-slate-800 min-h-[38px]"
+                  className={`flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm min-h-[38px] ${
+                    added ? "bg-emerald-50/60 hover:bg-emerald-50 dark:bg-emerald-950/20 dark:hover:bg-emerald-950/40" : "hover:bg-brand-50 dark:hover:bg-slate-800"
+                  } ${isActive ? "ring-1 ring-inset ring-brand-400 dark:ring-brand-500" : ""}`}
                   onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => {
-                    onPick(m);
-                    setQ("");
-                  }}
+                  onMouseEnter={() => setActiveIndex(idx)}
+                  onClick={() => selectItem(m)}
                 >
                   <span className="flex flex-wrap items-center gap-x-2 min-w-0 flex-1">
                     <span className="font-mono font-semibold">{m.code}</span>
                     <span>{moduleName(m, lang)}</span>
                     <RequiredBadge required={req} lang={lang} />
+                    {added && (
+                      <span className="inline-flex items-center gap-1 rounded bg-emerald-100 px-1.5 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                        <Check className="size-3" aria-hidden="true" /> {t("mod.alreadyAdded")}
+                      </span>
+                    )}
                   </span>
                   <span className="flex shrink-0 items-center justify-end gap-2 text-slate-500 whitespace-nowrap">
                     {noSchedule && <NoScheduleBadge lang={lang} />}

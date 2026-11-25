@@ -127,7 +127,7 @@ describe("describeProgramCodeFull (Brief W5 requirements)", () => {
     const parsed = parseProgramCode("K25405H")!;
     const desc = describeProgramCodeFull(parsed, "Kế toán", "vi");
     expect(desc).toBe(
-      "Khóa 2025, chương trình đào tạo ngành Kế toán, chương trình Coop (hợp tác doanh nghiệp).",
+      "Khóa 2025, chương trình đào tạo ngành Kế toán, Coop Khóa 25.",
     );
   });
 
@@ -140,7 +140,7 @@ describe("describeProgramCodeFull (Brief W5 requirements)", () => {
       "Chương trình đào tạo Coop Kế toán",
     );
     expect(desc).toBe(
-      "Khóa 2025, chương trình đào tạo ngành Kế toán, Chương trình đào tạo Coop Kế toán.",
+      "Khóa 2025, chương trình đào tạo ngành Kế toán, Coop Khóa 25.",
     );
   });
 
@@ -148,7 +148,7 @@ describe("describeProgramCodeFull (Brief W5 requirements)", () => {
     const parsed = parseProgramCode("K25405H")!;
     const desc = describeProgramCodeFull(parsed, "Kế toán Coop", "vi");
     expect(desc).toBe(
-      "Khóa 2025, chương trình đào tạo ngành Kế toán Coop, Kế toán Coop.",
+      "Khóa 2025, chương trình đào tạo ngành Kế toán Coop, Coop Khóa 25.",
     );
   });
 
@@ -205,7 +205,7 @@ describe("describeProgramCodeFull (Brief W5 requirements)", () => {
       const parsed = parseProgramCode("K25405H")!;
       const desc = describeProgramCodeFull(parsed, "Accounting", "en");
       expect(desc).toBe(
-        "Cohort 2025, undergraduate programme in Accounting, Co-op programme (university-enterprise partnership).",
+        "Cohort 2025, undergraduate programme in Accounting, Co-op Cohort 25.",
       );
     });
 
@@ -218,7 +218,7 @@ describe("describeProgramCodeFull (Brief W5 requirements)", () => {
         "Enterprise Accounting Co-op",
       );
       expect(desc).toBe(
-        "Cohort 2025, undergraduate programme in Accounting, Co-op programme: Enterprise Accounting Co-op.",
+        "Cohort 2025, undergraduate programme in Accounting, Co-op Cohort 25.",
       );
     });
 
@@ -259,7 +259,7 @@ describe("describeProgramCodeFull (Brief W5 requirements)", () => {
 
     it("formats Coop track (H) without official name in Vietnamese", () => {
       const res = formatFilterBannerText("K23406H", "Hệ thống thông tin quản lý Khóa 23", "vi");
-      expect(res).toBe("Chương trình đào tạo ngành Hệ thống thông tin quản lý khóa 23, chương trình Coop (hợp tác doanh nghiệp)");
+      expect(res).toBe("Chương trình đào tạo ngành Hệ thống thông tin quản lý khóa 23, Coop Khóa 23");
     });
 
     it("formats Coop track (H) with official name in Vietnamese", () => {
@@ -269,7 +269,7 @@ describe("describeProgramCodeFull (Brief W5 requirements)", () => {
         "vi",
         "Chương trình Coop Logistics",
       );
-      expect(res).toBe("Chương trình đào tạo ngành Hệ thống thông tin quản lý khóa 23, Chương trình Coop Logistics");
+      expect(res).toBe("Chương trình đào tạo ngành Hệ thống thông tin quản lý khóa 23, Coop Khóa 23");
     });
 
     it("formats fallback when major name has not loaded yet in Vietnamese", () => {
@@ -302,7 +302,7 @@ describe("describeProgramCodeFull (Brief W5 requirements)", () => {
 
     it("formats Coop track (H) in English", () => {
       const res = formatFilterBannerText("K23406H", "Hệ thống thông tin quản lý Khóa 23", "en");
-      expect(res).toBe("Undergraduate programme in Management Information Systems, cohort 23, Co-op programme (university-enterprise partnership)");
+      expect(res).toBe("Undergraduate programme in Management Information Systems, cohort 23, Co-op Cohort 23");
     });
 
     it("formats fallback when major name has not loaded yet in English", () => {

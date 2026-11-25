@@ -64,11 +64,9 @@ export function creditsLine(
     parts.push(examKind);
   }
 
-  // 3. Khoa / đơn vị
-  const faculty = lang === "en" ? (options.faculty_en || options.faculty) : options.faculty;
-  if (faculty && faculty.trim()) {
-    parts.push(faculty.trim());
-  }
+  // 3. Loại học phần (nếu được truyền)
+  const type = formatModuleType(options.type, lang);
+  if (type) parts.push(type);
 
   // 4. Bộ môn
   const dept = lang === "en" ? (options.department_en || options.department) : options.department;
@@ -76,9 +74,11 @@ export function creditsLine(
     parts.push(dept.trim());
   }
 
-  // 5. Loại học phần (nếu được truyền)
-  const type = formatModuleType(options.type, lang);
-  if (type) parts.push(type);
+  // 5. Khoa / đơn vị
+  const faculty = lang === "en" ? (options.faculty_en || options.faculty) : options.faculty;
+  if (faculty && faculty.trim()) {
+    parts.push(faculty.trim());
+  }
 
   return parts.join(" · ");
 }

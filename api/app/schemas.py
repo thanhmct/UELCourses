@@ -147,6 +147,21 @@ class ClassRoom(BaseModel):
     capacity_gap: int | None = Field(default=None, description="Độ lệch sức chứa (sức chứa − sĩ số)")
 
 
+class ExchangeSemesterCount(BaseModel):
+    semester_id: str
+    students: int = Field(description="Số SV trao đổi đã học học phần này trong học kỳ")
+
+
+class ExchangeStatItem(BaseModel):
+    module_code: str
+    total: int = Field(description="Tổng số SV trao đổi (cộng các học kỳ)")
+    by_semester: list[ExchangeSemesterCount] = []
+
+
+class ExchangeStatList(BaseModel):
+    items: list[ExchangeStatItem] = []
+
+
 class ClassSectionOut(BaseModel):
     class_code: str
     module_code: str
@@ -364,6 +379,7 @@ class FeedbackIn(BaseModel):
     message: str = Field(default="", max_length=5000)
     contact: str | None = Field(default=None, max_length=256)
     app_version: str | None = Field(default=None, max_length=64)
+    quick_rating: bool = False
 
     @field_validator("page", "category")
     @classmethod
@@ -637,6 +653,7 @@ class ModuleCommentIn(BaseModel):
     body: str = Field(min_length=5, max_length=1000)
     rating: int | None = Field(default=None, ge=1, le=5)
     anon_id: str | None = Field(default=None, max_length=64)
+    semester: str | None = Field(default=None, max_length=32, description="Học kỳ đã học, vd 2026-2027-1")
 
 
 class ModuleCommentOut(ORM):
@@ -646,6 +663,7 @@ class ModuleCommentOut(ORM):
     rating: int | None = None
     author_name: str = "Sinh viên ẩn danh"
     status: str
+    semester: str | None = None
     created_at: datetime
 
 
@@ -954,7 +972,7 @@ class AdminChangeMyPasswordIn(BaseModel):
 
 
 class AdminSettingsOut(BaseModel):
-    moderation_mode: str = "pre"
+    moderation_mode: str = "auto"
     analytics_enabled: bool = True
     analytics_retention_days: int = 180
     updated_by: str | None = None
@@ -962,7 +980,7 @@ class AdminSettingsOut(BaseModel):
 
 
 class AdminSettingsPatchIn(BaseModel):
-    moderation_mode: str | None = Field(default=None, pattern="^(pre|post)$")
+    moderation_mode: str | None = Field(default=None, pattern="^(auto|pre|post)$")
     analytics_enabled: bool | None = None
     analytics_retention_days: int | None = Field(default=None, ge=30, le=365)
 

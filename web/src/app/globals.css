@@ -2,6 +2,17 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Desktop shell (side nav, fixed filter column): wide screens, or laptop-size screens with a mouse.
+   Tablets (touch, under 1280px) get the phone layout with the bottom nav. */
+@custom-variant desk {
+  @media (min-width: 1280px) {
+    @slot;
+  }
+  @media (min-width: 1024px) and (pointer: fine) {
+    @slot;
+  }
+}
+
 @theme static {
   /* UEL visual identity. The official hex values also appear in lib/brand.ts. */
   --color-brand-50: #EFF7FD;
@@ -51,6 +62,14 @@
 
 html {
   scrollbar-gutter: stable;
+}
+
+/* Very wide viewports (unfolded foldables, 4K at 100%): grow the rem base with the width so the
+   whole layout keeps its proportions instead of shrinking into a small column. 16px at 1920px, max 24px. */
+@media (min-width: 1920px) {
+  html {
+    font-size: clamp(16px, calc(100vw / 120), 24px);
+  }
 }
 
 body {
@@ -244,6 +263,38 @@ body:is([data-festival="national"], [data-festival="reunification"]) .header-hol
   from { transform: translate3d(0, 0, 0); }
   50% { transform: translate3d(var(--fall-drift), 50%, 0); }
   to { transform: translate3d(0, 100%, 0); }
+}
+
+/* Dropdown trên điện thoại (useMaxVisibleItems): tối đa 3 mục, thanh cuộn luôn hiện để báo còn mục phía dưới. */
+.dropdown-scroll {
+  overflow-y: scroll !important;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.dropdown-scroll::-webkit-scrollbar { width: 6px; }
+.dropdown-scroll::-webkit-scrollbar-track { background: transparent; }
+.dropdown-scroll::-webkit-scrollbar-thumb { background: rgb(148 163 184); border-radius: 9999px; }
+@supports not selector(::-webkit-scrollbar) {
+  .dropdown-scroll { scrollbar-width: thin; scrollbar-color: rgb(148 163 184) transparent; }
+}
+
+/* Chữ chạy ngang cho ô ngày nghỉ: track gồm hai bản sao, dịch 50% thì lặp liền mạch. */
+.holiday-marquee-track {
+  display: inline-flex;
+  white-space: nowrap;
+}
+.holiday-marquee-animate {
+  animation: holiday-marquee 12s linear infinite;
+}
+.holiday-marquee-animate:hover {
+  animation-play-state: paused;
+}
+@keyframes holiday-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .holiday-marquee-animate { animation: none; }
 }
 
 .holiday-drum-mark {
@@ -499,6 +550,20 @@ body:is([data-festival="national"], [data-festival="reunification"]) .header-hol
 .relation-vertical .relation-node { max-width:100%; }
 .relation-vertical .relation-caption { position:static; transform:none; margin-bottom:8px; }
 
+/* Thu hẹp sơ đồ quan hệ học phần trên điện thoại để đỡ phải cuộn ngang. */
+@media (max-width: 640px) {
+  .relation-layout { gap:12px; padding:20px 8px 0; min-width:min(100%, 320px); }
+  .relation-children { padding-inline-start:18px; }
+  .relation-branch::before, .relation-roots > .relation-branch::before { width:18px; }
+  .relation-branch::after, .relation-roots > .relation-branch::after { inset-inline-start:-18px; }
+  .relation-node { min-width:0; padding:5px 8px; font-size:12px; }
+  .relation-group { width:92px; }
+  .relation-current { width:84px; padding:9px; }
+  .relation-current::before, .relation-current::after { width:14px; }
+  .relation-current::before { left:-14px; }
+  .relation-current::after { right:-14px; }
+}
+
 /* ---- Sơ đồ quan hệ học phần: giao diện nổi bật ---- */
 .relation-viewport {
   max-height: 50vh;
@@ -594,4 +659,35 @@ body:is([data-festival="national"], [data-festival="reunification"]) .header-hol
   border-color: var(--planner-term-dark-border);
   background-color: var(--planner-term-dark-bg);
   color: var(--planner-term-dark-text);
+}
+
+@keyframes uel-firework-burst {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale(0.35) rotate(0deg);
+  }
+  15% {
+    opacity: 1;
+    transform: translate3d(calc(var(--fw-dx) * 0.35), calc(var(--fw-dy) * 0.35), 0) scale(1.1) rotate(90deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--fw-dx), calc(var(--fw-dy) + 90px), 0) scale(0.7) rotate(var(--fw-rot));
+  }
+}
+
+.uel-firework-piece {
+  position: absolute;
+  left: var(--fw-x);
+  top: var(--fw-y);
+  background-color: var(--fw-color);
+  opacity: 0;
+  animation: uel-firework-burst var(--fw-dur) cubic-bezier(0.16, 1, 0.3, 1) var(--fw-delay) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .uel-firework-piece {
+    animation: none;
+    opacity: 0;
+  }
 }

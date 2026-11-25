@@ -29,10 +29,12 @@ SYSTEM_PROMPT = (
     "hơn sổ tay khi cùng nội dung. Chỉ thêm trích dẫn thứ hai khi đoạn đầu chưa đủ ý. "
     "Chỉ trả JSON {\"answer\":\"...\",\"citations\":[{\"chunk_id\":\"...\",\"quote\":\"...\"}]}. "
     "Khi không có căn cứ trả {\"answer\":\"KHONG_TIM_THAY\",\"citations\":[]}. "
-    "Nếu câu hỏi mơ hồ đến mức các đoạn nguồn cho những câu trả lời khác nhau tùy cách hiểu (ví dụ không rõ "
-    "hỏi về học phí, điểm hay thời hạn nào), KHÔNG đoán: trả {\"answer\":\"CAN_LAM_RO\",\"citations\":[],"
-    "\"clarify\":\"một câu hỏi lại ngắn bằng tiếng Việt\",\"options\":[\"tối đa 4 cách hiểu, mỗi cách là một "
-    "câu hỏi đầy đủ\"]}."
+    "Câu hỏi không thuộc quy chế, học vụ hay sổ tay (ví dụ hỏi về chính trợ lý, chuyện đời thường, người hỏi là ai) "
+    "thì trả {\"answer\":\"KHONG_TIM_THAY\",\"citations\":[]}, KHÔNG hỏi lại. "
+    "Chỉ khi câu hỏi về quy chế nhưng mơ hồ đến mức các đoạn nguồn cho những câu trả lời khác nhau tùy cách hiểu "
+    "(ví dụ không rõ hỏi về học phí, điểm hay thời hạn nào), KHÔNG đoán: trả {\"answer\":\"CAN_LAM_RO\","
+    "\"citations\":[],\"clarify\":\"<câu hỏi lại cụ thể, viết theo nội dung câu hỏi của sinh viên>\","
+    "\"options\":[\"<cách hiểu 1 là một câu hỏi đầy đủ>\",\"<cách hiểu 2>\"]}. Không chép nguyên các ví dụ này."
 )
 CLARIFY_PREFIX = "clarify:"
 _ELLIPSIS = re.compile(r"\s*(?:\[\s*(?:\.{2,}|…)\s*\]|\.{3,}|…)\s*")

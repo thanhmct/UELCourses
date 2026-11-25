@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { WarningText } from "@/components/regulations/WarningText";
 import { useState, type FormEvent } from "react";
 import { useT } from "@/i18n";
 import { api } from "@/lib/api";
@@ -89,7 +90,7 @@ export default function AskPage() {
         </label>
         <p className="text-xs text-slate-500">
           {activeCohort
-            ? t(profileCohort ? "chat.cohortProfile" : "chat.cohortSession", { c: activeCohort })
+            ? t(profileCohort ? "chat.cohortProfile" : "chat.cohortSession", { c: activeCohort.replace(/^K/i, "") })
             : t("chat.cohortAsk")}
         </p>
         <label className="block space-y-1 text-sm">
@@ -119,7 +120,7 @@ export default function AskPage() {
             )}
             {answer.warnings.length > 0 && (
               <ul className="space-y-1 rounded border border-amber-400/70 p-3 text-sm">
-                {answer.warnings.map((warning, index) => <li key={index}>{warning}</li>)}
+                {answer.warnings.map((warning, index) => <li key={index}><WarningText text={warning} /></li>)}
               </ul>
             )}
             {answer.citations.length > 0 && (

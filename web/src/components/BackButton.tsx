@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import type { MouseEvent, ReactNode } from "react";
 import { useT } from "@/i18n";
+import { consumeBackTarget } from "@/lib/navHistory";
 
 export interface BackButtonProps {
   /** Đường dẫn quay lại mặc định khi không có lịch sử cùng origin */
@@ -34,6 +35,7 @@ export function BackButton({
 }: BackButtonProps) {
   const { t } = useT();
   const router = useRouter();
+  const pathname = usePathname();
 
   const finalLabel = label || title || t("common.back");
   const finalTitle = title || label || t("common.back");
@@ -42,17 +44,13 @@ export function BackButton({
     onClick?.(e);
     if (e.defaultPrevented) return;
 
-    if (typeof window !== "undefined" && window.history.length > 1 && document.referrer) {
-      try {
-        const refUrl = new URL(document.referrer);
-        if (refUrl.origin === window.location.origin) {
-          e.preventDefault();
-          router.back();
-          return;
-        }
-      } catch {
-        // Fallback to standard href navigation
-      }
+    // Quay về đúng trang người dùng thực sự đến từ đâu (lưu trong ngăn xếp điều hướng phiên),
+    // thay vì luôn về href mặc định hay dựa vào document.referrer (không đổi khi chuyển trang SPA).
+    const target = consumeBackTarget(pathname ?? "");
+    if (target) {
+      e.preventDefault();
+      router.push(target);
+      return;
     }
 
     if (!href) {

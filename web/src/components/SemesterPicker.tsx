@@ -12,6 +12,7 @@ import {
 import { ChevronDown } from "lucide-react";
 import type { FacetCount, Semester } from "@/lib/types";
 import { useT } from "@/i18n";
+import { applyMaxVisibleItems } from "@/lib/useMaxVisibleItems";
 import {
   academicYearLabel,
   semesterButtonLabel,
@@ -285,7 +286,8 @@ export function SemesterPicker({
           className={`absolute z-50 mt-1.5 w-full min-w-[15rem] max-w-[calc(100vw-2rem)] rounded-xl border border-slate-200 bg-white p-1 shadow-xl dark:border-slate-800 dark:bg-slate-900 ${alignClass}`}
         >
           {/* Danh sách các hàng năm học (không có tiêu đề; đóng bằng Esc, bấm ra ngoài hoặc bấm lại nút chọn) */}
-          <div className="max-h-[60vh] space-y-0.5 overflow-y-auto overflow-x-hidden sm:max-h-[300px]">
+          <div ref={(el) => { if (el) applyMaxVisibleItems(el, true); }}
+            className="max-h-[60vh] space-y-0.5 overflow-y-auto overflow-x-hidden sm:max-h-[300px]">
             {yearGroups.length === 0 ? (
               <p className="py-4 text-center text-xs text-slate-400">
                 {t("sem.missingTerm")}
@@ -497,55 +499,71 @@ export function SemesterFilterSquares({
         </div>
       </div>
 
-      {/* Danh sách các năm học và các ô vuông kỳ */}
-      <div className="space-y-2">
-        {groups.map((group) => (
-          <div key={group.yearLabel} className="space-y-1">
-            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              {group.yearLabel}
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {group.terms.map(({ id, term, count, modules }) => {
-                const isSelected = values.includes(id);
-                const termStr = semesterShort({ term }, lang);
-
-                return (
-                  <button
-                    key={id}
-                    type="button"
-                    role="checkbox"
-                    aria-checked={isSelected}
-                    aria-label={semesterFull({ term, year: group.yearLabel }, lang)}
-                    onClick={() => toggleSemester(id)}
-                    title={`${semesterFull({ term, year: group.yearLabel }, lang)}${
-                      modules != null
-                        ? lang === "en"
-                          ? ` — ${count} classes · ${modules} courses`
-                          : ` — ${count} lớp · ${modules} học phần`
-                        : ""
-                    }`}
-                    className={`flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-focus ${
-                      isSelected
-                        ? "border-brand-600 bg-brand-600 font-semibold text-white shadow-xs"
-                        : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-700"
-                    }`}
-                  >
-                    <span>{termStr}</span>
-                    <span
-                      className={`text-[10px] ${
+      {/* Mỗi năm học một dòng: "NĂM | Kỳ 1 · n | Kỳ 2 · n | Kỳ 3 · n" (kỳ không có lớp bị mờ) */}
+      <div className="space-y-1.5">
+        {groups.map((group) => {
+          const slots = [1, 2, 3].map(
+            (termNo) => group.terms.find((x) => x.term === termNo) ?? null,
+          );
+          return (
+            <div key={group.yearLabel} className="grid grid-cols-[5.5rem_1fr] items-center gap-2">
+              {/* Cỡ chữ năm học = 1.15 × cỡ chữ "Kỳ" (text-xs = 12px → 13.8px) */}
+              <div className="whitespace-nowrap text-[13.8px] font-semibold tabular-nums text-slate-700 dark:text-slate-300">
+                {group.yearLabel}
+              </div>
+              <div className="grid grid-cols-3 gap-1.5">
+                {slots.map((slot, idx) => {
+                  const termNo = idx + 1;
+                  const termStr = semesterShort({ term: termNo }, lang);
+                  if (!slot) {
+                    return (
+                      <span
+                        key={termNo}
+                        aria-hidden="true"
+                        className="flex items-center justify-center whitespace-nowrap rounded-lg border border-dashed border-slate-200 px-1 py-1.5 text-xs text-slate-300 dark:border-slate-800 dark:text-slate-600"
+                      >
+                        {termStr}
+                      </span>
+                    );
+                  }
+                  const { id, count, modules } = slot;
+                  const isSelected = values.includes(id);
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      role="checkbox"
+                      aria-checked={isSelected}
+                      aria-label={semesterFull({ term: termNo, year: group.yearLabel }, lang)}
+                      onClick={() => toggleSemester(id)}
+                      title={`${semesterFull({ term: termNo, year: group.yearLabel }, lang)}${
+                        modules != null
+                          ? lang === "en"
+                            ? ` — ${count} classes · ${modules} courses`
+                            : ` — ${count} lớp · ${modules} học phần`
+                          : ""
+                      }`}
+                      className={`flex flex-col items-center justify-center gap-0.5 whitespace-nowrap rounded-lg border px-1.5 py-1.5 text-xs font-medium leading-tight transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-focus ${
                         isSelected
-                          ? "text-white/90"
-                          : "text-slate-400 dark:text-slate-400"
+                          ? "border-brand-600 bg-brand-600 font-semibold text-white shadow-xs"
+                          : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-700"
                       }`}
                     >
-                      · {count}
-                    </span>
-                  </button>
-                );
-              })}
+                      <span>{termStr}</span>
+                      <span
+                        className={`text-[10px] tabular-nums ${
+                          isSelected ? "text-white/90" : "text-slate-400 dark:text-slate-400"
+                        }`}
+                      >
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

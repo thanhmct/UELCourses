@@ -278,7 +278,7 @@ def test_admin_settings_validation_and_audit(client, db):
     res_get = client.get("/api/admin/settings", headers={"x-admin-role": "admin"})
     assert res_get.status_code == 200
     data = res_get.json()
-    assert data["moderation_mode"] in ("pre", "post")
+    assert data["moderation_mode"] in ("auto", "pre", "post")
     assert 30 <= data["analytics_retention_days"] <= 365
 
     # 2. Thử đặt số ngày retention < 30 -> 422

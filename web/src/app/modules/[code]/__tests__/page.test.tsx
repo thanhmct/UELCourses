@@ -153,7 +153,7 @@ describe("Brief B7: Hiển thị liên kết PDF đề cương trên trang chi t
     expect(screen.queryByText(/Không có lớp mở ở học kỳ này/)).not.toBeInTheDocument();
   });
 
-  it("places the syllabus next to the Required badge in the course header", async () => {
+  it("places the syllabus in the course header without a Required/Elective label", async () => {
     useLang.getState().setLang("en");
     useSettings.getState().setProgramProfile("K25414", "");
     vi.spyOn(api, "module").mockResolvedValue({ data: mockBkb4060, mock: true });
@@ -168,9 +168,8 @@ describe("Brief B7: Hiển thị liên kết PDF đề cương trên trang chi t
     vi.spyOn(api, "electiveGroups").mockResolvedValue({ data: [], mock: true });
     render(<ModuleDetailPage />);
 
-    const badge = await screen.findByText("Required");
-    const syllabus = screen.getByRole("group", { name: "Syllabus (PDF)" });
-    expect(badge.nextElementSibling).toBe(syllabus);
+    const syllabus = await screen.findByRole("group", { name: "Syllabus (PDF)" });
+    expect(screen.queryByText("Required")).toBeNull();
     expect(syllabus.closest("header")).toContainElement(screen.getByRole("heading", { name: /BKB4060/ }));
   });
 
@@ -220,7 +219,7 @@ describe("Brief B7: Hiển thị liên kết PDF đề cương trên trang chi t
     expect(openDraft).not.toHaveBeenCalled();
 
     fireEvent.change(form.getByLabelText("Họ và tên"), { target: { value: "Sinh viên Kiểm thử" } });
-    fireEvent.change(form.getByLabelText("Mã số sinh viên"), { target: { value: "K000000000" } });
+    fireEvent.change(form.getByLabelText("Mã số sinh viên (không bắt buộc)"), { target: { value: "K000000000" } });
     fireEvent.change(faculty, { target: { value: "khoaluatkinhte@uel.edu.vn" } });
     fireEvent.change(form.getByLabelText("Mô tả chi tiết vấn đề với học phần"), { target: { value: "Lịch học & số tín chỉ chưa khớp.\nVui lòng đối chiếu." } });
     fireEvent.change(email, { target: { value: "student@example.com" } });
@@ -262,7 +261,7 @@ describe("Brief B7: Hiển thị liên kết PDF đề cương trên trang chi t
     fireEvent.click(dialog.getByRole("button", { name: "Báo lỗi trong UELPATH" }));
     const siteBug = within(screen.getByRole("dialog", { name: "Báo lỗi" }));
     expect(siteBug.getByLabelText("Loại góp ý")).toHaveValue("bug");
-    expect(siteBug.queryByLabelText("Mã số sinh viên")).not.toBeInTheDocument();
+    expect(siteBug.queryByLabelText("Mã số sinh viên (không bắt buộc)")).not.toBeInTheDocument();
   });
 
   it("1. Trang chi tiết có cả 2 link (BKB4060) hiển thị cả 2 nút tiếng Việt và English ở giao diện tiếng Việt", async () => {

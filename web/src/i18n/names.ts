@@ -18,9 +18,23 @@ export {
   type FinalAssessmentKind,
 } from "@/lib/finalAssessment";
 
-export function moduleName(m: { name: string; name_en?: string | null }, lang: Lang): string {
+/**
+ * Mã học phần thuộc hệ tiếng Anh: bắt đầu bằng "E" (trừ nhóm ECO – Kinh tế, khớp với bộ lọc thời khóa biểu).
+ * Với các mã này, hậu tố "(E)" trong tên và nhãn EN là thừa nên không hiển thị.
+ */
+export function isEnglishCode(code?: string | null): boolean {
+  const c = (code ?? "").trim().toUpperCase();
+  return c.startsWith("E") && !c.startsWith("ECO");
+}
 
-  return lang === "en" && m.name_en ? m.name_en : m.name;
+/** Bỏ hậu tố "(E)" cuối tên khi mã học phần đã là mã E. */
+function stripEnglishSuffix(name: string): string {
+  return name.replace(/\s*\(E\)\s*$/, "");
+}
+
+export function moduleName(m: { code?: string | null; name: string; name_en?: string | null }, lang: Lang): string {
+  const raw = lang === "en" && m.name_en ? m.name_en : m.name;
+  return isEnglishCode(m.code) ? stripEnglishSuffix(raw) : raw;
 }
 
 /**
@@ -612,6 +626,15 @@ export function formatPlannerTerm(
       .replace(/Năm\s*(\d+)/gi, "Year $1");
   }
   return cleaned;
+}
+
+/** Nhãn rút gọn cho màn hình hẹp: "Kỳ 1 · 26 - 27" (VI) / "Sem 1 · 26 - 27" (EN). */
+export function formatPlannerTermShort(termOrSem?: unknown, lang: Lang = "vi"): string {
+  const full = formatPlannerTerm(termOrSem, lang);
+  const unit = lang === "en" ? "Sem" : "Kỳ";
+  const withYear = /(?:Học kỳ|Semester)\s+(\d+)\s*·\s*(\d{4})-(\d{4})/.exec(full);
+  if (withYear) return `${unit} ${withYear[1]} · ${withYear[2].slice(2)} - ${withYear[3].slice(2)}`;
+  return full.replace(/Học kỳ/g, "Kỳ").replace(/Semester/g, "Sem");
 }
 
 export const plannerSemesterLabel = formatPlannerTerm;

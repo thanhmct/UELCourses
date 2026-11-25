@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+﻿import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import ModulesPage from "@/app/modules/page";
 import { Header } from "@/components/Header";
@@ -168,11 +168,17 @@ describe("ModulesPage Filters and Placeholders", () => {
     };
     vi.mocked(api.modules).mockResolvedValue({ data: { items: [course], total: 1 }, mock: false });
     render(<ModulesPage />);
-    const tabs = within(await screen.findByRole("group", { name: "Semesters with open classes" }));
-    expect(tabs.getByText("Term 1")).toHaveClass("whitespace-nowrap");
-    expect(tabs.getByText("Term 2")).toHaveClass("whitespace-nowrap");
-    expect(tabs.getByText("1 class")).toBeInTheDocument();
-    expect(tabs.getByText("20 classes")).toBeInTheDocument();
+    // The card renders a phone strip and a desktop tab row (CSS shows one); both must show terms and counts.
+    const groups = await screen.findAllByRole("group", { name: "Semesters with open classes" });
+    expect(groups).toHaveLength(2);
+    for (const group of groups) {
+      const tabs = within(group);
+      expect(tabs.getByText("Term 1")).toBeInTheDocument();
+      expect(tabs.getByText("Term 2")).toBeInTheDocument();
+      expect(tabs.getByText("1 class")).toBeInTheDocument();
+      expect(tabs.getByText("20 classes")).toBeInTheDocument();
+    }
+    expect(within(groups[1]).getByText("Term 1")).toHaveClass("whitespace-nowrap");
   });
 
   it.each([
@@ -201,7 +207,7 @@ describe("ModulesPage Filters and Placeholders", () => {
     const addButton = await unavailableCard.findByRole("button", { name: new RegExp(add) });
     expect(addButton).toBeEnabled();
     expect(addButton).toHaveAccessibleDescription(warning);
-    expect(unavailableCard.getByText(warning)).toBeVisible();
+    expect(unavailableCard.getAllByText(warning)[0]).toBeVisible();
     expect(availableCard.getByRole("button", { name: new RegExp(add) })).not.toHaveAccessibleDescription();
     expect(availableCard.queryByText(/Không có lớp mở ở học kỳ này|No classes are open this semester/)).not.toBeInTheDocument();
     expect(unavailableCard.getByText(new RegExp(` · ${type}$`))).toBeVisible();
@@ -212,7 +218,7 @@ describe("ModulesPage Filters and Placeholders", () => {
     fireEvent.click(addButton);
 
     expect(unavailableCard.getByRole("button", { name: new RegExp(remove) })).toHaveAccessibleDescription(warning);
-    expect(unavailableCard.getByText(warning)).toBeVisible();
+    expect(unavailableCard.getAllByText(warning)[0]).toBeVisible();
     expect(unavailableCard.getByRole("status")).toBeEmptyDOMElement();
     expect(useTimetable.getState().bySemester["2026-2027-2"]?.map((entry) => entry.code)).toEqual([courseWithoutClasses.code]);
   });
@@ -257,10 +263,10 @@ describe("ModulesPage Filters and Placeholders", () => {
     const removeTT = await screen.findByRole("button", { name: "Gỡ khỏi thời khóa biểu Kỳ 2 năm học hiện tại" });
     const removePlan = screen.getByRole("button", { name: "Gỡ khỏi kế hoạch" });
     expect(removeTT).toHaveClass(
-      "border-brand-600", "bg-white", "text-brand-700",
+      "border-2", "border-brand-700", "bg-brand-50", "shadow-md", "text-brand-700",
       "hover:bg-brand-600", "hover:text-white",
       "focus-visible:bg-brand-600", "focus-visible:text-white",
-      "dark:bg-slate-900", "dark:text-brand-300",
+      "dark:bg-slate-800", "dark:text-brand-300",
       "dark:hover:bg-brand-600", "dark:hover:text-white",
       "dark:focus-visible:bg-brand-600", "dark:focus-visible:text-white",
     );
@@ -298,23 +304,27 @@ describe("ModulesPage Filters and Placeholders", () => {
     render(<ModulesPage />);
 
     // Reset button exists and is initially disabled because no facet filters are active
-    const resetBtn = screen.getByRole("button", { name: /xóa bộ lọc/i });
+    const resetBtn = screen.getByRole("button", { name: /xóa lọc/i });
     expect(resetBtn).toBeInTheDocument();
     expect(resetBtn).toBeDisabled();
 
     // Separate Khoa and Bộ môn sections exist (Requirement 4)
-    expect(screen.getByText("Khoa quản lý")).toBeInTheDocument();
-    expect(screen.getByText("Bộ môn")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("Tìm khoa…")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("Tìm bộ môn…")).toBeInTheDocument();
+    expect(screen.getAllByText("Khoa quản lý").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Bộ môn").length).toBeGreaterThan(0);
+    // Khoa and Bộ môn have no search box; lists sit behind dropdown buttons
+    expect(screen.queryByPlaceholderText("Tìm khoa…")).not.toBeInTheDocument();
+    expect(screen.queryByPlaceholderText("Tìm bộ môn…")).not.toBeInTheDocument();
+    const deptToggle = screen.getByText("Thêm bộ lọc bộ môn").closest("button")!;
+    expect(screen.getByText("Thêm bộ lọc khoa quản lý").closest("button")).not.toBeNull();
+    // Once opened, the button shows the facet name and the heading is visually hidden
+    fireEvent.click(deptToggle);
+    expect(deptToggle).toHaveAttribute("aria-expanded", "true");
+    expect(deptToggle).toHaveTextContent("Bộ môn");
+    expect(deptToggle.parentElement!.querySelector("legend")).toHaveClass("sr-only");
 
     // Section Grading basis and Final assessment are HIDDEN when data is empty (Requirement 5)
     expect(screen.queryByText("Đánh giá và cách tính điểm")).not.toBeInTheDocument();
     expect(screen.queryByText("Đánh giá cuối kỳ")).not.toBeInTheDocument();
-
-    // Global count note when no program is filtered (Requirement 3)
-    const globalNotes = screen.getAllByText("Số lượng toàn trường");
-    expect(globalNotes.length).toBeGreaterThan(0);
   });
 
   it("handles filter interactions: activating facets enables reset, and reset clears facets and faculty search while preserving module search and program context", async () => {
@@ -332,21 +342,13 @@ describe("ModulesPage Filters and Placeholders", () => {
     expect(await screen.findByText(/Kinh doanh quốc tế.*khóa 23/i)).toBeInTheDocument();
 
     // Reset button is initially disabled
-    const resetBtn = screen.getByRole("button", { name: /xóa bộ lọc/i });
+    const resetBtn = screen.getByRole("button", { name: /xóa lọc/i });
     expect(resetBtn).toBeDisabled();
 
     // Enter module search query
     const moduleSearchInput = screen.getByRole("searchbox", { name: /tìm học phần/i });
     fireEvent.change(moduleSearchInput, { target: { value: "kinh tế" } });
     expect(moduleSearchInput).toHaveValue("kinh tế");
-
-    // Enter faculty search query
-    const facultySearchInput = screen.getByPlaceholderText("Tìm khoa…");
-    fireEvent.change(facultySearchInput, { target: { value: "kinh tế" } });
-    expect(facultySearchInput).toHaveValue("kinh tế");
-
-    // Reset button is enabled because facultySearch is active
-    expect(resetBtn).not.toBeDisabled();
 
     // Activate multiple facet options: credits, type, faculty
     // 1. Credits facet
@@ -373,9 +375,6 @@ describe("ModulesPage Filters and Placeholders", () => {
     // Reset button should now be disabled
     expect(resetBtn).toBeDisabled();
 
-    // Faculty search input should be cleared
-    expect(facultySearchInput).toHaveValue("");
-
     // Facet checkboxes should be deselected
     expect(creditCheckbox).not.toBeChecked();
     expect(typeCheckbox).not.toBeChecked();
@@ -388,34 +387,30 @@ describe("ModulesPage Filters and Placeholders", () => {
     expect(screen.getByText(/Kinh doanh quốc tế.*khóa 23/i)).toBeInTheDocument();
   });
 
-  it("updates count note by context: program vs dual programs (song ngành)", async () => {
-    useLang.getState().setLang("vi");
+  it("labels final assessment options in English and filters modules by them", async () => {
+    useLang.getState().setLang("en");
+    vi.mocked(api.moduleFacets).mockResolvedValue({
+      data: {
+        ...mockFacetsData,
+        final_assessment: [
+          { value: "Thi trắc nghiệm", count: 1 },
+          { value: "Khác", count: 1 },
+        ],
+      },
+      mock: false,
+    });
 
-    // Single program: K23406
-    useSettings.getState().setProgramCode("K23406");
-    const { unmount } = render(
-      <>
-        <Header />
-        <ModulesPage />
-      </>
+    render(<ModulesPage />);
+
+    const mcqCheckbox = await screen.findByRole("checkbox", { name: /Multiple-choice exam/i });
+    expect(screen.queryByText("Thi trắc nghiệm")).not.toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: /Other/i })).toBeInTheDocument();
+
+    fireEvent.click(mcqCheckbox);
+    expect(mcqCheckbox).toBeChecked();
+    await waitFor(() =>
+      expect(api.modules).toHaveBeenLastCalledWith(expect.objectContaining({ final_assessment_in: ["Thi trắc nghiệm"] })),
     );
-
-    expect(await screen.findByText(/Kinh doanh quốc tế.*khóa 23/i)).toBeInTheDocument();
-    const programNotes = screen.getAllByText("Số lượng trong chương trình đang lọc");
-    expect(programNotes.length).toBeGreaterThan(0);
-    unmount();
-
-    // Dual programs: K23406 + K23404
-    useSettings.getState().setProgramCode("K23406+K23404");
-    render(
-      <>
-        <Header />
-        <ModulesPage />
-      </>
-    );
-
-    const dualNotes = await screen.findAllByText("Số lượng trong các chương trình đang lọc");
-    expect(dualNotes.length).toBeGreaterThan(0);
   });
 
   it("hides the result total below search while keeping facet counts", async () => {
@@ -448,10 +443,11 @@ describe("ModulesPage Filters and Placeholders", () => {
     const semSquare = await screen.findByRole("checkbox", { name: /Học kỳ 1.*2026–2027/i });
     expect(semSquare).toBeInTheDocument();
     expect(semSquare).toHaveTextContent("Kỳ 1");
-    expect(semSquare).toHaveTextContent("· 2");
+    expect(semSquare).toHaveTextContent("2");
+    expect(semSquare).not.toHaveTextContent("·");
 
     // Click to select
-    const resetBtn = screen.getByRole("button", { name: /xóa bộ lọc/i });
+    const resetBtn = screen.getByRole("button", { name: /xóa lọc/i });
     expect(resetBtn).toBeDisabled();
 
     fireEvent.click(semSquare);

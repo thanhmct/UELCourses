@@ -895,7 +895,7 @@ export const mockAdminUsers: AdminUserItem[] = [
 ];
 
 export const mockAdminSettings: AdminSettingsData = {
-  moderation_mode: "pre",
+  moderation_mode: "auto",
   analytics_enabled: true,
   analytics_retention_days: 180,
   updated_by: "admin@uel.edu.vn",

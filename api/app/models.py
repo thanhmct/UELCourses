@@ -360,6 +360,12 @@ class Feedback(Base):
     moderated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     moderation_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     flag_reasons: Mapped[list[str] | None] = mapped_column(JsonType, nullable=True)
+    # Đánh giá nhanh mức độ hài lòng (chỉ gán khi is_quick_rating=True)
+    rater_ip_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    account_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    is_quick_rating: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
 
 
 # =============================================================================
@@ -826,6 +832,19 @@ class AuditLog(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class ExchangeModuleStat(Base):
+    """Số sinh viên trao đổi (SVTĐ) đã học một học phần trong một học kỳ. Chỉ lưu số đếm, không có thông tin cá nhân."""
+
+    __tablename__ = "exchange_module_stats"
+    __table_args__ = (Index("ix_exchange_module_stats_semester", "semester_id"),)
+
+    module_code: Mapped[str] = mapped_column(String(64), primary_key=True)
+    semester_id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    student_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    class_codes: Mapped[list[str] | None] = mapped_column(JsonType, nullable=True)  # mã lớp đã thấy (để đối chiếu)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
 class AdminSetting(Base):
     """Cài đặt hệ thống do quản trị viên thiết lập (key-value JSON)."""
 
@@ -912,12 +931,14 @@ class ModuleComment(Base):
     __tablename__ = "module_comments"
     __table_args__ = (
         Index("ix_module_comments_module_status", "module_code", "status"),
+        Index("ix_module_comments_anon_module_sem", "anon_id", "module_code", "semester"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     module_code: Mapped[str] = mapped_column(String(64), index=True)
     anon_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
     student_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    semester: Mapped[str | None] = mapped_column(String(32), nullable=True)  # học kỳ sinh viên đã học, vd "2026-2027-1"
     body: Mapped[str] = mapped_column(Text)
     rating: Mapped[int | None] = mapped_column(Integer, nullable=True)
     status: Mapped[str] = mapped_column(String(16), default="pending", server_default="pending", index=True)  # pending | approved | rejected | hidden

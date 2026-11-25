@@ -143,6 +143,44 @@ def strip_material_sections(text: str | None) -> str | None:
     return cleaned or None
 
 
+_BULLET_RE = re.compile(r"^(?:[•●▪]|(?:[-–*]|\d{1,3}[.)])\s)")
+_SENTENCE_END_CHARS = '.!?:;…)”"'
+
+
+def _is_bullet(text: str) -> bool:
+    return bool(_BULLET_RE.match(text))
+
+
+def _starts_paragraph(text: str) -> bool:
+    first = text[:1]
+    return bool(first) and (first.isupper() or first.isdigit() or first in '"“')
+
+
+def _join_pdf_lines(block: str) -> str:
+    """Nối các dòng bị PDF ngắt theo độ rộng trang. Giữ xuống dòng trước dòng bullet hoặc sau dấu hai chấm."""
+    lines = [line.strip() for line in block.split("\n") if line.strip()]
+    if not lines:
+        return ""
+    out = lines[0]
+    for prev, line in zip(lines, lines[1:]):
+        out += ("\n" if prev.endswith(":") or _is_bullet(line) else " ") + line
+    return out
+
+
+def _join_pdf_blocks(blocks: list[str]) -> str:
+    """Ghép các khối (cách nhau bởi dòng trống). Chỉ giữ thành đoạn mới khi khối trước kết thúc câu
+    và khối sau bắt đầu đoạn mới; còn lại là ngắt trang giữa câu nên nối bằng khoảng trắng."""
+    out = blocks[0] if blocks else ""
+    for block in blocks[1:]:
+        last = out[-1:]
+        ends_sentence = bool(last) and last in _SENTENCE_END_CHARS
+        if _is_bullet(block) or (ends_sentence and _starts_paragraph(block)):
+            out += "\n\n" + block
+        else:
+            out += " " + block
+    return out
+
+
 def normalize_description_line_breaks(text: str | None) -> str | None:
     cleaned = (text or "").strip()
     if not cleaned:
@@ -152,7 +190,10 @@ def normalize_description_line_breaks(text: str | None) -> str | None:
     paragraphs = re.split(r"\r?\n(?:[ \t]*\r?\n)+", cleaned)
     if len(paragraphs) >= 10 and all(len(part.split()) == 1 for part in paragraphs):
         return " ".join(part.strip() for part in paragraphs)
-    return cleaned
+
+    # PDF ngắt dòng cứng theo độ rộng trang (đôi khi kèm một dòng trống giữa câu khi qua trang): nối lại thành câu liền mạch.
+    blocks = [block for block in re.split(r"\n\s*\n", cleaned.replace("\r", "")) if block.strip()]
+    return _join_pdf_blocks([_join_pdf_lines(block) for block in blocks])
 
 
 def clean_description(text: str | None) -> str | None:

@@ -1,5 +1,0 @@
-.venv/
-__pycache__/
-analysis/output/
-# Dữ liệu khảo sát thật (có thể chứa thông tin cá nhân) – lưu ngoài repo hoặc ẩn danh trước khi commit
-data/

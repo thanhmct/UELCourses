@@ -12,31 +12,12 @@ export interface RequiredBadgeProps {
 }
 
 /**
- * Chip nhỏ Bắt buộc / Tự chọn đặt ngay cạnh tên môn:
- * - Bắt buộc = xanh lá nhạt (`bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300`)
- * - Tự chọn = chàm/xanh dương nhạt (`bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300`)
- * - EN: "Required" / "Elective"
- * - Chỉ hiện khi `required !== undefined && required !== null` (môn thuộc CTĐT).
+ * Nhãn Bắt buộc / Tự chọn đã được ẨN trên toàn bộ giao diện theo yêu cầu.
+ * Trường `required` vẫn lưu trong DB và trả về API; chỉ không hiển thị.
+ * Giữ export để các nơi gọi không phải sửa; nếu cần bật lại, khôi phục nhánh render cũ từ git.
  */
-export function RequiredBadge({ required, lang = "vi", className = "" }: RequiredBadgeProps) {
-  if (required === undefined || required === null) {
-    return null;
-  }
-
-  const label = translate(lang, required ? "pd.required" : "pd.elective");
-
-  const colorClass = required
-    ? "bg-emerald-100 font-semibold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
-    : "bg-indigo-50 font-semibold text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300";
-
-  return (
-    <span
-      data-variant={required ? "required" : "elective"}
-      className={`chip inline-flex items-center text-xs ${colorClass} ${className}`.trim()}
-    >
-      {label}
-    </span>
-  );
+export function RequiredBadge(_props: RequiredBadgeProps) {
+  return null;
 }
 
 export interface NoScheduleBadgeProps {
@@ -76,7 +57,7 @@ export interface ModuleTitleLineProps {
 }
 
 /**
- * Component hiển thị dòng tiêu đề học phần: MÃ Tên môn [Bắt buộc/Tự chọn] cùng dòng.
+ * Component hiển thị dòng tiêu đề học phần: MÃ Tên môn (không còn nhãn Bắt buộc/Tự chọn).
  */
 export function ModuleTitleLine({
   code,

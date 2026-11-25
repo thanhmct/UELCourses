@@ -116,3 +116,106 @@ def test_feedback_validation(client, bad):
 def test_feedback_stats_empty(client):
     s = client.get("/api/feedback/stats").json()
     assert s["total"] == 0 and s["average_rating"] is None and s["by_day"] == [] and s["items"] == []
+
+
+def test_quick_rating_anonymous_and_satisfaction_status(client, db):
+    from sqlalchemy import select
+    from app.models import Feedback
+
+    ip_a = {"X-Forwarded-For": "203.0.113.10"}
+    ip_b = {"X-Forwarded-For": "203.0.113.11"}
+
+    assert client.get("/api/feedback/satisfaction-status", headers=ip_a).json() == {"already_rated": False}
+
+    # Normal feedback (quick_rating=False by default) must NOT store rater_ip_hash/account_id or block popup
+    r_normal = client.post(
+        "/api/feedback",
+        json={"page": "/feedback", "rating": 4, "category": "feature", "message": "Góp ý thường"},
+        headers=ip_a,
+    )
+    assert r_normal.status_code == 201, r_normal.text
+    normal_row = db.scalar(select(Feedback).where(Feedback.id == r_normal.json()["id"]))
+    assert normal_row is not None
+    assert normal_row.is_quick_rating is False
+    assert normal_row.rater_ip_hash is None
+    assert normal_row.account_id is None
+    assert client.get("/api/feedback/satisfaction-status", headers=ip_a).json() == {"already_rated": False}
+
+    # Quick rating from ip_a (with empty message) stores is_quick_rating=True and hashed IP
+    r_quick = client.post(
+        "/api/feedback",
+        json={
+            "page": "/today",
+            "rating": 5,
+            "category": "other",
+            "message": "",
+            "quick_rating": True,
+            "rater_ip_hash": "spoofed",
+            "account_id": 999999,
+        },
+        headers=ip_a,
+    )
+    assert r_quick.status_code == 201, r_quick.text
+    quick_row = db.scalar(select(Feedback).where(Feedback.id == r_quick.json()["id"]))
+    assert quick_row is not None
+    assert quick_row.is_quick_rating is True
+    assert quick_row.rater_ip_hash is not None
+    assert len(quick_row.rater_ip_hash) == 64
+    assert quick_row.rater_ip_hash != "spoofed"
+    assert "203.0.113.10" not in quick_row.rater_ip_hash
+    assert quick_row.account_id is None
+
+    assert client.get("/api/feedback/satisfaction-status", headers=ip_a).json() == {"already_rated": True}
+    assert client.get("/api/feedback/satisfaction-status", headers=ip_b).json() == {"already_rated": False}
+
+
+def test_quick_rating_authenticated_account_and_ip(client, db):
+    from sqlalchemy import select
+    from app.models import Feedback, User
+    from app.services.auth import SESSION_COOKIE, make_session
+
+    user1 = User(provider="google", subject="quick-rating-u1", display_name="SV Một")
+    user2 = User(provider="google", subject="quick-rating-u2", display_name="SV Hai")
+    db.add_all([user1, user2])
+    db.commit()
+    db.refresh(user1)
+    db.refresh(user2)
+
+    headers_ip1 = {"X-Forwarded-For": "198.51.100.1"}
+    headers_ip2 = {"X-Forwarded-For": "198.51.100.2"}
+    cookies_u1 = {SESSION_COOKIE: make_session(user1.id)}
+    cookies_u2 = {SESSION_COOKIE: make_session(user2.id)}
+
+    r = client.post(
+        "/api/feedback",
+        json={
+            "page": "/settings",
+            "rating": 2,
+            "category": "ux",
+            "message": "Chữ hơi nhỏ",
+            "quick_rating": True,
+        },
+        headers=headers_ip1,
+        cookies=cookies_u1,
+    )
+    assert r.status_code == 201, r.text
+    row = db.scalar(select(Feedback).where(Feedback.id == r.json()["id"]))
+    assert row is not None
+    assert row.is_quick_rating is True
+    assert row.account_id == user1.id
+    assert row.rater_ip_hash is not None
+
+    # Same user on a different IP -> already_rated=True
+    assert (
+        client.get("/api/feedback/satisfaction-status", headers=headers_ip2, cookies=cookies_u1).json()
+        == {"already_rated": True}
+    )
+    # Different user on a different IP -> already_rated=False
+    assert (
+        client.get("/api/feedback/satisfaction-status", headers=headers_ip2, cookies=cookies_u2).json()
+        == {"already_rated": False}
+    )
+    # Unauthenticated user on the same IP as submission -> already_rated=True
+    assert client.get("/api/feedback/satisfaction-status", headers=headers_ip1).json() == {"already_rated": True}
+    # Unauthenticated user on a different IP -> already_rated=False
+    assert client.get("/api/feedback/satisfaction-status", headers=headers_ip2).json() == {"already_rated": False}

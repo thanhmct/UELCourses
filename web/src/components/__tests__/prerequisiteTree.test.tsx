@@ -43,12 +43,15 @@ describe("PrerequisiteTree", () => {
 
     await screen.findByRole("link", { name: "AFTER1" });
     const mode = screen.getByRole("combobox", { name: "Chế độ hiển thị cây học phần" });
-    expect(mode).toHaveValue("direct");
-    expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual(["Trước và sau trực tiếp", "Hiển thị toàn bộ"]);
+    expect(mode).toHaveTextContent("Môn trước và sau trực tiếp");
+    fireEvent.click(mode);
+    expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual(["Môn trước và sau trực tiếp", "Hiển thị toàn bộ"]);
+    fireEvent.click(mode);
     expect(screen.queryByRole("link", { name: "DEEP1" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "EARLIER" })).not.toBeInTheDocument();
 
-    fireEvent.change(mode, { target: { value: "full" } });
+    fireEvent.click(mode);
+    fireEvent.click(screen.getByRole("button", { name: "Hiển thị toàn bộ" }));
     expect(await screen.findByRole("link", { name: "EARLIER" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "DEEP4" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: /Sơ đồ quan hệ/ })).toHaveClass("overflow-auto");
@@ -64,7 +67,8 @@ describe("PrerequisiteTree", () => {
     expect(screen.getByRole("link", { name: "AFTER9" })).toBeInTheDocument();
     expect(nextPage("Môn học sau")).toHaveAttribute("aria-disabled", "true");
 
-    fireEvent.change(mode, { target: { value: "direct" } });
+    fireEvent.click(mode);
+    fireEvent.click(screen.getByRole("button", { name: "Môn trước và sau trực tiếp" }));
     expect(await screen.findByRole("link", { name: "AFTER1" })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "EARLIER" })).not.toBeInTheDocument();
   });

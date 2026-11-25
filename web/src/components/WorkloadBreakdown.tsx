@@ -63,10 +63,10 @@ export function WorkloadBreakdownView({ credits, type, showDetails = false }: Pr
         <div className="space-y-3 pt-1">
           <div className="space-y-2.5" role="img" aria-label={t("workload.aria", { v: summary })}>
             {parts.map((p) => (
-              <div key={p.key} className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-                <span className="w-44 shrink-0 text-[11px] text-slate-500 dark:text-slate-400">{t(p.labelKey)}</span>
+              <div key={p.key} className="flex flex-row items-center gap-2 sm:gap-3">
+                <span className="w-24 shrink-0 text-[11px] text-slate-500 dark:text-slate-400 sm:w-44">{t(p.labelKey)}</span>
                 <Blocks hours={p.hours} block={p.block} />
-                <span className={`text-xs font-semibold ${p.text}`}>{t("workload.hoursWeek", { n: p.hours })}</span>
+                <span className={`shrink-0 text-xs font-semibold ${p.text}`}>{t("workload.hoursWeek", { n: p.hours })}</span>
               </div>
             ))}
           </div>

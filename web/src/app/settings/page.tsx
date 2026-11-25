@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { GraduationCap, Palette, Pencil, Search } from "lucide-react";
+import { GraduationCap, Palette, Pencil, Search, Star } from "lucide-react";
 import { adminApi } from "@/lib/adminApi";
 import { isAnalyticsEnabled, setAnalyticsEnabled } from "@/lib/analytics";
 import { COHORTS, LOCAL_KEYS, useSettings, type Theme } from "@/lib/store";
@@ -16,9 +16,11 @@ import type { AuthMeResponse, AuthProvidersResponse } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 import { Loading, PageHeader } from "@/components/ui";
 import { ProgramProfileDialog } from "@/components/ProgramProfileDialog";
+import { ExchangeStudentToggle } from "@/components/ExchangeStudentToggle";
 import { useProfileDialog, hasGlobalProfileDialogHost } from "@/lib/profileDialog";
 import { useLang, useT, type Lang } from "@/i18n";
 import { AppearanceSettings } from "@/components/AppearanceSettings";
+import { SatisfactionRating } from "@/components/SatisfactionRating";
 import { useHolidayPreferences } from "@/lib/holidayPreferences";
 
 function ProgramCodeField({ children }: { children: ReactNode }) {
@@ -87,6 +89,7 @@ function ProgramCodeField({ children }: { children: ReactNode }) {
 
       <div className="space-y-3 border-t border-slate-200 pt-4 dark:border-slate-800">
         {children}
+        <ExchangeStudentToggle />
       </div>
 
       {!hasGlobalProfileDialogHost() && <ProgramProfileDialog open={isOpen} onClose={close} />}
@@ -191,7 +194,7 @@ export default function SettingsPage() {
   }, []);
   const [sid, setSid] = useState("");
   const [sidMsg, setSidMsg] = useState("");
-  if (!mounted) return <Loading />;
+  if (!mounted) return <Loading page />;
 
   async function clearLocal() {
     if (!(await appConfirm(t("settings.confirmClear"), { danger: true, okLabel: t("settings.clearData") }))) return;
@@ -288,10 +291,22 @@ export default function SettingsPage() {
               ))}
             </div>
           </fieldset>
+          <fieldset className="min-w-0 border-t border-slate-200 pt-4 dark:border-slate-800">
+            <legend className="label">{t("settings.mapDefault")}</legend>
+            <p className="mb-2 text-xs text-slate-500">{t("settings.mapDefaultDesc")}</p>
+            <div className="grid grid-cols-2 gap-2">
+              {([[true, t("settings.mapShow")], [false, t("settings.mapHide")]] as [boolean, string][]).map(([v, l]) => (
+                <label key={String(v)} className={`btn min-h-10 min-w-0 cursor-pointer border px-2 text-center focus-within:outline-2 focus-within:outline-brand-focus ${s.defaultShowMap === v ? "border-brand-600 bg-brand-50 text-brand-700 dark:bg-brand-900/40 dark:text-brand-200" : "border-slate-300 dark:border-slate-700"}`}>
+                  <input type="radio" name="defaultShowMap" checked={s.defaultShowMap === v} onChange={() => s.setDefaultShowMap(v)} className="sr-only" />
+                  {l}
+                </label>
+              ))}
+            </div>
+          </fieldset>
         </section>
       </div>
       <AppearanceSettings />
-      <div className="grid gap-4 lg:grid-cols-2">
+      <AccountSection />
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="card min-w-0 space-y-3 rounded-xl sm:p-5">
           <div className="flex items-start justify-between gap-4">
@@ -343,6 +358,17 @@ export default function SettingsPage() {
           {cleared && <Loading compact />}
         </section>
       </div>
+      <section className="card min-w-0 space-y-3 rounded-xl sm:p-5" aria-labelledby="settings-satisfaction">
+        <SatisfactionRating
+          page="/settings"
+          label={
+            <h2 id="settings-satisfaction" className="flex shrink-0 items-center gap-2 font-semibold text-slate-900 dark:text-white">
+              <Star className="size-5 shrink-0 text-amber-500" aria-hidden />
+              {t("fb.satisfaction")}
+            </h2>
+          }
+        />
+      </section>
       <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
         <p className="min-w-0 wrap-anywhere text-xs text-slate-500">{t("settings.version", { v: APP_VERSION, api: API_URL })}</p>
         {adminAvailable && (

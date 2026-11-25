@@ -12,6 +12,7 @@ import { capacityText, seatsAvailable } from "@/lib/modules";
 import { allModules } from "@/lib/programs";
 import { ModuleActions } from "@/components/ModuleActions";
 import { ReportErrorsButton } from "@/components/FeedbackWidget";
+import { SectionJumpMenu } from "@/components/SectionJumpMenu";
 import { PrerequisiteTree } from "@/components/PrerequisiteTree";
 import { WorkloadBreakdownView } from "@/components/WorkloadBreakdown";
 import { ModuleReviews } from "@/components/ModuleReviews";
@@ -19,9 +20,11 @@ import { LecturerReviewPanel } from "@/components/LecturerReviewPanel";
 import { ModuleDescriptionText } from "@/components/ModuleDescriptionText";
 import { OutlineBlock } from "@/components/OutlineBlock";
 import { useT, weekdayName } from "@/i18n";
-import { creditsLine, departmentName, facultyName, moduleDescription, moduleName } from "@/i18n/names";
+import { creditsLine, departmentName, facultyName, isEnglishCode, moduleDescription, moduleName } from "@/i18n/names";
 import { finalAssessmentKind, getCachedFinalAssessmentKind, setCachedFinalAssessmentKind } from "@/lib/finalAssessment";
 import { track } from "@/lib/analytics";
+import { useExchangeStats, useExchangeViewActive } from "@/lib/useExchangeStats";
+import { ExchangeStatBadge } from "@/components/ExchangeStatBadge";
 
 
 export default function ModuleDetailPage() {
@@ -31,16 +34,22 @@ export default function ModuleDetailPage() {
   const sems = useSemesters();
   const { primaryProgramId, secondaryProgramId, primaryParsed } = useProgramProfile();
   const userCohort = primaryParsed?.cohort;
+  const [semester, setSemester] = useState("");
   const mod = useApi(
     () => api.module(code, { program_id: primaryProgramId || undefined, cohort: userCohort }),
     [code, primaryProgramId, userCohort],
   );
+  const exchangeActive = useExchangeViewActive();
+  const exchangeStats = useExchangeStats([code], exchangeActive);
 
   useEffect(() => {
     if (code) {
-      track("module_view", { module_code: code });
+      track("module_view", {
+        module_code: code,
+        semester_id: semester || sems.current?.id || undefined,
+      });
     }
-  }, [code]);
+  }, [code, semester, sems.current?.id]);
   const progPrimary = useApi(() => primaryProgramId ? api.program(primaryProgramId) : Promise.resolve({ data: null, mock: false }), [primaryProgramId]);
   const progSecondary = useApi(() => secondaryProgramId ? api.program(secondaryProgramId) : Promise.resolve({ data: null, mock: false }), [secondaryProgramId]);
   const electivesPrimary = useApi(() => primaryProgramId ? api.electiveGroups(primaryProgramId) : Promise.resolve({ data: [], mock: false }), [primaryProgramId]);
@@ -75,8 +84,6 @@ export default function ModuleDetailPage() {
     if (inSecondary && !inPrimary) return secondaryProgramId;
     return primaryProgramId || undefined;
   }, [code, primaryProgramId, secondaryProgramId, progPrimary.data, progSecondary.data]);
-
-  const [semester, setSemester] = useState("");
 
   useEffect(() => {
     // Học kỳ đang chọn không còn trong danh sách (đổi khóa): chọn lại học kỳ hiện tại.
@@ -113,7 +120,7 @@ export default function ModuleDetailPage() {
     };
   }, [code, mod.data?.final_assessment, userCohort]);
 
-  if (mod.loading) return <Loading />;
+  if (mod.loading) return <Loading page />;
   if (mod.error) return <ErrorBox>{mod.error}</ErrorBox>;
   const m = mod.data;
   if (!m) return <Empty>{t("common.notFound", { code })} <Link className="text-brand-ink underline" href="/modules">{t("common.back")}</Link></Empty>;
@@ -136,19 +143,21 @@ export default function ModuleDetailPage() {
 
   return (
     <div className="space-y-4">
-      <header className="card grid grid-cols-[minmax(0,1fr)] items-start gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+      <header className="card space-y-3">
         <div className="flex items-start gap-3 min-w-0">
-          <BackButton href="/modules" label={t("det.backLabel")} />
-          <div className="min-w-0 space-y-1">
+          {/* Điện thoại: không cần nút quay lại riêng — nhấn quay lại của hệ thống đã về đúng chỗ cũ (xem BackButton/navHistory). */}
+          <BackButton href="/modules" label={t("det.backLabel")} className="hidden sm:inline-flex" />
+          <div className="min-w-0 flex-1 space-y-1">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-xl font-bold">
                 <span className="font-mono text-brand-700 dark:text-brand-300">{m.code}</span> {moduleName(m, lang)}
               </h1>
+              <ExchangeStatBadge stat={exchangeStats[code]} />
               {(hasRequiredBadge || outlineLinks.length > 0 || m.outline_year) && (
                 <div className="flex flex-wrap items-center gap-2">
                   <RequiredBadge required={programModuleInfo?.required} lang={lang} />
                   {m.outline_year && (
-                    <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                    <span className="chip border border-transparent bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
                       {t("det.outlineCtdtYear", { year: m.outline_year })}
                     </span>
                   )}
@@ -164,7 +173,7 @@ export default function ModuleDetailPage() {
                           href={url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center rounded-full border border-emerald-300 px-2 py-1 text-xs font-semibold text-emerald-800 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-950/40"
+                          className="chip border border-emerald-300 font-semibold text-emerald-800 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-950/40"
                           aria-label={language ? `${syllabusLabel} — ${language}` : syllabusLabel}
                         >
                           {syllabusLabel}{language && ` · ${language}`} <span aria-hidden="true" className="ml-1">↗</span>
@@ -190,7 +199,7 @@ export default function ModuleDetailPage() {
                 }, lang)}
               </span>
               <TypeChip type={m.type} />
-              {isEn && <EnBadge />}
+              {isEn && !isEnglishCode(m.code) && <EnBadge />}
               {m.is_talent_program && <CntnBadge />}
             </div>
 
@@ -203,23 +212,14 @@ export default function ModuleDetailPage() {
                 })}
               </div>
             )}
-            {m.counterpart_code && (
-              <p className="text-xs text-slate-500">
-                {t("det.counterpart")}:{" "}
-                <Link href={`/modules/${encodeURIComponent(m.counterpart_code)}`} className="font-mono font-semibold text-brand-700 hover:underline dark:text-brand-300">{m.counterpart_code}</Link>
-              </p>
-            )}
           </div>
+          {/* Điện thoại: chỉ icon, đặt ngay cạnh thông tin học phần. Máy tính: đủ chữ, vừa nội dung, ở góc phải khối tiêu đề. */}
+          <ReportErrorsButton course={m} iconOnlyOnPhone className="shrink-0" />
         </div>
-        <div className="justify-self-end">
-          <ReportErrorsButton course={m} />
-        </div>
-        <div className="sm:col-span-2">
-          <ModuleActions module={m} timetableSemester={sems.currentYearSecondTerm} />
-        </div>
+        <ModuleActions module={m} timetableSemester={sems.currentYearSecondTerm} responsiveStack />
       </header>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div id="mod-overview" className="grid gap-4 lg:grid-cols-3">
         <section className="card space-y-4 lg:col-span-2">
           <div>
             <div className="mb-1 flex items-center gap-2">
@@ -256,7 +256,7 @@ export default function ModuleDetailPage() {
             <PrerequisiteTree code={m.code} programId={treeProgramId} />
           </div>
         </section>
-        <section className="card self-start">
+        <section id="mod-equivalents" className="card self-start">
           <h2 className="mb-2 font-semibold">{t("det.equivalents")}</h2>
           {m.equivalents?.length ? (
             <ul className="space-y-1 text-sm">
@@ -275,14 +275,16 @@ export default function ModuleDetailPage() {
         </section>
       </div>
 
-      <section className="card">
+      <section id="mod-classes" className="card">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <h2 className="font-semibold">{t("det.classes")}</h2>
           <div className="flex flex-wrap gap-1" role="tablist" aria-label={t("det.semester")} title={t("det.semesterTabs")}>
             {sems.data?.map((s) => {
               const on = s.id === semester;
               const n = openCount.get(s.id) ?? 0;
-              const label = `${String(s.year).replace("–", "-")} · HK${s.term}`;
+              const label = lang === "en"
+                ? `${String(s.year).replace("–", "-")} · Term ${s.term}`
+                : `${String(s.year).replace("–", "-")} · HK${s.term}`;
               return (
                 <button
                   key={s.id}
@@ -352,12 +354,24 @@ export default function ModuleDetailPage() {
         )}
       </section>
 
-      <OutlineBlock code={m.code} cohort={userCohort} assessment={m.assessment} textbooks={m.textbooks} />
+      <div id="mod-outline">
+        <OutlineBlock code={m.code} cohort={userCohort} assessment={m.assessment} textbooks={m.textbooks} />
+      </div>
 
-      <section className="card">
+      <section id="mod-reviews" className="card">
         <ModuleReviews moduleCode={m.code} moduleName={m.name} />
         <LecturerReviewPanel moduleCode={m.code} />
       </section>
+
+      <SectionJumpMenu
+        items={[
+          { id: "mod-overview", label: t("det.description") },
+          { id: "mod-equivalents", label: t("det.equivalents") },
+          { id: "mod-classes", label: t("det.classes") },
+          { id: "mod-outline", label: t("outline.title") },
+          { id: "mod-reviews", label: t("comments.title") },
+        ]}
+      />
     </div>
   );
 }

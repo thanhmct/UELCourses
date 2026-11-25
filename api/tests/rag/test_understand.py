@@ -54,6 +54,13 @@ def test_clarify_only_once_per_conversation(index, today):
     assert r["mode"] != "clarify"
 
 
+def test_questions_about_the_assistant_are_never_asked_back(index, today):
+    reply = {"intent": "casual", "query": "Bạn là ai?", "clarify": "Bạn muốn biết danh tính của người hỏi?",
+             "options": ["Bạn muốn biết ai là người đang nói?", "Bạn muốn biết ai là người đang trả lời?"]}
+    r = ask(index, "Anh là ai đó?", "K26", "extractive", today, _Provider(reply), previous=None)
+    assert r["mode"] != "clarify" and "clarify" not in r
+
+
 def test_intent_never_blocks_a_regulation_match(index, today):
     r = ask(index, "haha mn ơi hc cải thiện đc ko", "K22", "extractive", today,
             _Provider({"intent": "casual", "query": Q}))

@@ -78,7 +78,7 @@ describe("Brief W10: Bỏ nút Góp ý nổi ở góc dưới bên phải", () =
   });
 
   describe("2. Mở Góp ý từ thanh menu (SideNav / openFeedback) hiển thị hộp thoại biểu mẫu", () => {
-    it("bấm nút Góp ý trong SideNav mở FeedbackModal với đầy đủ các trường", () => {
+    it("mục Góp ý trong SideNav dẫn tới trang /feedback thay vì mở hộp thoại", () => {
       render(
         <div>
           <SideNav />
@@ -89,25 +89,13 @@ describe("Brief W10: Bỏ nút Góp ý nổi ở góc dưới bên phải", () =
       // Ban đầu modal chưa mở
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
-      // Bấm nút "Góp ý" trong menu SideNav
-      const menuFeedbackBtn = screen.getByRole("button", { name: /Góp ý/i });
-      expect(menuFeedbackBtn).toBeInTheDocument();
-      fireEvent.click(menuFeedbackBtn);
+      // Mục "Góp ý" trong menu là liên kết tới trang góp ý
+      const menuFeedbackLink = screen.getByRole("link", { name: /Góp ý/i });
+      expect(menuFeedbackLink).toHaveAttribute("href", "/feedback");
+      fireEvent.click(menuFeedbackLink);
 
-      // Hộp thoại Góp ý xuất hiện
-      const dialog = screen.getByRole("dialog", { name: "Góp ý cho UELPATH" });
-      expect(dialog).toBeInTheDocument();
-      expect(screen.getByText("Góp ý cho UELPATH")).toBeInTheDocument();
-
-      // Kiểm tra đầy đủ các thành phần biểu mẫu
-      expect(screen.getByRole("radiogroup", { name: "Đánh giá 1 đến 5" })).toBeInTheDocument();
-      expect(screen.getByLabelText("Loại góp ý")).toBeInTheDocument();
-      expect(screen.getByLabelText("Nội dung")).toBeInTheDocument();
-      expect(screen.getByLabelText("Liên hệ (không bắt buộc)")).toBeInTheDocument();
-
-      // Nút gửi đang disabled vì chưa đánh giá sao và chưa nhập nội dung
-      const submitBtn = screen.getByRole("button", { name: "Gửi góp ý" });
-      expect(submitBtn).toBeDisabled();
+      // Không mở hộp thoại cũ
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
 
     it("gọi openFeedback() từ bất kỳ đâu cũng mở được hộp thoại góp ý", () => {
@@ -129,7 +117,6 @@ describe("Brief W10: Bỏ nút Góp ý nổi ở góc dưới bên phải", () =
       fireEvent.click(screen.getByRole("button", { name: "Báo lỗi" }));
       const dialog = within(screen.getByRole("dialog", { name: "Báo lỗi" }));
       expect(dialog.getByLabelText("Loại góp ý")).toHaveValue("bug");
-      fireEvent.click(dialog.getAllByRole("radio")[2]);
       fireEvent.change(dialog.getByLabelText("Nội dung"), { target: { value: "Lỗi khi áp dụng lộ trình" } });
       fireEvent.click(dialog.getByRole("button", { name: "Gửi góp ý" }));
       await waitFor(() => expect(api.feedback).toHaveBeenCalledWith(expect.objectContaining({
@@ -137,7 +124,7 @@ describe("Brief W10: Bỏ nút Góp ý nổi ở góc dưới bên phải", () =
       })));
     });
 
-    it("nhập sao, danh mục, nội dung, liên hệ và gửi thành công", async () => {
+    it("nhập danh mục, nội dung, liên hệ và gửi thành công", async () => {
       (api.feedback as any).mockResolvedValueOnce({ data: { ok: true }, mock: false });
 
       render(
@@ -150,11 +137,6 @@ describe("Brief W10: Bỏ nút Góp ý nổi ở góc dưới bên phải", () =
       act(() => {
         openFeedback();
       });
-
-      // Chọn 5 sao
-      const star5 = screen.getByRole("radio", { name: /5 sao/i });
-      fireEvent.click(star5);
-      expect(star5).toHaveAttribute("aria-checked", "true");
 
       // Chọn loại góp ý "Báo lỗi"
       const categorySelect = screen.getByLabelText("Loại góp ý");
@@ -177,7 +159,7 @@ describe("Brief W10: Bỏ nút Góp ý nổi ở góc dưới bên phải", () =
       await waitFor(() => {
         expect(api.feedback).toHaveBeenCalledWith({
           page: "/today",
-          rating: 5,
+          rating: 3,
           category: "bug",
           message: "Lớp học phần EFF2045 bị hiển thị nhầm khoa.",
           contact: "k22404@uel.edu.vn",
@@ -202,7 +184,6 @@ describe("Brief W10: Bỏ nút Góp ý nổi ở góc dưới bên phải", () =
         openFeedback();
       });
 
-      fireEvent.click(screen.getByRole("radio", { name: /4 sao/i }));
       fireEvent.change(screen.getByLabelText("Nội dung"), { target: { value: "Cần thêm chế độ xem lịch tuần." } });
       fireEvent.click(screen.getByRole("button", { name: "Gửi góp ý" }));
 
@@ -219,7 +200,6 @@ describe("Brief W10: Bỏ nút Góp ý nổi ở góc dưới bên phải", () =
         openFeedback();
       });
 
-      fireEvent.click(screen.getByRole("radio", { name: /3 sao/i }));
       fireEvent.change(screen.getByLabelText("Nội dung"), { target: { value: "Giao diện trên mobile bị tràn." } });
       fireEvent.click(screen.getByRole("button", { name: "Gửi góp ý" }));
 
@@ -258,23 +238,22 @@ describe("Brief W10: Bỏ nút Góp ý nổi ở góc dưới bên phải", () =
 
       render(<FeedbackPage />);
 
-      // Có tiêu đề trang và nút quay lại
+      // Có tiêu đề trang (không còn nút quay lại ở tab Góp ý)
       expect(screen.getByRole("heading", { name: "Góp ý cho UELPATH" })).toBeInTheDocument();
-      expect(screen.getByText("Quay lại")).toBeInTheDocument();
+      expect(screen.queryByText("Quay lại")).not.toBeInTheDocument();
 
-      // Form có sẵn trên trang
-      expect(screen.getByRole("radiogroup", { name: "Đánh giá 1 đến 5" })).toBeInTheDocument();
+      // Form đầy đủ (khác với widget "Mức độ hài lòng" nhanh ở trên trang, không còn hỏi sao) có sẵn trên trang
+      const formSection = document.getElementById("fb-form") as HTMLElement;
 
       // Điền và gửi form
-      fireEvent.click(screen.getByRole("radio", { name: /5 sao/i }));
-      fireEvent.change(screen.getByLabelText("Nội dung"), { target: { value: "Tính năng xếp TKB quá tuyệt vời!" } });
-      fireEvent.click(screen.getByRole("button", { name: "Gửi góp ý" }));
+      fireEvent.change(within(formSection).getByLabelText("Nội dung"), { target: { value: "Tính năng xếp TKB quá tuyệt vời!" } });
+      fireEvent.click(within(formSection).getByRole("button", { name: "Gửi góp ý" }));
 
       await waitFor(() => {
         expect(api.feedback).toHaveBeenCalledWith(
           expect.objectContaining({
             page: "/feedback",
-            rating: 5,
+            rating: 3,
             message: "Tính năng xếp TKB quá tuyệt vời!",
           }),
         );

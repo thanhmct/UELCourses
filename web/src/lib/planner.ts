@@ -89,17 +89,32 @@ export function plannerSemesterId(name: string, enrollmentYear: number | null): 
   return `${start}-${start + 1}-${term}`;
 }
 
-/** Fill the selected academic years and preserve every term that already contains courses. */
-export function completePlannerYears(terms: PlanTerm[], years: PlannerAcademicYears, previousAdmission: number): PlanTerm[] {
+export interface CompletePlannerYearsResult {
+  terms: PlanTerm[];
+  /** Mã học phần của các học kỳ bị loại vì nằm ngoài khoảng năm học mới (mâu thuẫn) — cần đưa về "Dự định học". */
+  movedToBacklog: string[];
+}
+
+/**
+ * Fill the selected academic years and preserve every term that already contains courses.
+ * A term whose resolved semester falls outside the new [admission, graduation] range conflicts with the
+ * new selection: it is dropped, and any courses it held are reported via `movedToBacklog` so the caller
+ * can move them back to "Dự định học" instead of losing them.
+ */
+export function completePlannerYears(terms: PlanTerm[], years: PlannerAcademicYears, previousAdmission: number): CompletePlannerYearsResult {
   const existing = new Set<string>();
   const ids = new Set(terms.map(({ id }) => id));
+  const movedToBacklog: string[] = [];
   const next = terms.flatMap((term) => {
     const explicit = plannerSemesterId(term.name, null);
     const resolved = explicit ?? plannerSemesterId(term.name, term.modules.length ? previousAdmission : years.admission);
     if (!resolved) return [term];
     const semester = parseSemesterId(resolved)!;
     const start = Number(semester.year.slice(0, 4));
-    if (term.modules.length === 0 && (start < years.admission || start > years.graduation)) return [];
+    if (start < years.admission || start > years.graduation) {
+      if (term.modules.length) movedToBacklog.push(...term.modules);
+      return [];
+    }
     existing.add(resolved);
     return [explicit ? term : { ...term, name: `HK${semester.term} ${semester.year}` }];
   });
@@ -116,7 +131,7 @@ export function completePlannerYears(terms: PlanTerm[], years: PlannerAcademicYe
       next.push({ id, name: `HK${term} ${year}`, modules: [] });
     }
   }
-  return next;
+  return { terms: next, movedToBacklog };
 }
 
 /** Sắp xếp học kỳ theo thời gian học (năm → kỳ), giữ ổn định tên không nhận dạng được. */
@@ -133,18 +148,17 @@ export function sortPlannerTermsChronologically(terms: PlanTerm[]): PlanTerm[] {
 }
 
 /**
- * A prerequisite is satisfied if it (or an equivalent of it) is marked completed,
- * or is placed in a strictly earlier term.
+ * A prerequisite is satisfied only if it (or an equivalent of it) is marked completed
+ * ("Đã học / hoàn thành" ticked) — merely being placed in an earlier term is not enough.
  */
 export function prerequisiteWarnings(state: PlanState): PrereqWarning[] {
   const completed = new Set(state.completed);
-  const earlier = new Set<string>();
   const warnings: PrereqWarning[] = [];
   const satisfied = (code: string) => {
-    if (completed.has(code) || earlier.has(code)) return true;
+    if (completed.has(code)) return true;
     // accept any known module that lists `code` as an equivalent
     for (const m of Object.values(state.catalog)) {
-      if ((completed.has(m.code) || earlier.has(m.code)) && m.equivalents?.some((e) => e.code === code)) {
+      if (completed.has(m.code) && m.equivalents?.some((e) => e.code === code)) {
         return true;
       }
     }
@@ -157,7 +171,6 @@ export function prerequisiteWarnings(state: PlanState): PrereqWarning[] {
       const missing = prereqs.filter((p) => !satisfied(p));
       if (missing.length) warnings.push({ termId: term.id, code, missing });
     }
-    term.modules.forEach((c) => earlier.add(c));
   }
   return warnings;
 }

@@ -557,14 +557,9 @@ export function describeProgramCodeFull(
         : (isEn ? "Talent Bachelor programme" : "chương trình Cử nhân tài năng");
       break;
     case "coop": {
-      const officialCoop = coopOfficialName?.trim() || (/co-?op/i.test(cleaned) ? cleaned : null);
-      if (officialCoop) {
-        part3 = isEn ? `Co-op programme: ${officialCoop}` : officialCoop;
-      } else {
-        part3 = isEn
-          ? "Co-op programme (university-enterprise partnership)"
-          : "chương trình Coop (hợp tác doanh nghiệp)";
-      }
+      // Mọi chương trình Coop hiển thị thống nhất "Coop Khóa NN", không dùng tên dài.
+      const cohortShort = yearStr.slice(-2);
+      part3 = isEn ? `Co-op Cohort ${cohortShort}` : `Coop Khóa ${cohortShort}`;
       break;
     }
     case "standard":
@@ -634,19 +629,7 @@ export function formatFilterBannerText(
         : (isEn ? ", Talent Bachelor programme" : ", chương trình Cử nhân tài năng");
       break;
     case "coop": {
-      const officialCoop = coopOfficialName?.trim() || (/co-?op/i.test(cleaned) ? cleaned : null);
-      if (isEn) {
-        const coopPart = officialCoop
-          ? `Co-op programme: ${officialCoop}`
-          : "Co-op programme (university-enterprise partnership)";
-        mainText += `, ${coopPart}`;
-      } else {
-        let coopPart = "chương trình Coop (hợp tác doanh nghiệp)";
-        if (officialCoop) {
-          coopPart = /^chương trình\s+/i.test(officialCoop) ? officialCoop : `chương trình ${officialCoop}`;
-        }
-        mainText += `, ${coopPart}`;
-      }
+      mainText += isEn ? `, Co-op Cohort ${cohortNum}` : `, Coop Khóa ${cohortNum}`;
       break;
     }
     case "standard":

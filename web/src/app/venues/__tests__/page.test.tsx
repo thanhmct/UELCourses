@@ -5,7 +5,6 @@ import { useLang } from "@/i18n";
 import { useSettings } from "@/lib/store";
 import { api } from "@/lib/api";
 import type { Semester, Venue } from "@/lib/types";
-import { TOUR_BASE } from "@/lib/campusTour";
 
 vi.mock("next/navigation", () => ({
   useParams: () => ({}),
@@ -13,6 +12,7 @@ vi.mock("next/navigation", () => ({
     back: vi.fn(),
     push: vi.fn(),
   }),
+  usePathname: () => "/venues",
   useSearchParams: () => new URLSearchParams(),
 }));
 
@@ -359,22 +359,5 @@ describe("Brief W24: Khôi phục lưới lịch tháng phòng học (~30 ngày)
 
     const closeBtn = within(dialog).getByRole("button", { name: "Close" });
     expect(closeBtn).toBeInTheDocument();
-  });
-
-  it("shows the official 360° tour only after the selected room panel is opened", async () => {
-    render(<VenuesPage />);
-
-    expect(document.querySelector("iframe")).not.toBeInTheDocument();
-    fireEvent.click(await screen.findByText("B1.104"));
-
-    const openTour = screen.getByRole("button", { name: "Xem tòa 360°" });
-    expect(openTour).toBeInTheDocument();
-    expect(document.querySelector("iframe")).not.toBeInTheDocument();
-
-    fireEvent.click(openTour);
-
-    const iframe = document.querySelector("iframe");
-    expect(iframe).toBeInTheDocument();
-    expect(iframe).toHaveAttribute("src", expect.stringMatching(`^${TOUR_BASE}`));
   });
 });

@@ -141,7 +141,7 @@ describe("W9: Cửa sổ chat pop-up Quy chế & Hỏi đáp AI", () => {
     fireEvent.click(screen.getByRole("button", { name: "Hỏi quy chế / AI" }));
 
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
-    expect(screen.getByText(/Áp dụng khóa K26 theo hồ sơ CTĐT/)).toBeInTheDocument();
+    expect(screen.getByText(/Tra cứu đang áp dụng khóa 26 theo hồ sơ CTĐT/)).toBeInTheDocument();
 
     fireEvent.change(screen.getByPlaceholderText(/Đặt câu hỏi…/i), { target: { value: "Khi nào bị buộc thôi học?" } });
     fireEvent.click(screen.getByRole("button", { name: "Gửi" }));
@@ -170,7 +170,7 @@ describe("W9: Cửa sổ chat pop-up Quy chế & Hỏi đáp AI", () => {
     fireEvent.click(screen.getByRole("button", { name: "K24" }));
     await waitFor(() => expect(api.ask).toHaveBeenLastCalledWith("Khi nào bị buộc thôi học?", "K24"));
     expect(activeConversation(useRegChat.getState())?.cohort).toBe("K24");
-    expect(screen.getByText(/Áp dụng khóa K24 bạn đã chọn/)).toBeInTheDocument();
+    expect(screen.getByText(/Áp dụng khóa 24 bạn đã chọn/)).toBeInTheDocument();
   });
 
   it("phím Escape đóng popup khi đang mở", () => {

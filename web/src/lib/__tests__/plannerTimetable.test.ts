@@ -43,7 +43,7 @@ describe("planner and timetable synchronization", () => {
       { id: "unknown", name: "Năm 3", modules: [] },
       { id: "explicit", name: "HK2 2030–2031", modules: [] },
     ], catalog: {}, backlog: [], completed: [] });
-    useTimetable.setState({ semester: "2025-2026-3", bySemester: {}, drafts: {}, activeDrafts: {}, info: {}, plannerAssignments: {} });
+    useTimetable.setState({ semester: "2025-2026-3", bySemester: {}, drafts: {}, activeDrafts: {}, info: {}, plannerAssignments: {}, plannerMirrored: {} });
     useSettings.setState({ cohort: "", programCode: "" });
   });
 
@@ -102,6 +102,42 @@ describe("planner and timetable synchronization", () => {
     stop = startPlannerTimetableSync();
     expect(useTimetable.getState().bySemester[first].map((entry) => entry.code)).toEqual([other.code]);
     expect(usePlanner.getState().terms[0].modules).toEqual([course.code, other.code]);
+  });
+
+  it("mirrors modules added to the timetable into the matching planner term", () => {
+    useSettings.getState().setCohort("K26");
+    stop = startPlannerTimetableSync();
+    useTimetable.getState().addModule(course, "CL-1", first);
+    useTimetable.getState().addModule(other, null, "2031-2032-2");
+
+    const terms = usePlanner.getState().terms;
+    expect(terms.find((term) => term.id === "first")?.modules).toEqual([course.code]);
+    expect(terms.find((term) => term.name === "HK2 2031-2032")?.modules).toEqual([other.code]);
+    expect(usePlanner.getState().catalog[course.code]).toMatchObject(course);
+    expect(useTimetable.getState().bySemester[first]).toEqual([
+      expect.objectContaining({ code: course.code, class_code: "CL-1" }),
+    ]);
+  });
+
+  it("does not bring back a module the user removed from the plan while it stays in the timetable", () => {
+    useSettings.getState().setCohort("K26");
+    stop = startPlannerTimetableSync();
+    useTimetable.getState().addModule(course, "CL-1", first);
+    usePlanner.getState().removeModule(course.code);
+    expect(usePlanner.getState().terms.flatMap((term) => term.modules)).toEqual([]);
+
+    stop();
+    stop = startPlannerTimetableSync();
+    expect(usePlanner.getState().terms.flatMap((term) => term.modules)).toEqual([]);
+  });
+
+  it("keeps a module planned for another term where it is", () => {
+    useSettings.getState().setCohort("K26");
+    placeModuleInPlanner(course, "third");
+    stop = startPlannerTimetableSync();
+    useTimetable.getState().addModule(course, "CL-1", first);
+    expect(usePlanner.getState().terms.find((term) => term.id === "third")?.modules).toEqual([course.code]);
+    expect(usePlanner.getState().terms.find((term) => term.id === "first")?.modules).toEqual([]);
   });
 
   it("uses explicit dates without a profile and retries a relative term when a cohort is chosen", () => {

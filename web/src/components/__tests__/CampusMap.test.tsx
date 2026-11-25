@@ -231,4 +231,165 @@ describe("CampusMap", () => {
       "text-white",
     );
   });
+
+  it("supports two-finger pinch-zoom anchored at the midpoint and continues panning with one finger without jumping", () => {
+    const onPick = vi.fn();
+    const { container } = render(<CampusMap target={null} onPick={onPick} />);
+    const map = container.querySelector("svg") as SVGSVGElement;
+    vi.spyOn(map, "getBoundingClientRect").mockReturnValue({
+      x: 0, y: 0, left: 0, top: 0, right: 1000, bottom: 650,
+      width: 1000, height: 650, toJSON: () => ({}),
+    });
+
+    // Anchor off-center at (700, 325): start two fingers separated horizontally around x=700.
+    fireEvent.pointerDown(map, { button: 0, pointerId: 1, pointerType: "touch", clientX: 600, clientY: 325 });
+    fireEvent.pointerDown(map, { button: 0, pointerId: 2, pointerType: "touch", clientX: 800, clientY: 325 });
+
+    // Spread fingers 2x apart around the same midpoint (700, 325) -> 2x zoom in (width halves: 1490 -> 745).
+    fireEvent.pointerMove(map, { pointerId: 1, pointerType: "touch", clientX: 500, clientY: 325 });
+    fireEvent.pointerMove(map, { pointerId: 2, pointerType: "touch", clientX: 900, clientY: 325 });
+
+    const scale0 = 650 / 970;
+    const expectedWorldMidX = 745 + (700 - 500) / scale0;
+    const expectedPinchX = expectedWorldMidX - 745 / 2 - (700 - 500) / (2 * scale0);
+
+    // Lift finger 2; remaining finger 1 at (500, 325) must keep the zoomed viewBox without jumping.
+    fireEvent.pointerUp(map, { pointerId: 2, pointerType: "touch", clientX: 900, clientY: 325 });
+    const viewAfterPinch = map.getAttribute("viewBox")?.split(" ").map(Number) ?? [];
+    expect(viewAfterPinch).toHaveLength(4);
+    expect(viewAfterPinch[2]).toBeCloseTo(745, 1);
+    expect(viewAfterPinch[3]).toBeCloseTo(485, 1);
+    expect(viewAfterPinch[0]).toBeCloseTo(expectedPinchX, 1);
+
+    // Pan with the single remaining finger by +50px right (500 -> 550); no jump, pans from zoomed position.
+    fireEvent.pointerMove(map, { pointerId: 1, pointerType: "touch", clientX: 550, clientY: 325 });
+    fireEvent.pointerUp(map, { pointerId: 1, pointerType: "touch", clientX: 550, clientY: 325 });
+
+    const viewAfterPan = map.getAttribute("viewBox")?.split(" ").map(Number) ?? [];
+    expect(viewAfterPan[2]).toBeCloseTo(745, 1);
+    expect(viewAfterPan[0]).toBeCloseTo(expectedPinchX - 50 / (2 * scale0), 1);
+
+    // Click right after gesture must be suppressed (not treated as a place pick).
+    fireEvent.click(screen.getByRole("button", { name: "Tòa B1" }));
+    expect(onPick).not.toHaveBeenCalled();
+  });
+
+  it("clamps pinch-out and pan properly in fill (slice) mode", () => {
+    render(<CampusMap target="B2" fill />);
+    const map = screen.getByRole("group", { name: "Bản đồ khuôn viên UEL" });
+    vi.spyOn(map, "getBoundingClientRect").mockReturnValue({
+      x: 0, y: 0, left: 0, top: 0, right: 700, bottom: 700,
+      width: 700, height: 700, toJSON: () => ({}),
+    });
+
+    // Pinch in drastically to zoom all the way out to minimum zoom (width 1490).
+    fireEvent.pointerDown(map, { button: 0, pointerId: 1, pointerType: "touch", clientX: 100, clientY: 350 });
+    fireEvent.pointerDown(map, { button: 0, pointerId: 2, pointerType: "touch", clientX: 600, clientY: 350 });
+    fireEvent.pointerMove(map, { pointerId: 1, pointerType: "touch", clientX: 340, clientY: 350 });
+    fireEvent.pointerMove(map, { pointerId: 2, pointerType: "touch", clientX: 360, clientY: 350 });
+    fireEvent.pointerUp(map, { pointerId: 2, pointerType: "touch", clientX: 360, clientY: 350 });
+    fireEvent.pointerUp(map, { pointerId: 1, pointerType: "touch", clientX: 340, clientY: 350 });
+
+    const view = map.getAttribute("viewBox")?.split(" ").map(Number) ?? [];
+    expect(view[2]).toBe(1490);
+    expect(view[3]).toBe(970);
+    expect(view[0]).toBeGreaterThanOrEqual(-260);
+    expect(view[0]).toBeLessThanOrEqual(260);
+    expect(view[1]).toBe(0);
+    expect(screen.getByRole("button", { name: "Thu nhỏ bản đồ" })).toBeDisabled();
+  });
+
+  it("picks a place on touch tap when pointer does not drag, without showing hover card", () => {
+    const onPick = vi.fn();
+    const { container } = render(<CampusMap target={null} onPick={onPick} />);
+    const map = container.querySelector("svg") as SVGSVGElement;
+    const buildingA = screen.getByRole("button", { name: "Tòa A" });
+
+    fireEvent.pointerDown(buildingA, { button: 0, pointerId: 1, pointerType: "touch", clientX: 200, clientY: 200 });
+    fireEvent.pointerUp(buildingA, { pointerId: 1, pointerType: "touch", clientX: 201, clientY: 200 });
+    fireEvent.mouseEnter(buildingA);
+    fireEvent.focus(buildingA);
+    fireEvent.click(buildingA);
+
+    expect(onPick).toHaveBeenCalledWith("A");
+    expect(container.querySelector("[data-campus-hover]")).not.toBeInTheDocument();
+    expect(map).toHaveAttribute("data-zoomed", "true");
+  });
+
+  it("suppresses hover cards and road hints during touch or active gestures", async () => {
+    useLang.setState({ lang: "en" });
+    const { container } = render(<CampusMap target={null} />);
+    const map = container.querySelector("svg") as SVGSVGElement;
+    vi.spyOn(map, "getBoundingClientRect").mockReturnValue({
+      x: 0, y: 0, left: 0, top: 0, right: 1000, bottom: 650,
+      width: 1000, height: 650, toJSON: () => ({}),
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Tiên Phong").parentElement).toHaveAttribute("data-road-hint", "Pioneer");
+    });
+
+    const pioneer = screen.getByText("Tiên Phong").parentElement as Element;
+    const buildingA = screen.getByRole("button", { name: "Building A" });
+
+    // Touch pointerEnter on road label does not show road tooltip.
+    fireEvent.pointerEnter(pioneer, { pointerType: "touch", clientX: 40, clientY: 40 });
+    expect(container.querySelector("[data-road-tooltip]")).not.toBeInTheDocument();
+
+    // Active drag clears existing mouse hover card and blocks new hover cards.
+    fireEvent.pointerOver(map, { pointerType: "mouse" });
+    fireEvent.mouseEnter(buildingA);
+    expect(container.querySelector('[data-campus-hover="A"]')).toBeInTheDocument();
+
+    fireEvent.pointerDown(map, { button: 0, pointerId: 1, pointerType: "mouse", clientX: 300, clientY: 300 });
+    fireEvent.pointerMove(map, { pointerId: 1, pointerType: "mouse", clientX: 320, clientY: 300 });
+    expect(container.querySelector("[data-campus-hover]")).not.toBeInTheDocument();
+
+    fireEvent.mouseEnter(buildingA);
+    expect(container.querySelector("[data-campus-hover]")).not.toBeInTheDocument();
+    fireEvent.pointerUp(map, { pointerId: 1, pointerType: "mouse", clientX: 320, clientY: 300 });
+  });
+
+  it("queries prefers-reduced-motion only once and uses the latest onPick callback", () => {
+    const originalMatchMedia = window.matchMedia;
+    const matchMediaMock = vi.fn().mockReturnValue({
+      matches: true,
+      media: "(prefers-reduced-motion: reduce)",
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    });
+    Object.defineProperty(window, "matchMedia", {
+      writable: true,
+      configurable: true,
+      value: matchMediaMock,
+    });
+
+    try {
+      const firstOnPick = vi.fn();
+      const secondOnPick = vi.fn();
+      const { container, rerender } = render(<CampusMap target={null} onPick={firstOnPick} />);
+
+      expect(matchMediaMock).toHaveBeenCalledTimes(1);
+
+      // Re-render with hover state and target/onPick changes: matchMedia is not called again, no <animate>.
+      fireEvent.mouseEnter(screen.getByRole("button", { name: "Tòa A" }));
+      rerender(<CampusMap target="B1" onPick={secondOnPick} />);
+      expect(matchMediaMock).toHaveBeenCalledTimes(1);
+      expect(container.querySelector("animate")).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole("button", { name: "Tòa B2" }));
+      expect(firstOnPick).not.toHaveBeenCalled();
+      expect(secondOnPick).toHaveBeenCalledWith("B2");
+    } finally {
+      Object.defineProperty(window, "matchMedia", {
+        writable: true,
+        configurable: true,
+        value: originalMatchMedia,
+      });
+    }
+  });
 });

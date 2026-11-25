@@ -40,4 +40,15 @@ describe("từ điển i18n", () => {
     expect(translate("en", "gpa.sim.required", { gpa: 3.2, letter: "B+", credits: 135 }))
       .toBe("You need an average GPA of 3.2/4.0 (approximately a B+) across all 135 remaining credits.");
   });
+
+  it("dịch đầy đủ nhãn nút mở bộ lọc khoa và bộ môn ở VI và EN", () => {
+    expect(translate("vi", "facet.addFacultyFilter")).toBe("Thêm bộ lọc khoa quản lý");
+    expect(translate("vi", "facet.addDepartmentFilter")).toBe("Thêm bộ lọc bộ môn");
+    expect(translate("en", "facet.addFacultyFilter")).toBe("Add faculty filter");
+    expect(translate("en", "facet.addDepartmentFilter")).toBe("Add department filter");
+    expect(translate("vi", "common.expand")).toBe("Mở danh sách");
+    expect(translate("en", "common.expand")).toBe("Show list");
+    expect(translate("vi", "common.collapse")).toBe("Thu gọn");
+    expect(translate("en", "common.collapse")).toBe("Collapse");
+  });
 });

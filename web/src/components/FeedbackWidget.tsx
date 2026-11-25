@@ -24,12 +24,36 @@ export const openFeedback = (request?: FeedbackRequest) => {
   }
 };
 
-export function ReportErrorsButton({ course }: { course?: CourseReportModule }) {
+export function ReportErrorsButton({
+  course,
+  iconOnly = false,
+  iconOnlyOnPhone = false,
+  className = "",
+}: {
+  course?: CourseReportModule;
+  /** Luôn chỉ hiện icon cờ, ẩn chữ (tên đầy đủ chuyển sang aria-label/title). */
+  iconOnly?: boolean;
+  /** Chỉ icon trên điện thoại (dưới sm), đủ chữ từ sm trở lên. Một nút duy nhất — chỉ chữ ẩn/hiện theo CSS,
+   * để không tạo hai nút trùng tên trong cây hỗ trợ tiếp cận (và trong truy vấn kiểm thử). */
+  iconOnlyOnPhone?: boolean;
+  className?: string;
+}) {
   const { t } = useT();
+  const label = t("fb.reportErrors");
+  const compact = iconOnly || iconOnlyOnPhone;
   return (
-    <button type="button" className="btn-accent cursor-pointer" aria-haspopup="dialog" onClick={() => openFeedback(course ?? "bug")}>
+    <button
+      type="button"
+      className={`btn-accent cursor-pointer justify-center ${
+        iconOnly ? "size-10 shrink-0 p-0" : iconOnlyOnPhone ? "size-10 shrink-0 p-0 sm:h-auto sm:w-auto sm:px-4 sm:py-2" : ""
+      } ${className}`.trim()}
+      aria-haspopup="dialog"
+      aria-label={label}
+      title={compact ? label : undefined}
+      onClick={() => openFeedback(course ?? "bug")}
+    >
       <Flag aria-hidden="true" className="size-4 shrink-0" />
-      {t("fb.reportErrors")}
+      {!iconOnly && <span className={iconOnlyOnPhone ? "hidden sm:inline" : ""}>{label}</span>}
     </button>
   );
 }
@@ -47,14 +71,15 @@ export function FeedbackForm({ page: propPage, initialCategory = "feature", onSu
   const { t } = useT();
   const currentPath = usePathname();
   const page = propPage ?? currentPath ?? "/";
-  const [rating, setRating] = useState(0);
+  // Không hỏi "Mức độ hài lòng" ở biểu mẫu này nữa (đã có widget đánh giá nhanh riêng) —
+  // gửi rating trung tính cố định để khớp yêu cầu bắt buộc của backend.
+  const NEUTRAL_RATING = 3;
   const [category, setCategory] = useState<string>(initialCategory);
   const [message, setMessage] = useState("");
   const [contact, setContact] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "queued" | "error">("idle");
 
   const reset = () => {
-    setRating(0);
     setCategory(initialCategory);
     setMessage("");
     setContact("");
@@ -63,12 +88,12 @@ export function FeedbackForm({ page: propPage, initialCategory = "feature", onSu
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!rating || !message.trim()) return;
+    if (!message.trim()) return;
     setStatus("sending");
     try {
       const res = await api.feedback({
         page,
-        rating,
+        rating: NEUTRAL_RATING,
         category,
         message: message.trim(),
         ...(contact.trim() ? { contact: contact.trim() } : {}),
@@ -110,27 +135,6 @@ export function FeedbackForm({ page: propPage, initialCategory = "feature", onSu
 
   return (
     <form onSubmit={submit} className={`space-y-3 ${className}`}>
-      <div>
-        <span className="label">{t("fb.satisfaction")}</span>
-        <div className="flex gap-1" role="radiogroup" aria-label={t("fb.ratingAria")}>
-          {[1, 2, 3, 4, 5].map((n) => (
-            <button
-              type="button"
-              key={n}
-              role="radio"
-              aria-checked={rating === n}
-              aria-label={t("rev.stars", { n })}
-              onClick={() => setRating(n)}
-              className={`h-9 w-9 rounded-lg text-xl transition-colors ${
-                n <= rating ? "text-amber-500" : "text-slate-300 hover:text-amber-400 dark:text-slate-600"
-              }`}
-            >
-              ★
-            </button>
-          ))}
-        </div>
-      </div>
-
       <div>
         <label className="label" htmlFor="fb-cat">
           {t("fb.category")}
@@ -180,7 +184,7 @@ export function FeedbackForm({ page: propPage, initialCategory = "feature", onSu
       <button
         type="submit"
         className="btn-primary w-full"
-        disabled={!rating || !message.trim() || status === "sending"}
+        disabled={!message.trim() || status === "sending"}
       >
         {status === "sending" ? t("fb.sending") : t("fb.submit")}
       </button>

@@ -2,9 +2,8 @@ import type { ClassSection, Lesson } from "./types";
 import type { TimetableModuleInfo } from "./store";
 import type { Lang } from "@/i18n";
 import { moduleName } from "@/i18n/names";
+import { weekdayName } from "@/i18n";
 import { formatDateVi } from "./dates";
-import { periodEndTime, periodStartTime } from "./periods";
-import { parseSchedules } from "./schedule";
 
 export interface TimetableExportRow {
   faculty: string;
@@ -30,59 +29,27 @@ export const EXPORT_HEADERS = [
   "Lecturer's email form database",
 ] as const;
 
-export function formatTime12h(timeStr?: string | null): string {
-  if (!timeStr) return "";
-  const match = /^(\d{1,2})[:hH](\d{2})?/.exec(timeStr.trim());
-  if (!match) return timeStr.trim();
-  const hours24 = parseInt(match[1], 10);
-  const minutes = match[2] ? match[2].padStart(2, "0") : "00";
-  const period = hours24 >= 12 ? "PM" : "AM";
-  const hours12 = hours24 % 12 === 0 ? 12 : hours24 % 12;
-  const hoursFormatted = String(hours12).padStart(2, "0");
-  return `${hoursFormatted}:${minutes} ${period}`;
-}
-
-export const ENGLISH_WEEKDAYS: Record<number, string> = {
-  2: "Monday",
-  3: "Tuesday",
-  4: "Wednesday",
-  5: "Thursday",
-  6: "Friday",
-  7: "Saturday",
-  8: "Sunday",
-};
-
 export function formatLessonSchedule(
   lesson: Lesson,
-  _t?: (k: string, p?: Record<string, string | number>) => string,
+  t: (k: string, p?: Record<string, string | number>) => string,
 ): string {
-  const day = ENGLISH_WEEKDAYS[lesson.weekday] || "";
-  const start = lesson.start_time || (lesson.start_period ? periodStartTime(lesson.start_period) : "");
-  const end = lesson.end_time || (lesson.end_period ? periodEndTime(lesson.end_period) : "");
-
-  const start12 = formatTime12h(start);
-  const end12 = formatTime12h(end);
-
-  const timeStr = start12 && end12
-    ? `${start12} - ${end12}`
-    : (start12 || end12 || "");
-
-  if (day && timeStr) {
-    return `${day}, ${timeStr}`;
-  }
-  return day || timeStr || "";
+  const day = weekdayName(t, lesson.weekday);
+  const periods = (lesson.start_period && lesson.end_period)
+    ? t("det.periods", { s: lesson.start_period, e: lesson.end_period })
+    : "";
+  const time = (lesson.start_time && lesson.end_time)
+    ? `(${lesson.start_time} - ${lesson.end_time})`
+    : "";
+  const parts = [day, periods, time].filter(Boolean);
+  return parts.join(", ").replace(", (", " (");
 }
 
 export function formatSectionSchedule(
   section: ClassSection,
-  t?: (k: string, p?: Record<string, string | number>) => string,
+  t: (k: string, p?: Record<string, string | number>) => string,
 ): string {
-  let lessons = section.lessons;
-  if ((!lessons || lessons.length === 0) && section.schedule_raw) {
-    lessons = parseSchedules(section.schedule_raw);
-  }
-  if (lessons && lessons.length > 0) {
-    return lessons.map((l) => formatLessonSchedule(l, t)).filter(Boolean).join("; ");
+  if (section.lessons && section.lessons.length > 0) {
+    return section.lessons.map((l) => formatLessonSchedule(l, t)).join("; ");
   }
   return section.schedule_raw || "";
 }

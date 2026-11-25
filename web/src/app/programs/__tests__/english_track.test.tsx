@@ -6,6 +6,7 @@ import ProgramDetailPage from "../[id]/page";
 vi.mock("next/navigation", () => ({
   useParams: () => ({ id: "K25410E" }),
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  usePathname: () => "/programs/K25410E",
   useSearchParams: () => new URLSearchParams(),
 }));
 

@@ -5,6 +5,7 @@ Depends only on fastapi/pydantic and the app.rag package.
 from __future__ import annotations
 
 import hmac
+import re
 from datetime import datetime, timedelta, timezone
 from functools import partial
 from typing import Annotated, Any, Literal
@@ -89,7 +90,9 @@ def expiring_regulations(within_days: int = Query(90, ge=0, le=3650)) -> list[di
 @limiter.limit(heavy_rate_limit)
 def ask_regulations(req: RegulationAskRequest, request: Request) -> JSONResponse:
     question = normalize_search(req.question).rstrip("?!.")
-    if question in {"ban la ai", "gioi thieu ve ban", "gioi thieu ban than", "who are you", "introduce yourself"}:
+    # Questions about the assistant itself ("anh là ai đó?", "bạn là gì") never go to regulation retrieval.
+    about_assistant = re.search(r"\b(?:ban|anh|chi|bot|ad|may)\s+la\s+(?:ai|gi)\b", question) is not None
+    if about_assistant or question in {"gioi thieu ve ban", "gioi thieu ban than", "who are you", "introduce yourself"}:
         answer = ("I’m UELPATH’s assistant for academic regulations and the study information you’ve selected."
                   if question in {"who are you", "introduce yourself"}
                   else "Mình là trợ lý UELPATH. Mình có thể tra quy chế học vụ kèm nguồn trích dẫn và trả lời về hồ sơ, thời khóa biểu hoặc kế hoạch bạn đã chọn.")

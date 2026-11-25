@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactElement } from "react";
 import { Check, ChevronDown } from "lucide-react";
+import { useMaxVisibleItems } from "@/lib/useMaxVisibleItems";
 
 export interface MenuOption {
   value: string;
@@ -31,7 +32,9 @@ export function SelectMenu({
 }) {
   const uid = useId();
   const ref = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
   const [open, setOpen] = useState(false);
+  useMaxVisibleItems(listRef, open);
   const [active, setActive] = useState(0);
   const idx = options.findIndex((o) => o.value === value);
   const current = idx >= 0 ? options[idx] : undefined;
@@ -106,11 +109,15 @@ export function SelectMenu({
         onMouseEnter={() => setActive(i)}
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => pick(i)}
-        className={`flex cursor-pointer items-center justify-between gap-6 rounded-lg px-3 py-2 text-sm transition-colors ${
+        className={`flex cursor-pointer items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm transition-colors desk:gap-6 desk:border-0 ${
           highlighted ? "bg-brand-50 dark:bg-brand-900/40" : ""
-        } ${selected ? "font-semibold text-brand-700 dark:text-brand-300" : "text-slate-700 dark:text-slate-200"}`}
+        } ${
+          selected
+            ? "border-brand-300 font-semibold text-brand-700 dark:border-brand-700 dark:text-brand-300"
+            : "border-slate-200 text-slate-700 dark:border-slate-700 dark:text-slate-200"
+        }`}
       >
-        <span className="whitespace-nowrap">{o.label}</span>
+        <span className="min-w-0 whitespace-normal break-words desk:whitespace-nowrap">{o.label}</span>
         {selected && <Check className="h-4 w-4 shrink-0" aria-hidden />}
       </li>,
     );
@@ -131,14 +138,15 @@ export function SelectMenu({
           open ? "border-brand-500 ring-2 ring-brand-500/20" : "border-slate-200 dark:border-slate-700"
         }`}
       >
-        <span className="truncate">{current ? current.display ?? current.label : "—"}</span>
+        <span className="min-w-0 whitespace-normal break-words text-left desk:truncate">{current ? current.display ?? current.label : "—"}</span>
         <ChevronDown className={`h-4 w-4 shrink-0 text-slate-500 transition-transform ${open ? "rotate-180" : ""}`} aria-hidden />
       </button>
       {open && (
         <ul
+          ref={listRef}
           id={`${uid}-list`}
           role="listbox"
-          className="absolute left-1/2 z-40 mt-2 max-h-80 min-w-full w-max -translate-x-1/2 overflow-auto rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl dark:border-slate-700 dark:bg-slate-900"
+          className="absolute left-0 right-0 z-40 mt-2 max-h-80 space-y-1.5 overflow-auto rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl dark:border-slate-700 dark:bg-slate-900 desk:left-1/2 desk:right-auto desk:w-max desk:min-w-full desk:-translate-x-1/2 desk:space-y-0"
         >
           {rows}
         </ul>

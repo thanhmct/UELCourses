@@ -11,9 +11,8 @@ import { useApi } from "@/lib/useApi";
 import { useDebounced } from "@/lib/useDebounced";
 import { activeToken, finishedCodes, parseCodes, rankSuggestions, replaceActiveToken } from "@/lib/codeTokens";
 
-export function BatchModuleAdd({ onAdd, destination }: {
+export function BatchModuleAdd({ onAdd }: {
   onAdd: (module: PlannedModule) => void;
-  destination: string;
 }) {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -102,7 +101,6 @@ export function BatchModuleAdd({ onAdd, destination }: {
         </div>
       )}
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs text-slate-500">{t("pl.batchDestination", { name: destination })}</span>
         <button type="button" className="btn-primary" onClick={add} disabled={busy || !text.trim()}>
           {busy ? t("gpa.add.adding") : t("gpa.add.submit")}
         </button>

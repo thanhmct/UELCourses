@@ -1,6 +1,8 @@
 "use client";
 
 import {
+  memo,
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -43,13 +45,14 @@ interface HoverCardState {
   place: CampusPlace;
   left: number;
   top: number;
+  width: number;
 }
 
 interface PlaceGroupProps {
   place: CampusPlace;
   label: string;
   bounds: CampusMapRect;
-  target: CampusPlace | null;
+  active: boolean;
   onPick: (place: CampusPlace) => void;
   onHover: (
     place: CampusPlace,
@@ -60,9 +63,45 @@ interface PlaceGroupProps {
   children: ReactNode;
 }
 
+interface PointerPoint {
+  clientX: number;
+  clientY: number;
+}
+
+interface GestureState {
+  mode: "pending" | "pan" | "pinch";
+  bounds: DOMRect | null;
+  startClientX: number;
+  startClientY: number;
+  startRect: CampusMapRect;
+  scale: number;
+  pinchDist0: number;
+  pinchWorldMidX: number;
+  pinchWorldMidY: number;
+  pinchStartRect: CampusMapRect;
+}
+
 const GATE_HIT_SIZE = 40;
 const GATE_LABEL_WIDTH = 112;
 const MIN_VIEWBOX_WIDTH = 260;
+const MAP_ASPECT = CAMPUS_MAP_WIDTH / CAMPUS_MAP_HEIGHT;
+
+const AREA_ENTRIES = Object.entries(CAMPUS_AREA_RECTS) as [CampusAreaPlace, CampusMapRect][];
+const GATE_ENTRIES = Object.entries(CAMPUS_GATES) as [
+  CampusGatePlace,
+  (typeof CAMPUS_GATES)[CampusGatePlace],
+][];
+const GATE_BOUNDS_BY_PLACE = Object.fromEntries(
+  GATE_ENTRIES.map(([place, gate]) => [
+    place,
+    {
+      x: gate.x - GATE_HIT_SIZE / 2,
+      y: gate.y - GATE_HIT_SIZE / 2,
+      width: GATE_HIT_SIZE,
+      height: GATE_HIT_SIZE,
+    },
+  ]),
+) as Record<CampusGatePlace, CampusMapRect>;
 
 function clamp(value: number, minimum: number, maximum: number) {
   return Math.min(Math.max(value, minimum), maximum);
@@ -70,16 +109,15 @@ function clamp(value: number, minimum: number, maximum: number) {
 
 function zoomViewBox(place: CampusPlace): string {
   const bounds = campusPlaceBounds(place);
-  const mapAspect = CAMPUS_MAP_WIDTH / CAMPUS_MAP_HEIGHT;
   const centerX = bounds.x + bounds.width / 2;
   const centerY = bounds.y + bounds.height / 2;
   let width = bounds.width + CAMPUS_MAP_ZOOM_PADDING * 2;
   let height = bounds.height + CAMPUS_MAP_ZOOM_PADDING * 2;
 
-  if (width / height > mapAspect) {
-    height = width / mapAspect;
+  if (width / height > MAP_ASPECT) {
+    height = width / MAP_ASPECT;
   } else {
-    width = height * mapAspect;
+    width = height * MAP_ASPECT;
   }
 
   width = Math.min(width, CAMPUS_MAP_WIDTH);
@@ -126,9 +164,8 @@ function zoomRect(
   anchorX = 0.5,
   anchorY = 0.5,
 ): CampusMapRect {
-  const mapAspect = CAMPUS_MAP_WIDTH / CAMPUS_MAP_HEIGHT;
   const width = clamp(rect.width * factor, MIN_VIEWBOX_WIDTH, CAMPUS_MAP_WIDTH);
-  const height = width / mapAspect;
+  const height = width / MAP_ASPECT;
   const focusX = rect.x + rect.width * anchorX;
   const focusY = rect.y + rect.height * anchorY;
   return {
@@ -139,17 +176,83 @@ function zoomRect(
   };
 }
 
-function PlaceGroup({
+function createPanGesture(
+  pointer: PointerPoint,
+  rect: CampusMapRect,
+  bounds: DOMRect,
+  fill: boolean,
+): GestureState {
+  const clamped = clampViewBox(rect, bounds, fill);
+  return {
+    mode: "pan",
+    bounds,
+    startClientX: pointer.clientX,
+    startClientY: pointer.clientY,
+    startRect: clamped,
+    scale: mapScale(clamped, bounds, fill),
+    pinchDist0: 0,
+    pinchWorldMidX: 0,
+    pinchWorldMidY: 0,
+    pinchStartRect: clamped,
+  };
+}
+
+function createPinchGesture(
+  p1: PointerPoint,
+  p2: PointerPoint,
+  rect: CampusMapRect,
+  bounds: DOMRect,
+  fill: boolean,
+): GestureState {
+  const clamped = clampViewBox(rect, bounds, fill);
+  const scale0 = mapScale(clamped, bounds, fill);
+  const mid0X = (p1.clientX + p2.clientX) / 2;
+  const mid0Y = (p1.clientY + p2.clientY) / 2;
+  const dist0 = Math.hypot(p2.clientX - p1.clientX, p2.clientY - p1.clientY);
+  const worldMidX = clamped.x + clamped.width / 2 + (mid0X - bounds.left - bounds.width / 2) / scale0;
+  const worldMidY = clamped.y + clamped.height / 2 + (mid0Y - bounds.top - bounds.height / 2) / scale0;
+  return {
+    mode: "pinch",
+    bounds,
+    startClientX: mid0X,
+    startClientY: mid0Y,
+    startRect: clamped,
+    scale: scale0,
+    pinchDist0: dist0,
+    pinchWorldMidX: worldMidX,
+    pinchWorldMidY: worldMidY,
+    pinchStartRect: clamped,
+  };
+}
+
+function trySetPointerCapture(element: Element, pointerId: number) {
+  try {
+    (element as SVGSVGElement).setPointerCapture?.(pointerId);
+  } catch {
+    // Ignore synthetic or already-ended pointers.
+  }
+}
+
+function tryReleasePointerCapture(element: Element, pointerId: number) {
+  try {
+    if ((element as SVGSVGElement).hasPointerCapture?.(pointerId)) {
+      (element as SVGSVGElement).releasePointerCapture(pointerId);
+    }
+  } catch {
+    // Ignore if capture was already released.
+  }
+}
+
+const PlaceGroup = memo(function PlaceGroup({
   place,
   label,
   bounds,
-  target,
+  active,
   onPick,
   onHover,
   onLeave,
   children,
 }: PlaceGroupProps) {
-  const active = target === place;
   const centerX = bounds.x + bounds.width / 2;
   const centerY = bounds.y + bounds.height / 2;
   const pinY = bounds.y - 14;
@@ -217,9 +320,15 @@ function PlaceGroup({
       )}
     </g>
   );
-}
+});
 
-function BuildingLabel({ rect, children }: { rect: CampusMapRect; children: ReactNode }) {
+const BuildingLabel = memo(function BuildingLabel({
+  rect,
+  children,
+}: {
+  rect: CampusMapRect;
+  children: ReactNode;
+}) {
   return (
     <text
       x={rect.x + rect.width / 2}
@@ -237,18 +346,26 @@ function BuildingLabel({ rect, children }: { rect: CampusMapRect; children: Reac
       {children}
     </text>
   );
-}
+});
 
-function GateMarker({ x, y }: { x: number; y: number }) {
+const GateMarker = memo(function GateMarker({ x, y }: { x: number; y: number }) {
   return (
     <g transform={`translate(${x} ${y})`} pointerEvents="none" aria-hidden="true">
       <circle r="12" className="fill-white/95 stroke-blue-700" strokeWidth="3" />
       <path d="M-6 6 V-5 M6 6 V-5 M-6 -4 Q0 -11 6 -4" fill="none" className="stroke-blue-700" strokeWidth="2.5" />
     </g>
   );
-}
+});
 
-function GateLabel({ x, y, children }: { x: number; y: number; children: ReactNode }) {
+const GateLabel = memo(function GateLabel({
+  x,
+  y,
+  children,
+}: {
+  x: number;
+  y: number;
+  children: ReactNode;
+}) {
   return (
     <g transform={`translate(${x - GATE_LABEL_WIDTH / 2} ${y - 15})`} pointerEvents="none">
       <rect width={GATE_LABEL_WIDTH} height="30" rx="15" className="fill-white/95 stroke-slate-400" />
@@ -264,7 +381,84 @@ function GateLabel({ x, y, children }: { x: number; y: number; children: ReactNo
       </text>
     </g>
   );
-}
+});
+
+const AreaPlace = memo(function AreaPlace({
+  place,
+  label,
+  bounds,
+  active,
+  onPick,
+  onHover,
+  onLeave,
+}: {
+  place: CampusAreaPlace;
+  label: string;
+  bounds: CampusMapRect;
+  active: boolean;
+  onPick: (place: CampusPlace) => void;
+  onHover: (
+    place: CampusPlace,
+    element: SVGGElement,
+    pointer?: { clientX: number; clientY: number },
+  ) => void;
+  onLeave: () => void;
+}) {
+  return (
+    <PlaceGroup
+      place={place}
+      label={label}
+      bounds={bounds}
+      active={active}
+      onPick={onPick}
+      onHover={onHover}
+      onLeave={onLeave}
+    >
+      <BuildingLabel rect={bounds}>{label}</BuildingLabel>
+    </PlaceGroup>
+  );
+});
+
+const GatePlace = memo(function GatePlace({
+  place,
+  label,
+  gate,
+  bounds,
+  active,
+  onPick,
+  onHover,
+  onLeave,
+}: {
+  place: CampusGatePlace;
+  label: string;
+  gate: (typeof CAMPUS_GATES)[CampusGatePlace];
+  bounds: CampusMapRect;
+  active: boolean;
+  onPick: (place: CampusPlace) => void;
+  onHover: (
+    place: CampusPlace,
+    element: SVGGElement,
+    pointer?: { clientX: number; clientY: number },
+  ) => void;
+  onLeave: () => void;
+}) {
+  return (
+    <PlaceGroup
+      place={place}
+      label={label}
+      bounds={bounds}
+      active={active}
+      onPick={onPick}
+      onHover={onHover}
+      onLeave={onLeave}
+    >
+      <GateMarker x={gate.x} y={gate.y} />
+      <GateLabel x={gate.x + gate.labelDx} y={gate.y + gate.labelDy}>
+        {label}
+      </GateLabel>
+    </PlaceGroup>
+  );
+});
 
 interface RoadHintState {
   text: string;
@@ -272,13 +466,13 @@ interface RoadHintState {
   top: number;
 }
 
-function RoadLabels({
+const RoadLabels = memo(function RoadLabels({
   lang,
   onHint,
   onLeave,
 }: {
   lang: Lang;
-  onHint: (text: string, pointer: { clientX: number; clientY: number }) => void;
+  onHint: (text: string, pointer: { clientX: number; clientY: number; pointerType?: string }) => void;
   onLeave: () => void;
 }) {
   return (
@@ -317,21 +511,143 @@ function RoadLabels({
       })}
     </g>
   );
-}
+});
+
+const CampusMapBackground = memo(function CampusMapBackground() {
+  return (
+    <>
+      <defs>
+        <pattern id="campus-construction-hatch" width="14" height="14" patternUnits="userSpaceOnUse" patternTransform="rotate(35)">
+          <rect width="14" height="14" fill="rgba(245, 158, 11, .08)" />
+          <rect width="3" height="14" fill="rgba(180, 83, 9, .28)" />
+        </pattern>
+      </defs>
+      <image
+        href="/campus/campus-base.webp"
+        width={CAMPUS_MAP_WIDTH}
+        height={CAMPUS_MAP_HEIGHT}
+        preserveAspectRatio="xMidYMid meet"
+        {...{ decoding: "async" }}
+      />
+    </>
+  );
+});
+
+const ConstructionB3 = memo(function ConstructionB3({
+  lang,
+  ariaLabel,
+}: {
+  lang: Lang;
+  ariaLabel: string;
+}) {
+  return (
+    <g data-construction="B3" aria-label={ariaLabel} pointerEvents="none">
+      <rect
+        x={CAMPUS_B3_RECT.x}
+        y={CAMPUS_B3_RECT.y}
+        width={CAMPUS_B3_RECT.width}
+        height={CAMPUS_B3_RECT.height}
+        rx="4"
+        fill="url(#campus-construction-hatch)"
+        className="stroke-amber-700/60"
+        strokeWidth="2"
+      />
+      <text
+        x={CAMPUS_B3_RECT.x + CAMPUS_B3_RECT.width / 2}
+        y={CAMPUS_B3_RECT.y + CAMPUS_B3_RECT.height / 2 - 5}
+        textAnchor="middle"
+        fill="#78350f"
+        stroke="white"
+        strokeWidth="4"
+        paintOrder="stroke"
+        fontSize="13"
+        fontWeight="700"
+      >
+        <tspan x={CAMPUS_B3_RECT.x + CAMPUS_B3_RECT.width / 2} dy="0">
+          {lang === "vi" ? "Khu vực thi công" : "Building B3"}
+        </tspan>
+        <tspan x={CAMPUS_B3_RECT.x + CAMPUS_B3_RECT.width / 2} dy="17">
+          {lang === "vi" ? "Tòa B3" : "(under construction)"}
+        </tspan>
+      </text>
+    </g>
+  );
+});
+
+const CampusMapLayers = memo(function CampusMapLayers({
+  lang,
+  target,
+  t,
+  onPick,
+  onHover,
+  onLeave,
+  onRoadHint,
+  onRoadLeave,
+}: {
+  lang: Lang;
+  target: CampusPlace | null;
+  t: (key: string) => string;
+  onPick: (place: CampusPlace) => void;
+  onHover: (
+    place: CampusPlace,
+    element: SVGGElement,
+    pointer?: { clientX: number; clientY: number },
+  ) => void;
+  onLeave: () => void;
+  onRoadHint: (text: string, pointer: { clientX: number; clientY: number; pointerType?: string }) => void;
+  onRoadLeave: () => void;
+}) {
+  return (
+    <>
+      <RoadLabels lang={lang} onHint={onRoadHint} onLeave={onRoadLeave} />
+
+      {AREA_ENTRIES.map(([place, rect]) => (
+        <AreaPlace
+          key={place}
+          place={place}
+          label={t(CAMPUS_PLACES[place].nameKey)}
+          bounds={rect}
+          active={target === place}
+          onPick={onPick}
+          onHover={onHover}
+          onLeave={onLeave}
+        />
+      ))}
+
+      {GATE_ENTRIES.map(([place, gate]) => (
+        <GatePlace
+          key={place}
+          place={place}
+          label={t(CAMPUS_PLACES[place].nameKey)}
+          gate={gate}
+          bounds={GATE_BOUNDS_BY_PLACE[place]}
+          active={target === place}
+          onPick={onPick}
+          onHover={onHover}
+          onLeave={onLeave}
+        />
+      ))}
+
+      <ConstructionB3 lang={lang} ariaLabel={t("campus.buildingB3")} />
+    </>
+  );
+});
 
 export function CampusMap({ target, onPick, className = "", fill = false }: CampusMapProps) {
   const { t, lang } = useT();
   const mapRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+  const onPickRef = useRef(onPick);
   const [zoomedPlace, setZoomedPlace] = useState<CampusPlace | null>(target);
   const [manualViewBox, setManualViewBox] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
-  const dragState = useRef<{
-    pointerId: number;
-    clientX: number;
-    clientY: number;
-    viewBox: CampusMapRect;
-  } | null>(null);
+  const draggingRef = useRef(false);
+  const pointersRef = useRef<Map<number, PointerPoint>>(new Map());
+  const gestureRef = useRef<GestureState | null>(null);
+  const currentRectRef = useRef<CampusMapRect | null>(null);
+  const pendingRect = useRef<CampusMapRect | null>(null);
+  const rafId = useRef<number | null>(null);
+  const lastPointerTypeRef = useRef<string | null>(null);
   const suppressPick = useRef(false);
   const [hoverCard, setHoverCard] = useState<HoverCardState | null>(null);
   const [roadHint, setRoadHint] = useState<RoadHintState | null>(null);
@@ -341,8 +657,15 @@ export function CampusMap({ target, onPick, className = "", fill = false }: Camp
   const fullView = viewRect.width >= CAMPUS_MAP_WIDTH;
   const previousViewBox = useRef(CAMPUS_MAP_FULL_VIEW);
   const animationFrom = previousViewBox.current;
-  const reducedMotion = typeof window !== "undefined"
-    && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  const [reducedMotion] = useState(
+    () =>
+      typeof window !== "undefined"
+      && Boolean(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches),
+  );
+
+  useEffect(() => {
+    onPickRef.current = onPick;
+  }, [onPick]);
 
   useEffect(() => {
     setZoomedPlace(target);
@@ -365,15 +688,24 @@ export function CampusMap({ target, onPick, className = "", fill = false }: Camp
     return () => observer.disconnect();
   }, [fill]);
 
-  const pick = (place: CampusPlace) => {
+  useEffect(() => {
+    return () => {
+      if (rafId.current !== null) {
+        cancelAnimationFrame(rafId.current);
+      }
+    };
+  }, []);
+
+  const pick = useCallback((place: CampusPlace) => {
     if (suppressPick.current) {
       suppressPick.current = false;
       return;
     }
     setManualViewBox(null);
     setZoomedPlace(place);
-    onPick?.(place);
-  };
+    onPickRef.current?.(place);
+  }, []);
+
   const setManualZoom = (next: CampusMapRect) => {
     setZoomedPlace(null);
     setManualViewBox(formatViewBox(clampViewBox(next, svgRef.current?.getBoundingClientRect(), fill)));
@@ -390,81 +722,269 @@ export function CampusMap({ target, onPick, className = "", fill = false }: Camp
     const anchorY = clamp(0.5 + (event.clientY - bounds.top - bounds.height / 2) / (viewRect.height * scale), 0, 1);
     zoomBy(event.deltaY < 0 ? 0.82 : 1.22, anchorX, anchorY);
   };
+
+  const beginGestureState = (initialRect: CampusMapRect) => {
+    draggingRef.current = true;
+    suppressPick.current = true;
+    setDragging(true);
+    setHoverCard((prev) => (prev ? null : prev));
+    setRoadHint((prev) => (prev ? null : prev));
+    setZoomedPlace(null);
+    setManualViewBox(formatViewBox(initialRect));
+  };
+
   const handlePointerDown = (event: PointerEvent<SVGSVGElement>) => {
     if (event.button !== 0) return;
-    dragState.current = {
-      pointerId: event.pointerId,
-      clientX: event.clientX,
-      clientY: event.clientY,
-      viewBox: viewRect,
-    };
-    suppressPick.current = false;
-  };
-  const handlePointerMove = (event: PointerEvent<SVGSVGElement>) => {
-    const start = dragState.current;
-    const svg = svgRef.current;
-    if (!start || !svg || start.pointerId !== event.pointerId) return;
-    const bounds = svg.getBoundingClientRect();
-    if (!bounds.width || !bounds.height) return;
-    const dx = event.clientX - start.clientX;
-    const dy = event.clientY - start.clientY;
-    if (!dragging && Math.hypot(dx, dy) < 3) return;
-    if (!dragging) event.currentTarget.setPointerCapture?.(event.pointerId);
-    setDragging(true);
-    suppressPick.current = true;
-    setHoverCard(null);
-    const scale = mapScale(start.viewBox, bounds, fill);
-    const next = {
-      ...start.viewBox,
-      x: start.viewBox.x - dx / scale,
-      y: start.viewBox.y - dy / scale,
-    };
-    setManualZoom(next);
-  };
-  const stopDragging = (event: PointerEvent<SVGSVGElement>) => {
-    if (dragState.current?.pointerId !== event.pointerId) return;
-    dragState.current = null;
-    setDragging(false);
-    if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
+    if (event.pointerType) {
+      lastPointerTypeRef.current = event.pointerType;
     }
+    if (event.pointerType === "touch") {
+      setHoverCard((prev) => (prev ? null : prev));
+      setRoadHint((prev) => (prev ? null : prev));
+    }
+
+    const point: PointerPoint = { clientX: event.clientX, clientY: event.clientY };
+    pointersRef.current.set(event.pointerId, point);
+
+    if (pointersRef.current.size === 1) {
+      currentRectRef.current = viewRect;
+      pendingRect.current = null;
+      suppressPick.current = false;
+      gestureRef.current = {
+        mode: "pending",
+        bounds: null,
+        startClientX: point.clientX,
+        startClientY: point.clientY,
+        startRect: viewRect,
+        scale: 1,
+        pinchDist0: 0,
+        pinchWorldMidX: 0,
+        pinchWorldMidY: 0,
+        pinchStartRect: viewRect,
+      };
+      return;
+    }
+
+    const svg = svgRef.current;
+    if (!svg) return;
+    const prevGesture = gestureRef.current;
+    const bounds = prevGesture?.bounds ?? svg.getBoundingClientRect();
+    if (!bounds.width || !bounds.height) return;
+
+    if (rafId.current !== null) {
+      cancelAnimationFrame(rafId.current);
+      rafId.current = null;
+    }
+
+    for (const id of pointersRef.current.keys()) {
+      trySetPointerCapture(event.currentTarget, id);
+    }
+
+    const activeRect = clampViewBox(currentRectRef.current ?? viewRect, bounds, fill);
+    svg.setAttribute("viewBox", formatViewBox(activeRect));
+    if (!prevGesture || prevGesture.mode === "pending") {
+      beginGestureState(activeRect);
+    }
+    if (pointersRef.current.size === 2) {
+      const [p1, p2] = Array.from(pointersRef.current.values());
+      gestureRef.current = createPinchGesture(p1, p2, activeRect, bounds, fill);
+      currentRectRef.current = activeRect;
+      pendingRect.current = activeRect;
+    }
+  };
+
+  const handlePointerMove = (event: PointerEvent<SVGSVGElement>) => {
+    if (event.pointerType) {
+      lastPointerTypeRef.current = event.pointerType;
+    }
+    if (!pointersRef.current.has(event.pointerId)) return;
+    pointersRef.current.set(event.pointerId, { clientX: event.clientX, clientY: event.clientY });
+
+    const gesture = gestureRef.current;
+    const svg = svgRef.current;
+    if (!gesture || !svg) return;
+
+    if (gesture.mode === "pending") {
+      const dx = event.clientX - gesture.startClientX;
+      const dy = event.clientY - gesture.startClientY;
+      if (Math.hypot(dx, dy) < 3) return;
+      const bounds = svg.getBoundingClientRect();
+      if (!bounds.width || !bounds.height) return;
+      trySetPointerCapture(event.currentTarget, event.pointerId);
+      const startRect = clampViewBox(gesture.startRect, bounds, fill);
+      gesture.mode = "pan";
+      gesture.bounds = bounds;
+      gesture.startRect = startRect;
+      gesture.scale = mapScale(startRect, bounds, fill);
+      beginGestureState(startRect);
+    }
+
+    const bounds = gesture.bounds;
+    if (!bounds) return;
+
+    let next: CampusMapRect;
+    if (gesture.mode === "pinch" && pointersRef.current.size >= 2) {
+      const [p1, p2] = Array.from(pointersRef.current.values());
+      const midX = (p1.clientX + p2.clientX) / 2;
+      const midY = (p1.clientY + p2.clientY) / 2;
+      const dist = Math.hypot(p2.clientX - p1.clientX, p2.clientY - p1.clientY);
+      if (gesture.pinchDist0 < 1 && dist >= 1) {
+        gesture.pinchDist0 = dist;
+      }
+      const factor = gesture.pinchDist0 >= 1 && dist >= 1 ? gesture.pinchDist0 / dist : 1;
+      const width = clamp(gesture.pinchStartRect.width * factor, MIN_VIEWBOX_WIDTH, CAMPUS_MAP_WIDTH);
+      const height = width / MAP_ASPECT;
+      const nextScale = mapScale({ x: 0, y: 0, width, height }, bounds, fill);
+      const x = gesture.pinchWorldMidX - width / 2 - (midX - bounds.left - bounds.width / 2) / nextScale;
+      const y = gesture.pinchWorldMidY - height / 2 - (midY - bounds.top - bounds.height / 2) / nextScale;
+      next = clampViewBox({ x, y, width, height }, bounds, fill);
+    } else {
+      const ptr = pointersRef.current.values().next().value;
+      if (!ptr) return;
+      const dx = ptr.clientX - gesture.startClientX;
+      const dy = ptr.clientY - gesture.startClientY;
+      next = clampViewBox(
+        {
+          ...gesture.startRect,
+          x: gesture.startRect.x - dx / gesture.scale,
+          y: gesture.startRect.y - dy / gesture.scale,
+        },
+        bounds,
+        fill,
+      );
+    }
+
+    currentRectRef.current = next;
+    pendingRect.current = next;
+    if (rafId.current === null) {
+      rafId.current = requestAnimationFrame(() => {
+        rafId.current = null;
+        if (pendingRect.current && svgRef.current) {
+          svgRef.current.setAttribute("viewBox", formatViewBox(pendingRect.current));
+        }
+      });
+    }
+  };
+
+  const stopDragging = (event: PointerEvent<SVGSVGElement>) => {
+    if (!pointersRef.current.has(event.pointerId)) return;
+    pointersRef.current.delete(event.pointerId);
+    tryReleasePointerCapture(event.currentTarget, event.pointerId);
+
+    const gesture = gestureRef.current;
+    if (rafId.current !== null) {
+      cancelAnimationFrame(rafId.current);
+      rafId.current = null;
+    }
+
+    const remaining = pointersRef.current.size;
+    if (remaining > 0 && gesture && gesture.bounds) {
+      const activeRect = clampViewBox(
+        pendingRect.current ?? currentRectRef.current ?? gesture.startRect,
+        gesture.bounds,
+        fill,
+      );
+      svgRef.current?.setAttribute("viewBox", formatViewBox(activeRect));
+      currentRectRef.current = activeRect;
+      pendingRect.current = activeRect;
+
+      if (remaining >= 2) {
+        const [p1, p2] = Array.from(pointersRef.current.values());
+        gestureRef.current = createPinchGesture(p1, p2, activeRect, gesture.bounds, fill);
+      } else {
+        const [remainingId, remainingPoint] = Array.from(pointersRef.current.entries())[0];
+        trySetPointerCapture(event.currentTarget, remainingId);
+        gestureRef.current = createPanGesture(remainingPoint, activeRect, gesture.bounds, fill);
+      }
+      return;
+    }
+
+    if (gesture && gesture.mode !== "pending" && gesture.bounds) {
+      const finalViewBox = formatViewBox(
+        clampViewBox(pendingRect.current ?? currentRectRef.current ?? gesture.startRect, gesture.bounds, fill),
+      );
+      svgRef.current?.setAttribute("viewBox", finalViewBox);
+      setManualViewBox(finalViewBox);
+      setDragging(false);
+    }
+
+    draggingRef.current = false;
+    gestureRef.current = null;
+    pendingRect.current = null;
+    currentRectRef.current = null;
     if (suppressPick.current) {
       window.setTimeout(() => {
         suppressPick.current = false;
       }, 0);
     }
   };
-  const label = (place: CampusPlace) => t(CAMPUS_PLACES[place].nameKey);
-  const showHover = (
-    place: CampusPlace,
-    element: SVGGElement,
-    pointer?: { clientX: number; clientY: number },
-  ) => {
-    const mapBounds = mapRef.current?.getBoundingClientRect();
-    const elementBounds = element.getBoundingClientRect();
-    if (!mapBounds) return;
-    const pointerX = pointer && pointer.clientX > 0
-      ? pointer.clientX - mapBounds.left
-      : elementBounds.left + elementBounds.width / 2 - mapBounds.left;
-    const pointerY = pointer && pointer.clientY > 0
-      ? pointer.clientY - mapBounds.top
-      : elementBounds.top + elementBounds.height / 2 - mapBounds.top;
-    setHoverCard({
-      place,
-      left: clamp(pointerX + 12, 8, Math.max(8, mapBounds.width - 316)),
-      top: clamp(pointerY + 12, 8, Math.max(8, mapBounds.height - 220)),
-    });
-  };
 
-  const showRoadHint = (text: string, pointer: { clientX: number; clientY: number }) => {
-    const mapBounds = mapRef.current?.getBoundingClientRect();
-    if (!mapBounds || dragState.current) return;
-    setRoadHint({
-      text,
-      left: clamp(pointer.clientX - mapBounds.left + 12, 8, Math.max(8, mapBounds.width - 160)),
-      top: clamp(pointer.clientY - mapBounds.top + 14, 8, Math.max(8, mapBounds.height - 40)),
-    });
-  };
+  const showHover = useCallback(
+    (
+      place: CampusPlace,
+      element: SVGGElement,
+      pointer?: { clientX: number; clientY: number },
+    ) => {
+      if (
+        lastPointerTypeRef.current === "touch"
+        || draggingRef.current
+        || pointersRef.current.size > 0
+      ) {
+        return;
+      }
+      const mapBounds = mapRef.current?.getBoundingClientRect();
+      const elementBounds = element.getBoundingClientRect();
+      if (!mapBounds) return;
+      const pointerX = pointer && pointer.clientX > 0
+        ? pointer.clientX - mapBounds.left
+        : elementBounds.left + elementBounds.width / 2 - mapBounds.left;
+      const pointerY = pointer && pointer.clientY > 0
+        ? pointer.clientY - mapBounds.top
+        : elementBounds.top + elementBounds.height / 2 - mapBounds.top;
+      const cardWidth = mapBounds.width ? Math.round(clamp(mapBounds.width * 0.62, 160, 300)) : 300;
+      const photoHeight = Math.round((cardWidth * 168) / 300);
+      const hasPhoto = Boolean(CAMPUS_PLACES[place].photo);
+      const cardHeight = (hasPhoto ? photoHeight : 0) + 46;
+      const left = clamp(pointerX + 12, 8, Math.max(8, mapBounds.width - cardWidth - 8));
+      const top = clamp(pointerY + 12, 8, Math.max(8, mapBounds.height - cardHeight - 8));
+      setHoverCard({
+        place,
+        left,
+        top,
+        width: cardWidth,
+      });
+    },
+    [],
+  );
+
+  const hideHover = useCallback(() => {
+    setHoverCard((prev) => (prev ? null : prev));
+  }, []);
+
+  const showRoadHint = useCallback(
+    (text: string, pointer: { clientX: number; clientY: number; pointerType?: string }) => {
+      if (
+        pointer.pointerType === "touch"
+        || lastPointerTypeRef.current === "touch"
+        || draggingRef.current
+        || pointersRef.current.size > 0
+      ) {
+        return;
+      }
+      const mapBounds = mapRef.current?.getBoundingClientRect();
+      if (!mapBounds) return;
+      setRoadHint({
+        text,
+        left: clamp(pointer.clientX - mapBounds.left + 12, 8, Math.max(8, mapBounds.width - 160)),
+        top: clamp(pointer.clientY - mapBounds.top + 14, 8, Math.max(8, mapBounds.height - 40)),
+      });
+    },
+    [],
+  );
+
+  const hideRoadHint = useCallback(() => {
+    setRoadHint((prev) => (prev ? null : prev));
+  }, []);
 
   return (
     <div
@@ -500,7 +1020,7 @@ export function CampusMap({ target, onPick, className = "", fill = false }: Camp
         }
       `}</style>
 
-      <div className="absolute right-3 top-3 z-10 flex flex-col overflow-hidden rounded-lg border border-slate-300 bg-white/95 shadow-md dark:border-slate-600 dark:bg-slate-900/95">
+      <div className="absolute right-3 top-3 z-30 flex flex-col overflow-hidden rounded-lg border border-slate-300 bg-white/95 shadow-md dark:border-slate-600 dark:bg-slate-900/95">
         <button
           type="button"
           onClick={() => zoomBy(0.8)}
@@ -528,12 +1048,26 @@ export function CampusMap({ target, onPick, className = "", fill = false }: Camp
         aria-label={t("campus.mapTitle")}
         data-zoomed={fullView ? "false" : "true"}
         onWheel={handleWheel}
+        onPointerOverCapture={(event) => {
+          if (event.pointerType) {
+            lastPointerTypeRef.current = event.pointerType;
+          }
+        }}
+        onKeyDownCapture={() => {
+          if (lastPointerTypeRef.current === "touch") {
+            lastPointerTypeRef.current = null;
+          }
+        }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={stopDragging}
         onPointerCancel={stopDragging}
         onLostPointerCapture={stopDragging}
-        onPointerLeave={(event) => { if (!dragging) stopDragging(event); }}
+        onPointerLeave={(event) => {
+          if (gestureRef.current?.mode === "pending") {
+            stopDragging(event);
+          }
+        }}
         className={`block w-full touch-none select-none ${fill ? "h-full" : "h-auto"} ${dragging ? "cursor-grabbing" : "cursor-grab"}`}
         preserveAspectRatio={fill ? "xMidYMid slice" : "xMidYMid meet"}
       >
@@ -550,95 +1084,18 @@ export function CampusMap({ target, onPick, className = "", fill = false }: Camp
             fill="freeze"
           />
         )}
-        <defs>
-          <pattern id="campus-construction-hatch" width="14" height="14" patternUnits="userSpaceOnUse" patternTransform="rotate(35)">
-            <rect width="14" height="14" fill="rgba(245, 158, 11, .08)" />
-            <rect width="3" height="14" fill="rgba(180, 83, 9, .28)" />
-          </pattern>
-        </defs>
-        <image
-          href="/campus/campus-base.webp"
-          width={CAMPUS_MAP_WIDTH}
-          height={CAMPUS_MAP_HEIGHT}
-          preserveAspectRatio="xMidYMid meet"
-          {...{ decoding: "async" }}
-        />
+        <CampusMapBackground />
         <g data-map-layer="campus" data-zoom={manualViewBox ? "manual" : zoomedPlace ?? "full"}>
-          <RoadLabels lang={lang} onHint={showRoadHint} onLeave={() => setRoadHint(null)} />
-
-          {(Object.entries(CAMPUS_AREA_RECTS) as [CampusAreaPlace, CampusMapRect][]).map(([place, rect]) => (
-            <PlaceGroup
-              key={place}
-              place={place}
-              label={label(place)}
-              bounds={rect}
-              target={target}
-              onPick={pick}
-              onHover={showHover}
-              onLeave={() => setHoverCard(null)}
-            >
-              <BuildingLabel rect={rect}>{label(place)}</BuildingLabel>
-            </PlaceGroup>
-          ))}
-
-          {(Object.entries(CAMPUS_GATES) as [CampusGatePlace, (typeof CAMPUS_GATES)[CampusGatePlace]][]).map(
-            ([place, gate]) => {
-              const bounds = {
-                x: gate.x - GATE_HIT_SIZE / 2,
-                y: gate.y - GATE_HIT_SIZE / 2,
-                width: GATE_HIT_SIZE,
-                height: GATE_HIT_SIZE,
-              };
-              return (
-                <PlaceGroup
-                  key={place}
-                  place={place}
-                  label={label(place)}
-                  bounds={bounds}
-                  target={target}
-                  onPick={pick}
-                  onHover={showHover}
-                  onLeave={() => setHoverCard(null)}
-                >
-                  <GateMarker x={gate.x} y={gate.y} />
-                  <GateLabel x={gate.x + gate.labelDx} y={gate.y + gate.labelDy}>
-                    {label(place)}
-                  </GateLabel>
-                </PlaceGroup>
-              );
-            },
-          )}
-
-          <g data-construction="B3" aria-label={t("campus.buildingB3")} pointerEvents="none">
-            <rect
-              x={CAMPUS_B3_RECT.x}
-              y={CAMPUS_B3_RECT.y}
-              width={CAMPUS_B3_RECT.width}
-              height={CAMPUS_B3_RECT.height}
-              rx="4"
-              fill="url(#campus-construction-hatch)"
-              className="stroke-amber-700/60"
-              strokeWidth="2"
-            />
-            <text
-              x={CAMPUS_B3_RECT.x + CAMPUS_B3_RECT.width / 2}
-              y={CAMPUS_B3_RECT.y + CAMPUS_B3_RECT.height / 2 - 5}
-              textAnchor="middle"
-              fill="#78350f"
-              stroke="white"
-              strokeWidth="4"
-              paintOrder="stroke"
-              fontSize="13"
-              fontWeight="700"
-            >
-              <tspan x={CAMPUS_B3_RECT.x + CAMPUS_B3_RECT.width / 2} dy="0">
-                {lang === "vi" ? "Khu vực thi công" : "Building B3"}
-              </tspan>
-              <tspan x={CAMPUS_B3_RECT.x + CAMPUS_B3_RECT.width / 2} dy="17">
-                {lang === "vi" ? "Tòa B3" : "(under construction)"}
-              </tspan>
-            </text>
-          </g>
+          <CampusMapLayers
+            lang={lang}
+            target={target}
+            t={t}
+            onPick={pick}
+            onHover={showHover}
+            onLeave={hideHover}
+            onRoadHint={showRoadHint}
+            onRoadLeave={hideRoadHint}
+          />
         </g>
       </svg>
 
@@ -658,23 +1115,28 @@ export function CampusMap({ target, onPick, className = "", fill = false }: Camp
           role="tooltip"
           data-campus-hover={hoverCard.place}
           className={`pointer-events-none absolute z-20 overflow-hidden rounded-lg border border-brand-700 bg-brand-700 text-center text-base font-semibold text-white shadow-lg dark:border-brand-500 dark:bg-brand-700 dark:text-white ${
-            CAMPUS_PLACES[hoverCard.place].photo ? "w-[300px]" : "max-w-[300px] px-4 py-3"
+            CAMPUS_PLACES[hoverCard.place].photo ? "" : "px-4 py-3"
           }`}
-          style={{ left: hoverCard.left, top: hoverCard.top }}
+          style={
+            CAMPUS_PLACES[hoverCard.place].photo
+              ? { left: hoverCard.left, top: hoverCard.top, width: hoverCard.width }
+              : { left: hoverCard.left, top: hoverCard.top, maxWidth: hoverCard.width }
+          }
         >
           {CAMPUS_PLACES[hoverCard.place].photo && (
             <img
               src={CAMPUS_PLACES[hoverCard.place].photo}
               alt=""
               data-campus-photo={hoverCard.place}
-              className="h-[168px] w-full object-cover"
+              className="w-full object-cover"
+              style={{ height: Math.round((hoverCard.width * 168) / 300) }}
             />
           )}
           <div
             data-campus-hover-title={hoverCard.place}
             className={CAMPUS_PLACES[hoverCard.place].photo ? "bg-brand-700 px-4 py-3 text-center text-white" : "text-center"}
           >
-            {label(hoverCard.place)}
+            {t(CAMPUS_PLACES[hoverCard.place].nameKey)}
           </div>
         </div>
       )}

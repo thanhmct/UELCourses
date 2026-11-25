@@ -106,22 +106,22 @@ def test_moderation_content_length():
 
 
 def test_module_comments_rate_limit(client, db):
-    """Rate limit: tối đa 3 bình luận / 10 phút / anon_id."""
+    """Rate limit: tối đa 10 bình luận / 10 phút / anon_id."""
     _setup_module(db, "BIM5001")
     anon_id = "test-anon-uuid-rate-limit"
 
-    # 3 bình luận đầu thành công (201)
-    for i in range(3):
+    # 10 bình luận đầu thành công (201)
+    for i in range(10):
         res = client.post(
             "/api/modules/BIM5001/comments",
             json={"body": f"Bình luận số {i+1} hợp lệ từ sinh viên", "rating": 5, "anon_id": anon_id},
         )
         assert res.status_code == 201
 
-    # Bình luận thứ 4 bị chặn (429)
+    # Bình luận thứ 11 bị chặn (429)
     res_block = client.post(
         "/api/modules/BIM5001/comments",
-        json={"body": "Bình luận thứ 4 sẽ bị chặn vì vượt quá rate limit", "rating": 4, "anon_id": anon_id},
+        json={"body": "Bình luận thứ 11 sẽ bị chặn vì vượt quá rate limit", "rating": 4, "anon_id": anon_id},
     )
     assert res_block.status_code == 429
     assert "quá nhiều bình luận" in res_block.json()["detail"]
@@ -361,3 +361,237 @@ def test_admin_overview_moderation_pending(client, monkeypatch, db):
     assert res.status_code == 200
     data = res.json()
     assert data["moderation_pending"] == 4
+
+
+def test_moderation_queue_includes_reviews_and_actions(client, monkeypatch, db):
+    """Hàng đợi kiểm duyệt hỗ trợ type=review và duyệt/từ chối/ẩn Review có ghi AuditLog."""
+    settings = get_settings()
+    monkeypatch.setattr(settings, "env", "development")
+    monkeypatch.setattr(settings, "admin_dev_open", True)
+
+    u = User(provider="google", subject="rev-q-user", display_name="SV Test")
+    db.add(u)
+    db.flush()
+
+    r1 = Review(
+        module_code="BIM5001",
+        user_id=u.id,
+        display_name="SV Test",
+        professor="Thầy A",
+        rating=2,
+        content="Nội dung cần kiểm tra lại về thầy A",
+        status="pending",
+        moderation_reasons=["harassment_personal"],
+    )
+    r2 = Review(
+        module_code="BIM5002",
+        user_id=u.id,
+        display_name="SV Test",
+        rating=5,
+        content="Môn học rất hay và bổ ích",
+        status="approved",
+    )
+    db.add_all([r1, r2])
+    db.commit()
+    db.refresh(r1)
+
+    # Lọc type=review&flagged=true
+    res_q = client.get("/api/admin/moderation/queue?type=review&flagged=true")
+    assert res_q.status_code == 200
+    q_data = res_q.json()
+    assert q_data["counts"]["review"] >= 1
+    assert q_data["counts"]["all"] >= q_data["counts"]["review"]
+    matching = [it for it in q_data["items"] if it["id"] == f"review_{r1.id}"]
+    assert len(matching) == 1
+    assert matching[0]["type"] == "review"
+    assert matching[0]["title"] == "Đánh giá môn BIM5001 - GV Thầy A"
+    assert matching[0]["flag_reasons"] == ["harassment_personal"]
+
+    # Tìm kiếm theo tên giảng viên
+    res_search = client.get("/api/admin/moderation/queue?type=review&q=Thầy A")
+    assert res_search.status_code == 200
+    assert any(it["item_id"] == r1.id for it in res_search.json()["items"])
+
+    # Approve review
+    res_app = client.post(f"/api/admin/moderation/review/{r1.id}/approve", json={"note": "Hợp lệ"})
+    assert res_app.status_code == 200
+    assert res_app.json()["status"] == "approved"
+    db.refresh(r1)
+    assert r1.status == "approved"
+    audit_app = db.scalar(
+        select(AuditLog).where(
+            AuditLog.entity_type == "review",
+            AuditLog.entity_id == str(r1.id),
+            AuditLog.action == "moderation_approve_review",
+        )
+    )
+    assert audit_app is not None
+    assert audit_app.after["status"] == "approved"
+
+    # Hide review -> rejected
+    res_hide = client.post(f"/api/admin/moderation/review/{r1.id}/hide")
+    assert res_hide.status_code == 200
+    assert res_hide.json()["status"] == "rejected"
+    db.refresh(r1)
+    assert r1.status == "rejected"
+
+
+def test_admin_bans_list_lift_escalate_and_notify(client, monkeypatch, db):
+    """Quản trị ban: GET /bans, POST /lift, /escalate, /notify và dịch vụ SMTP."""
+    from datetime import timedelta
+    from app.models import BannedIp
+    from app.services import notify as notify_svc
+
+    settings = get_settings()
+    monkeypatch.setattr(settings, "env", "development")
+    monkeypatch.setattr(settings, "admin_dev_open", True)
+
+    now = datetime.now(timezone.utc)
+    u_active = User(
+        provider="google",
+        subject="ban-active-1",
+        display_name="SV Vi Phạm",
+        email="sv@st.uel.edu.vn",
+        ban_level="temporary",
+        ban_reason="Vi phạm 3 lần",
+        banned_at=now - timedelta(days=1),
+        ban_expires_at=now + timedelta(days=29),
+    )
+    u_expired = User(
+        provider="facebook",
+        subject="ban-expired-1",
+        display_name="SV Hết Hạn",
+        email=None,
+        ban_level="temporary",
+        ban_reason="Hết hạn",
+        banned_at=now - timedelta(days=31),
+        ban_expires_at=now - timedelta(days=1),
+    )
+    u_clean = User(provider="google", subject="clean-1", display_name="SV Sạch")
+    db.add_all([u_active, u_expired, u_clean])
+    db.flush()
+
+    ip_sys = BannedIp(
+        ip_hash="hash_sys_active",
+        level="temporary",
+        reason="Auto ban",
+        created_by="system",
+        created_at=now - timedelta(days=1),
+        expires_at=now + timedelta(days=29),
+        related_user_id=u_active.id,
+    )
+    ip_admin = BannedIp(
+        ip_hash="hash_adm_lifted",
+        level="permanent",
+        reason="Manual ban",
+        created_by="admin@uel.edu.vn",
+        created_at=now - timedelta(days=5),
+        lifted_at=now - timedelta(days=1),
+        lifted_by="admin@uel.edu.vn",
+    )
+    db.add_all([ip_sys, ip_admin])
+    db.commit()
+
+    # 1. GET /admin/bans?status=active
+    res_active = client.get("/api/admin/bans?status=active")
+    assert res_active.status_code == 200
+    d_active = res_active.json()
+    assert [u["user_id"] for u in d_active["users"]] == [u_active.id]
+    assert [ip["ip_hash"] for ip in d_active["banned_ips"]] == ["hash_sys_active"]
+
+    # 2. GET /admin/bans?status=expired
+    res_exp = client.get("/api/admin/bans?status=expired")
+    assert res_exp.status_code == 200
+    assert [u["user_id"] for u in res_exp.json()["users"]] == [u_expired.id]
+
+    # 3. GET /admin/bans?status=lifted&scope=admin
+    res_lifted = client.get("/api/admin/bans?status=lifted&scope=admin")
+    assert res_lifted.status_code == 200
+    assert [ip["ip_hash"] for ip in res_lifted.json()["banned_ips"]] == ["hash_adm_lifted"]
+
+    # 4. POST /admin/bans/{user_id}/notify khi chưa cấu hình SMTP
+    monkeypatch.setattr(settings, "smtp_host", "")
+    monkeypatch.setattr(settings, "smtp_from", "")
+    res_no_smtp = client.post(f"/api/admin/bans/{u_active.id}/notify")
+    assert res_no_smtp.status_code == 200
+    assert res_no_smtp.json()["success"] is False
+    assert "Chưa cấu hình SMTP" in res_no_smtp.json()["message"]
+
+    # Khi user không có email
+    res_no_email = client.post(f"/api/admin/bans/{u_expired.id}/notify")
+    assert res_no_email.status_code == 200
+    assert res_no_email.json()["success"] is False
+    assert "chưa cấp email" in res_no_email.json()["message"]
+
+    # Khi gửi email thành công (mock SMTP)
+    sent_messages = []
+
+    class DummySMTP:
+        def __init__(self, host, port, timeout=10):
+            self.host = host
+            self.port = port
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def ehlo(self):
+            pass
+
+        def has_extn(self, name):
+            return False
+
+        def login(self, user, password):
+            pass
+
+        def send_message(self, msg):
+            sent_messages.append(msg)
+
+    monkeypatch.setattr(settings, "smtp_host", "smtp.example.com")
+    monkeypatch.setattr(settings, "smtp_from", "noreply@uelpath.local")
+    monkeypatch.setattr(notify_svc.smtplib, "SMTP", DummySMTP)
+    res_sent = client.post(f"/api/admin/bans/{u_active.id}/notify")
+    assert res_sent.status_code == 200
+    assert res_sent.json()["success"] is True
+    assert len(sent_messages) == 1
+    assert "Thông báo khóa tài khoản UELPath" in sent_messages[0]["Subject"]
+    db.refresh(u_active)
+    assert u_active.ban_notified_email_at is not None
+
+    # 5. POST /admin/bans/{user_id}/escalate -> permanent
+    assert client.post(f"/api/admin/bans/{u_clean.id}/escalate").status_code == 400
+    res_esc = client.post(f"/api/admin/bans/{u_active.id}/escalate", json={"note": "Tái phạm nhiều lần"})
+    assert res_esc.status_code == 200
+    assert res_esc.json()["ban_level"] == "permanent"
+    db.refresh(u_active)
+    assert u_active.ban_level == "permanent"
+    assert u_active.ban_expires_at is None
+    assert "Tái phạm nhiều lần" in (u_active.ban_reason or "")
+
+    # 6. POST /admin/bans/{user_id}/lift -> gỡ ban user + IP liên quan + đặt ban_cycle_reset_at
+    res_lift = client.post(f"/api/admin/bans/{u_active.id}/lift")
+    assert res_lift.status_code == 200
+    assert res_lift.json()["success"] is True
+    db.refresh(u_active)
+    db.refresh(ip_sys)
+    assert u_active.ban_level is None
+    assert u_active.ban_reason is None
+    assert u_active.banned_at is None
+    assert u_active.ban_expires_at is None
+    assert u_active.ban_cycle_reset_at is not None
+    assert ip_sys.lifted_at is not None
+    assert ip_sys.lifted_by == "dev@uelcourses.local"
+
+
+def test_guidelines_include_constructive_criticism_and_autoban_policy(client):
+    """Nguyên tắc cộng đồng nêu rõ phê bình chuyên môn được giữ và cơ chế khóa tự động."""
+    res = client.get("/api/reviews/guidelines")
+    assert res.status_code == 200
+    joined = " ".join(res.json()["items"]).lower()
+    assert "chuyên môn" in joined and "xây dựng" in joined
+    assert "công kích cá nhân" in joined
+    assert "3 lần" in joined and "30 ngày" in joined
+    assert "vĩnh viễn" in joined
+    assert "không kiểm duyệt" in joined

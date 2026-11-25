@@ -2,7 +2,6 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testi
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import PlannerPage from "../page";
 import { plannerCollisionDetection } from "../plannerDnd";
-import { AppDialog } from "@/components/AppDialog";
 import { useLang } from "@/i18n";
 import { usePlanner, useSettings } from "@/lib/store";
 import { formatPlannerTerm, formatPlannerTermStats, plannerSemesterLabel } from "@/i18n/names";
@@ -14,6 +13,7 @@ vi.mock("next/navigation", () => ({
     back: vi.fn(),
     push: vi.fn(),
   }),
+  usePathname: () => "/planner",
   useSearchParams: () => new URLSearchParams(),
 }));
 
@@ -26,6 +26,9 @@ vi.mock("@/lib/api", () => ({
     validGroups: vi.fn().mockResolvedValue({ data: [], mock: true }),
   },
 }));
+
+/** Mở cột học kỳ bằng cách bấm chip tóm tắt (mặc định các kỳ đang ẩn, chỉ mở một kỳ một lúc). */
+const openTerm = (id: string) => fireEvent.click(document.querySelector(`[data-term-chip="${id}"] button[aria-pressed]`)!);
 
 describe("Brief W28: Tiêu đề thẻ học kỳ trong Kế hoạch (Planner Semester Header)", () => {
   beforeEach(() => {
@@ -72,58 +75,22 @@ describe("Brief W28: Tiêu đề thẻ học kỳ trong Kế hoạch (Planner Se
     vi.useRealTimers();
   });
 
-  it.each([
-    {
-      lang: "vi" as const,
-      labels: ["Bình thường (14–25 TC)", "Dưới mức tối thiểu (< 14 TC)", "Vượt mức thông thường (> 25 TC)"],
-    },
-    {
-      lang: "en" as const,
-      labels: ["Normal load (14–25 cr)", "Below minimum (< 14 cr)", "Above typical load (> 25 cr)"],
-    },
-  ])("hiển thị đúng một ngưỡng trong mỗi nhãn tín chỉ ($lang)", ({ lang, labels }) => {
-    useLang.setState({ lang });
-    render(<PlannerPage />);
-
-    for (const label of labels) {
-      expect(screen.getByText(label)).toBeInTheDocument();
-    }
-  });
-
   it("không áp dụng hoặc lọc kế hoạch theo CTĐT đã chọn", async () => {
     useLang.getState().setLang("en");
     useSettings.getState().setProgramCode("K23406");
     usePlanner.setState({ backlog: [], terms: [{ id: "t2", name: "HK2", modules: [] }] });
     render(<PlannerPage />);
+    openTerm("t2");
 
-    expect(screen.getByRole("heading", { name: /Semester roadmap/ })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Study roadmap/ })).toBeInTheDocument();
     expect(screen.getByPlaceholderText("Add courses to the plan")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Plan to Take" })).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("Enter a course code or name")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Add courses to the plan" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Apply standard track/ })).not.toBeInTheDocument();
     expect(screen.queryByText("K23406")).not.toBeInTheDocument();
     expect(api.program).not.toHaveBeenCalled();
     expect(usePlanner.getState().backlog).toEqual([]);
     expect(screen.getAllByText("Drop a module here").length).toBeGreaterThan(0);
-  });
-
-  it("xóa học kỳ từ dấu x sau khi xác nhận và giữ vùng Dự định học", async () => {
-    usePlanner.setState({
-      terms: [{ id: "remove-me", name: "Năm 2 – HK3", modules: ["PLDC"] }],
-      backlog: ["TOAN1"],
-    });
-    render(<><PlannerPage /><AppDialog /></>);
-
-    expect(screen.getByRole("heading", { name: "Dự định học" })).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("Nhập mã hoặc tên học phần")).toBeInTheDocument();
-    fireEvent.click(screen.getAllByRole("button", { name: "Xóa Năm 2 · Học kỳ 3" })[0]);
-    expect(await screen.findByRole("heading", { name: "Xóa học kỳ?" })).toBeInTheDocument();
-    expect(screen.getByText(/1 học phần/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Xóa học kỳ" }));
-
-    await waitFor(() => expect(usePlanner.getState().terms).toEqual([]));
-    expect(usePlanner.getState().backlog).not.toContain("PLDC");
   });
 
   it("1. Hàm nhãn học kỳ chuẩn hóa (HK01 + 2024-2025 -> 'Học kỳ 1 · 2024-2025'; EN: 'Semester 1 · 2024-2025')", () => {
@@ -199,37 +166,44 @@ describe("Brief W28: Tiêu đề thẻ học kỳ trong Kế hoạch (Planner Se
     const selectEarlierGraduation = () => fireEvent.click(within(dialog.getByRole("group", { name: "Năm tốt nghiệp dự kiến" }))
       .getByRole("radio", { name: /2026–2027/ }));
     selectEarlierGraduation();
-    expect(document.getElementById("term-academic-2027-2028-1")).toBeNull();
-    expect(document.getElementById(`term-${occupiedId}`)).toHaveTextContent("PLDC");
+    const chip = (id: string) => document.querySelector(`[data-term-chip="${id}"]`);
+    expect(chip("academic-2027-2028-1")).toBeNull();
+    // Kỳ đã xếp môn nhưng rơi ngoài khoảng năm học đang xem trong lúc chọn cũng không hiển thị (sẽ mâu thuẫn nếu áp dụng).
+    expect(chip(occupiedId)).toBeNull();
     expect(usePlanner.getState().terms).toHaveLength(12);
+    expect(usePlanner.getState().terms.find(({ id }) => id === occupiedId)?.modules).toEqual(["PLDC"]);
     expect(localStorage.getItem("uelcourses-planner")).toBe(saved);
 
     const admission = within(dialog.getByRole("group", { name: "Năm nhập học" }));
     fireEvent.click(admission.getByRole("radio", { name: /2025–2026/ }));
-    expect(document.getElementById("term-academic-2025-2026-1")).toBeInTheDocument();
+    expect(chip("academic-2025-2026-1")).toBeInTheDocument();
     fireEvent.click(dialog.getByRole("button", { name: "Hủy" }));
-    expect(document.getElementById("term-academic-2025-2026-1")).toBeNull();
-    expect(document.getElementById("term-academic-2027-2028-1")).toBeInTheDocument();
+    expect(chip("academic-2025-2026-1")).toBeNull();
+    expect(chip("academic-2027-2028-1")).toBeInTheDocument();
     expect(localStorage.getItem("uelcourses-planner")).toBe(saved);
 
     fireEvent.click(opener);
     dialog = within(screen.getByRole("dialog"));
     selectEarlierGraduation();
     fireEvent.click(dialog.getByRole("button", { name: "Tạo học kỳ" }));
-    expect(usePlanner.getState().terms).toHaveLength(4);
-    expect(usePlanner.getState().terms.find(({ id }) => id === occupiedId)?.modules).toEqual(["PLDC"]);
+    // Mâu thuẫn: kỳ chứa PLDC nằm ngoài khoảng năm học mới nên bị loại, PLDC chuyển về Dự định học.
+    expect(usePlanner.getState().terms).toHaveLength(3);
+    expect(usePlanner.getState().terms.find(({ id }) => id === occupiedId)).toBeUndefined();
+    expect(usePlanner.getState().backlog).toContain("PLDC");
   });
 
-  it("keeps courses in the academic year previously resolved from the student cohort", () => {
+  it("moves courses whose previously resolved academic year now conflicts with the new range back to the backlog", () => {
     useSettings.setState({ cohort: "K24" });
-    usePlanner.setState({ terms: [{ id: "legacy", name: "Năm 1 – HK2", modules: ["PLDC"] }] });
+    usePlanner.setState({ terms: [{ id: "legacy", name: "Năm 1 – HK2", modules: ["PLDC"] }], backlog: [] });
     usePlanner.getState().addAcademicYears({ admission: 2025, graduation: 2026 });
-    expect(usePlanner.getState().terms[0]).toEqual({ id: "legacy", name: "HK2 2024-2025", modules: ["PLDC"] });
-    expect(usePlanner.getState().terms).toHaveLength(7);
+    expect(usePlanner.getState().terms.find(({ id }) => id === "legacy")).toBeUndefined();
+    expect(usePlanner.getState().terms).toHaveLength(6);
+    expect(usePlanner.getState().backlog).toEqual(["PLDC"]);
   });
 
   it("3. Thẻ cột học kỳ: tiêu đề có hai phần tử riêng biệt (tên / thống kê)", () => {
     render(<PlannerPage />);
+    openTerm("t_sem1");
 
     // Thẻ t_sem1 (5 môn, 14 TC)
     const termCard = document.getElementById("term-t_sem1");
@@ -255,6 +229,7 @@ describe("Brief W28: Tiêu đề thẻ học kỳ trong Kế hoạch (Planner Se
 
   it("4. Thống kê chứa '5 môn · 14 TC' trong một phần tử duy nhất, không ngắt dòng số và đơn vị", () => {
     render(<PlannerPage />);
+    openTerm("t_sem1");
 
     const statsElements = screen.getAllByText("5 môn · 14 TC");
     expect(statsElements.length).toBeGreaterThan(0);
@@ -275,6 +250,7 @@ describe("Brief W28: Tiêu đề thẻ học kỳ trong Kế hoạch (Planner Se
     });
 
     render(<PlannerPage />);
+    openTerm("t_sem1");
 
     const termCard = document.getElementById("term-t_sem1");
     expect(termCard).toBeInTheDocument();
@@ -295,6 +271,7 @@ describe("Brief W28: Tiêu đề thẻ học kỳ trong Kế hoạch (Planner Se
 
   it("6. Xử lý thẻ kỳ 2 có mã lặp HKHK02: hiển thị chuẩn 'Học kỳ 2 · 2024-2025' và '1 môn · 3 TC'", () => {
     render(<PlannerPage />);
+    openTerm("t_sem2");
 
     const termCard2 = document.getElementById("term-t_sem2");
     expect(termCard2).toBeInTheDocument();
@@ -332,6 +309,7 @@ describe("Brief W28: Tiêu đề thẻ học kỳ trong Kế hoạch (Planner Se
     expect(plannerCollisionDetection({ ...collisionArgs, pointerCoordinates: null })[0]?.id).toBe("t_sem1");
 
     render(<PlannerPage />);
+    openTerm("t_sem1");
     const moduleCard = document.querySelector('[data-planner-module="TOAN1"]');
     expect(moduleCard).toHaveClass("transition-colors");
     expect(moduleCard).not.toHaveClass("transition");
@@ -358,6 +336,7 @@ describe("Brief W28: Tiêu đề thẻ học kỳ trong Kế hoạch (Planner Se
   ])("hiển thị lộ trình và GPA cùng trang ở $lang", ({ lang, visible, removed }) => {
     useLang.setState({ lang });
     render(<PlannerPage />);
+    openTerm("t_sem1");
     expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
     expect(screen.getAllByRole("textbox", { name: /TOAN1/ })).toHaveLength(1);
 
@@ -371,6 +350,7 @@ describe("Brief W28: Tiêu đề thẻ học kỳ trong Kế hoạch (Planner Se
 
   it("nhận 8,0, tự quy đổi điểm chữ và hệ 4 mà không dùng ô số có nút tăng giảm", () => {
     render(<PlannerPage />);
+    openTerm("t_sem1");
     const term = document.getElementById("term-t_sem1")!;
     const input = within(term).getByRole("textbox", { name: "Điểm hệ 10 của TOAN1" });
     expect(input).toHaveAttribute("type", "text");
@@ -395,6 +375,7 @@ describe("Brief W28: Tiêu đề thẻ học kỳ trong Kế hoạch (Planner Se
       catalog: { ...state.catalog, DAHOC: { code: "DAHOC", name: "Đã học", credits: 3 } },
     }));
     render(<PlannerPage />);
+    openTerm("t_sem1");
 
     expect(screen.getByRole("heading", { name: "Đã học (chưa xếp kỳ)" })).toBeInTheDocument();
     expect(screen.getAllByRole("textbox", { name: "Điểm hệ 10 của TOAN1" })).toHaveLength(1);
@@ -403,22 +384,25 @@ describe("Brief W28: Tiêu đề thẻ học kỳ trong Kế hoạch (Planner Se
     expect(screen.getByText("Đã xếp vào kế hoạch").nextElementSibling).toHaveTextContent("20 TC");
 
     act(() => usePlanner.getState().move("DAHOC", "t_sem2"));
+    openTerm("t_sem2");
     expect(screen.queryByRole("heading", { name: "Đã học (chưa xếp kỳ)" })).not.toBeInTheDocument();
     expect(within(document.getElementById("term-t_sem2")!).getByRole("textbox", { name: "Điểm hệ 10 của DAHOC" })).toHaveValue("7.5");
     expect(screen.getByText("8.25")).toBeInTheDocument();
   });
 
   it("thêm nhiều mã vào nơi đã chọn và cho nhập điểm ngay trên trang", async () => {
-    vi.mocked(api.module).mockResolvedValueOnce({
-      data: { code: "DAHOC", name: "Môn đã học", credits: 3 } as NonNullable<Awaited<ReturnType<typeof api.module>>["data"]>,
-      mock: true,
-    });
+    // mockImplementation (thay vì mockResolvedValueOnce): trang còn tự làm mới dữ liệu các môn đã có trong kế
+    // hoạch ở nền, nên lệnh gọi api.module cho DAHOC không nhất thiết là lệnh gọi đầu tiên.
+    vi.mocked(api.module).mockImplementation((code: string) =>
+      Promise.resolve(code === "DAHOC"
+        ? { data: { code: "DAHOC", name: "Môn đã học", credits: 3 } as NonNullable<Awaited<ReturnType<typeof api.module>>["data"]>, mock: true }
+        : { data: null, mock: true }));
     render(<PlannerPage />);
-    fireEvent.click(screen.getByRole("combobox", { name: "Thêm học phần vào" }));
-    fireEvent.click(screen.getByRole("option", { name: "Đã học (chưa xếp kỳ)" }));
     fireEvent.click(screen.getByText("Thêm nhiều mã học phần"));
     const batchDialog = screen.getByRole("dialog", { name: "Thêm nhiều mã học phần" });
     expect(batchDialog).toHaveClass("absolute");
+    fireEvent.click(screen.getByRole("combobox", { name: "Thêm học phần vào" }));
+    fireEvent.click(screen.getByRole("option", { name: "Đã học (chưa xếp kỳ)" }));
     fireEvent.change(screen.getByRole("textbox", { name: "Mã học phần cần thêm" }), { target: { value: "DAHOC" } });
     fireEvent.click(screen.getByRole("button", { name: "Thêm môn" }));
 
@@ -428,5 +412,77 @@ describe("Brief W28: Tiêu đề thẻ học kỳ trong Kế hoạch (Planner Se
     expect(JSON.parse(localStorage.getItem("uelcourses-user-scores") ?? "{}").DAHOC).toBe(8);
     fireEvent.click(screen.getAllByRole("button", { name: "Đóng bảng thêm nhiều học phần" })[0]);
     expect(screen.queryByRole("dialog", { name: "Thêm nhiều mã học phần" })).not.toBeInTheDocument();
+  });
+
+  it("đặt hướng mở và max-height cho hộp thoại thêm nhiều học phần theo khoảng trống thực tế, tính lại khi scroll/resize và gỡ listener khi đóng", () => {
+    const origInnerHeight = window.innerHeight;
+    const origMatchMedia = window.matchMedia;
+    const addSpy = vi.spyOn(window, "addEventListener");
+    const removeSpy = vi.spyOn(window, "removeEventListener");
+
+    let isPhone = true;
+    let anchorRect = { top: 520, bottom: 544, left: 16, right: 200, width: 184, height: 24, x: 16, y: 520, toJSON: () => ({}) } as DOMRect;
+    Object.defineProperty(window, "innerHeight", { configurable: true, writable: true, value: 667 });
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: query === "(max-width: 767px)" ? isPhone : false,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+
+    const rectSpy = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      if (this.querySelector('[aria-haspopup="dialog"]')) return anchorRect;
+      return { top: 0, bottom: 0, left: 0, right: 0, width: 0, height: 0, x: 0, y: 0, toJSON: () => ({}) } as DOMRect;
+    });
+    const scrollHeightSpy = vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockImplementation(function (this: HTMLElement) {
+      return this.getAttribute("role") === "dialog" ? 260 : 0;
+    });
+
+    try {
+      render(<PlannerPage />);
+      const trigger = screen.getByRole("button", { name: /Thêm nhiều mã học phần/ });
+
+      // Trên điện thoại (BottomNav 56px): khoảng trống dưới = 667 - 56 - 544 - 16 = 51 < 260 -> mở lên trên.
+      fireEvent.click(trigger);
+      let dialog = screen.getByRole("dialog", { name: "Thêm nhiều mã học phần" });
+      expect(dialog).toHaveClass("bottom-full", "mb-2");
+      expect(dialog).not.toHaveClass("top-full");
+      expect(dialog.style.maxHeight).toBe("504px");
+
+      // Cuộn sao cho nút lên gần đầu trang -> đủ chỗ phía dưới (667 - 56 - 124 - 16 = 471 >= 260) -> mở xuống dưới.
+      anchorRect = { ...anchorRect, top: 100, bottom: 124, y: 100 };
+      fireEvent.scroll(window);
+      dialog = screen.getByRole("dialog", { name: "Thêm nhiều mã học phần" });
+      expect(dialog).toHaveClass("top-full", "mt-2");
+      expect(dialog).not.toHaveClass("bottom-full");
+      expect(dialog.style.maxHeight).toBe("471px");
+
+      // Đổi sang desktop (không trừ BottomNav 56px) và đổi kích thước cửa sổ -> max-height tăng thêm 56px.
+      isPhone = false;
+      window.innerHeight = 720;
+      fireEvent(window, new Event("resize"));
+      expect(dialog.style.maxHeight).toBe("580px");
+
+      // Đóng hộp thoại -> gỡ bỏ listener scroll và resize.
+      const scrollListener = addSpy.mock.calls.find(([type]) => type === "scroll")?.[1];
+      const resizeListener = addSpy.mock.calls.find(([type]) => type === "resize")?.[1];
+      expect(scrollListener).toBeDefined();
+      expect(resizeListener).toBeDefined();
+      fireEvent.keyDown(dialog, { key: "Escape" });
+      expect(screen.queryByRole("dialog", { name: "Thêm nhiều mã học phần" })).not.toBeInTheDocument();
+      expect(removeSpy).toHaveBeenCalledWith("scroll", scrollListener);
+      expect(removeSpy).toHaveBeenCalledWith("resize", resizeListener);
+    } finally {
+      Object.defineProperty(window, "innerHeight", { configurable: true, writable: true, value: origInnerHeight });
+      window.matchMedia = origMatchMedia;
+      rectSpy.mockRestore();
+      scrollHeightSpy.mockRestore();
+      addSpy.mockRestore();
+      removeSpy.mockRestore();
+    }
   });
 });
