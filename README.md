@@ -38,20 +38,6 @@ Dưới đây là tổng hợp toàn bộ các đường link, nguồn dữ li�
   - [Google Sheet] [Danh sách học phần dự kiến mở Năm học 2026-2027 (có thể thay đổi, cập nhật thường xuyên)](https://docs.google.com/spreadsheets/d/1ES4AQqMeP3_WvHCxwxjhyDcHqKythipSKjbrJs-aDKA/edit?usp=drivesdk)
   - Dữ liệu thu thập: 3.127 lớp học phần dự kiến mở trong 3 học kỳ (HK1, HK2, HK3) năm học 2026–2027 cho 798 học phần, phân bổ theo khóa/lớp sinh viên.
   - File trích xuất lưu tại: `data/raw/DanhSachHocPhan_DuKienMo_2026_2027.xlsx`, `data/courses_2026_2027_planned.json`, `data/courses_2026_2027_planned.csv`.
-- **API Cổng Đăng ký học phần UEL**:
-  - Endpoint: `POST https://dkhpapi.uel.edu.vn/api/Schedule/GetAllScheduleStudyUnit`
-  - Cổng ĐKHP trực tuyến: [https://dkhp.uel.edu.vn](https://dkhp.uel.edu.vn)
-  - Dữ liệu thu thập: Mã lớp học phần, tên môn học, số tín chỉ, giảng viên, sức chứa, sĩ số đăng ký, phòng học, thứ và tiết học.
-  - Script trích xuất tự động: `fetch_courses.py` (tham khảo tài liệu chi tiết tại [UEL_DKHP_API.md](UEL_DKHP_API.md)).
-
----
-
-### 4. Dữ liệu Học phần tương đương
-- **API Cổng Thông tin đào tạo sinh viên UEL**:
-  - Endpoint: `GET https://portal.uel.edu.vn/backend/api/student/equivalentcourse`
-  - Dữ liệu thu thập: Mã môn gốc, Tên môn, Số tín chỉ, Mã môn tương đương thay thế, Tên môn tương đương, Số tín chỉ tương đương.
-
----
 
 ### 5. Văn bản Quy chế học vụ & Quy định Đào tạo
 - **Phòng Đào tạo UEL**: [https://pdt.uel.edu.vn/](https://pdt.uel.edu.vn/)
