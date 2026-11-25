@@ -38,15 +38,36 @@ export function finishedCodes(text: string): string[] {
   return [...seen];
 }
 
-/** Sắp gợi ý: mã bắt đầu bằng phần đang gõ lên trước, rồi theo mã; bỏ các mã đã gõ xong. */
-export function rankSuggestions<T extends { code: string }>(items: T[], token: string, done: string[]): T[] {
+interface RankableModule {
+  code: string;
+  name?: string;
+  name_en?: string | null;
+  description?: string | null;
+  description_en?: string | null;
+}
+
+/** Hạng ưu tiên khi so khớp với từ khoá: mã môn > tên môn > nội dung (mô tả) môn > còn lại. */
+function matchTier(m: RankableModule, codeUpper: string, textLower: string): number {
+  if (m.code.toUpperCase().startsWith(codeUpper)) return 0;
+  if (textLower) {
+    const name = `${m.name ?? ""} ${m.name_en ?? ""}`.toLowerCase();
+    if (name.includes(textLower)) return 1;
+    const desc = `${m.description ?? ""} ${m.description_en ?? ""}`.toLowerCase();
+    if (desc.includes(textLower)) return 2;
+  }
+  return 3;
+}
+
+/** Sắp gợi ý theo thứ tự ưu tiên: mã môn, tên môn, nội dung môn, rồi các phần còn lại; bỏ các mã đã gõ xong. */
+export function rankSuggestions<T extends RankableModule>(items: T[], token: string, done: string[]): T[] {
   const t = token.trim().toUpperCase();
+  const tLower = token.trim().toLowerCase();
   const skip = new Set(done);
   return items
     .filter((m) => !skip.has(m.code.toUpperCase()))
     .sort((a, b) => {
-      const pa = a.code.toUpperCase().startsWith(t) ? 0 : 1;
-      const pb = b.code.toUpperCase().startsWith(t) ? 0 : 1;
+      const pa = matchTier(a, t, tLower);
+      const pb = matchTier(b, t, tLower);
       return pa - pb || a.code.localeCompare(b.code);
     });
 }

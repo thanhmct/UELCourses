@@ -1,12 +1,16 @@
 "use client";
+import { Check } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { useApi } from "@/lib/useApi";
 import { useDebounced } from "@/lib/useDebounced";
+import { useMaxVisibleItems } from "@/lib/useMaxVisibleItems";
 import { useProgramProfile } from "@/lib/myProgram";
 import type { ModuleSummary } from "@/lib/types";
 import { useT } from "@/i18n";
-import { creditsLine, moduleName } from "@/i18n/names";
+import { useExchangeStats, useExchangeViewActive } from "@/lib/useExchangeStats";
+import { ExchangeStatBadge } from "@/components/ExchangeStatBadge";
+import { creditsLine, isEnglishCode, moduleName } from "@/i18n/names";
 import { Loading, EnBadge, NoScheduleBadge, RequiredBadge } from "@/components/ui";
 import { getCachedFinalAssessmentKind } from "@/lib/finalAssessment";
 import { activeToken, finishedCodes, parseCodes, rankSuggestions, replaceActiveToken } from "@/lib/codeTokens";
@@ -14,6 +18,8 @@ import { activeToken, finishedCodes, parseCodes, rankSuggestions, replaceActiveT
 export interface TimetableModuleSearchProps {
   onPick: (m: ModuleSummary) => void;
   exclude?: string[];
+  /** Mã đã có ở học kỳ khác (Kế hoạch/Thời khóa biểu): vẫn hiện trong kết quả nhưng đánh dấu "Đã thêm"; bấm vẫn thêm bình thường. */
+  addedCodes?: string[];
   placeholder?: string;
   /** chỉ tìm học phần trong CTĐT này (vd K23406 hoặc K23406E) */
   programId?: string;
@@ -39,6 +45,7 @@ export interface TimetableModuleSearchProps {
 export function TimetableModuleSearch({
   onPick,
   exclude = [],
+  addedCodes = [],
   placeholder,
   programId,
   programIds,
@@ -56,6 +63,7 @@ export function TimetableModuleSearch({
   const [busy, setBusy] = useState(false);
   const [report, setReport] = useState<{ code: string; ok: boolean; msg?: string }[]>([]);
   const blurTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const listRef = useRef<HTMLUListElement>(null);
   const { token } = activeToken(q);
   const batchCodes = useMemo(() => parseCodes(q), [q]);
   const doneCodes = finishedCodes(q);
@@ -153,6 +161,9 @@ export function TimetableModuleSearch({
     }
   }
 
+  const exchangeActive = useExchangeViewActive();
+  const exchangeStats = useExchangeStats(items.map((m) => m.code), exchangeActive);
+
   const addBatch = async () => {
     if (!codeEntryMode || busy) return;
     setBusy(true);
@@ -190,6 +201,9 @@ export function TimetableModuleSearch({
     setBusy(false);
   };
 
+  const listOpen = !!(focus && searchToken.trim());
+  useMaxVisibleItems(listRef, listOpen);
+
   return (
     <div className="space-y-2">
       <div className="relative h-12">
@@ -222,8 +236,9 @@ export function TimetableModuleSearch({
             aria-expanded={!!(focus && searchToken.trim())}
             aria-autocomplete="list"
           />
-          {focus && searchToken.trim() && (
+          {listOpen && (
             <ul
+              ref={listRef}
               id={listId}
               className="absolute inset-x-0 top-full z-30 mt-1 max-h-72 overflow-auto rounded-md border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900"
               role="listbox"
@@ -235,6 +250,7 @@ export function TimetableModuleSearch({
               const noSchedule = semester ? !open.some((o) => o.semester === semester) : open.length === 0;
               const progLabel = programLabels[m.code];
               const req = getRequired(m.code);
+              const added = addedCodes.includes(m.code);
 
               return (
                 <li key={m.code} role="option" aria-selected={false}>
@@ -255,19 +271,25 @@ export function TimetableModuleSearch({
                     <span className="flex flex-wrap items-center gap-x-2 min-w-0 flex-1">
                       <span className="font-mono font-semibold">{m.code}</span>
                       <span>{moduleName(m, lang)}</span>
+                      <ExchangeStatBadge stat={exchangeStats[m.code]} />
                       <RequiredBadge required={req} lang={lang} />
                       {progLabel && (
                         <span className="chip bg-sky-100 font-semibold text-sky-800 dark:bg-sky-950 dark:text-sky-300">
                           {progLabel}
                         </span>
                       )}
-                      {m.is_english && <EnBadge />}
+                      {m.is_english && !isEnglishCode(m.code) && <EnBadge />}
                     </span>
                     <span className="flex shrink-0 items-center justify-end gap-2 text-slate-500 whitespace-nowrap">
                       {noSchedule && <NoScheduleBadge lang={lang} />}
                       <span>
                         {creditsLine({ credits: m.credits, finalAssessment: m.final_assessment || getCachedFinalAssessmentKind(m.code) }, lang)}
                       </span>
+                      {added && (
+                        <span className="inline-flex items-center gap-1 rounded bg-emerald-100 px-1.5 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                          <Check className="size-3" aria-hidden="true" /> {t("mod.alreadyAdded")}
+                        </span>
+                      )}
                     </span>
                   </button>
                 </li>

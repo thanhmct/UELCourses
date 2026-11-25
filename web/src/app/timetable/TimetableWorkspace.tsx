@@ -1,6 +1,8 @@
 "use client";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useIconOnlyWhenCramped } from "@/lib/useIconOnlyWhenCramped";
+import { applyMaxVisibleItems } from "@/lib/useMaxVisibleItems";
 import { Check, ChevronDown, ChevronLeft, ChevronRight, Download, Eye, EyeOff, RefreshCw, RotateCcw, Share2, SlidersHorizontal, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { emptySemester, latestEnrollmentCohort, scopeSemesters, useSemesters } from "@/lib/semesters";
@@ -48,7 +50,7 @@ import { formatHolidayTitle, holidayAppearanceFor, noClassDates } from "@/lib/ho
 import { useAcademicHolidays } from "@/lib/useAcademicHolidays";
 import { useTimetableHolidayAppearance } from "@/components/HolidayAppearance";
 
-const weekButtonClass = `grid size-10 place-items-center rounded-md border border-slate-200 bg-white text-center font-semibold text-slate-700
+const weekButtonClass = `grid size-9 sm:size-10 place-items-center rounded-md border border-slate-200 bg-white text-center font-semibold text-slate-700
   transition-colors hover:border-brand-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600
   aria-pressed:border-brand-700 aria-pressed:bg-brand-700 aria-pressed:text-white dark:border-slate-700 dark:bg-slate-800
   dark:text-slate-200 dark:hover:border-brand-400 dark:aria-pressed:border-brand-400 dark:aria-pressed:bg-brand-700 dark:aria-pressed:text-white`;
@@ -62,9 +64,26 @@ function download(name: string, href: string) {
   a.remove();
 }
 
+function formatSectionSchedule(section: ClassSection, t: (key: string, vars?: Record<string, string | number>) => string): string {
+  return (
+    section.lessons
+      .map((l) => {
+        const { start, end } = getLessonTimes(l);
+        const from = formatDateVi(l.date_start);
+        const to = formatDateVi(l.date_end);
+        const dates = from && to && from !== to ? `, ${from}–${to}` : "";
+        return `${weekdayName(t, l.weekday)}, ${t("tt.scheduleTime", { s: l.start_period, e: l.end_period, start, end })}${dates}`;
+      })
+      .join("; ") || t("tt.noSchedule")
+  );
+}
+
 type TimetableWorkspaceProps =
   | { view: "schedule" }
   | { view: "optimize"; onSaved: (message: string) => void };
+
+/** Nút trong hàng tiện ích: lấp đầy ô lưới 1fr để 5 nút rộng bằng nhau. */
+const ACTION_BTN = "btn-outline w-full justify-center whitespace-nowrap sm:w-auto";
 
 export function TimetableWorkspace(props: TimetableWorkspaceProps) {
   const { view } = props;
@@ -75,6 +94,10 @@ export function TimetableWorkspace(props: TimetableWorkspaceProps) {
   const paletteOverrides = useSettings((s) => s.timetableColors);
   const settingsCohort = useSettings((s) => s.cohort);
   const holidayThemesEnabled = useSettings((s) => s.holidayAppearance);
+  const actionsRef = useRef<HTMLDivElement>(null);
+  const { iconOnly: actionsIconOnly, measured: actionsMeasured } = useIconOnlyWhenCramped(actionsRef);
+  // Chưa đo xong (HTML từ server): ẩn chữ nút ở màn hình điện thoại bằng CSS để không chớp chữ đầy đủ.
+  const actionLabelCls = actionsMeasured ? undefined : "max-sm:hidden";
   const palette = useMemo(() => PALETTE.map((color, index) => paletteOverrides[index] ?? color), [paletteOverrides]);
   const { data: scopedSemesters, availableSemesters, globalCurrent, currentYearSecondTerm, loading: semestersLoading } = useSemesters();
   const defaultCohort = latestEnrollmentCohort(globalCurrent);
@@ -137,11 +160,39 @@ export function TimetableWorkspace(props: TimetableWorkspaceProps) {
   const [pendingImport, setPendingImport] = useState<SharedTimetable | null>(null);
   const [toast, setToast] = useState("");
   const [showWebcal, setShowWebcal] = useState(false);
+  // Danh sách lớp của từng môn thu gọn thành dropdown nổi (mặc định đóng trên cả điện thoại và desktop).
+  const [classMenuOpen, setClassMenuOpen] = useState<Record<string, boolean>>({});
+  const classMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [downOpen, setDownOpen] = useState(false);
   const [pickerFor, setPickerFor] = useState<string | null>(null);
   const [showViolationPopover, setShowViolationPopover] = useState(false);
   const prevSemesterRef = useRef<string>(tt.semester);
   const gridRef = useRef<HTMLDivElement>(null);
+
+  const openClassCode = Object.keys(classMenuOpen).find((code) => classMenuOpen[code]);
+  useEffect(() => {
+    if (!openClassCode) return;
+    const onDown = (event: MouseEvent) => {
+      if (!classMenuRefs.current[openClassCode]?.contains(event.target as Node)) {
+        setClassMenuOpen({});
+      }
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setClassMenuOpen({});
+    };
+    const onResize = () => {
+      const fieldset = classMenuRefs.current[openClassCode]?.querySelector("fieldset");
+      if (fieldset instanceof HTMLElement) applyMaxVisibleItems(fieldset, true);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    window.addEventListener("resize", onResize);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+      window.removeEventListener("resize", onResize);
+    };
+  }, [openClassCode]);
 
   // Cache/state for final assessment kind
   const [finalKinds, setFinalKinds] = useState<Record<string, string | null>>({});
@@ -186,6 +237,15 @@ export function TimetableWorkspace(props: TimetableWorkspaceProps) {
   const entries = useMemo(() => tt.bySemester[semester] ?? [], [tt.bySemester, semester]);
   const sections = useMemo(() => (loaded.sem === semester ? loaded.data : {}), [loaded, semester]);
   const classFailures = loaded.sem === semester ? loaded.failed : {};
+  // Mã đã có ở các học kỳ KHÁC (tt.bySemester đồng bộ 2 chiều với Kế hoạch, xem reconcilePlannerTimetable trong lib/store.ts)
+  const addedElsewhereCodes = useMemo(() => {
+    const codes = new Set<string>();
+    for (const [sem, list] of Object.entries(tt.bySemester)) {
+      if (sem === semester) continue;
+      for (const e of list) codes.add(e.code);
+    }
+    return [...codes];
+  }, [tt.bySemester, semester]);
 
   const flash = useCallback((msg: string) => {
     setToast(msg);
@@ -352,9 +412,14 @@ export function TimetableWorkspace(props: TimetableWorkspaceProps) {
           if (matchStudentClass) chosen = matchStudentClass.class_code;
         }
         tt.setClass(e.code, chosen);
+        track(e.class_code ? "timetable_swap_class" : "timetable_add", {
+          module_code: e.code,
+          class_code: chosen,
+          semester_id: semester,
+        });
       }
     }
-  }, [entries, sections, tt, isEnglishTrackActive, profile.primaryCode]);
+  }, [entries, sections, tt, isEnglishTrackActive, profile.primaryCode, semester]);
 
   const selected = useMemo(
     () =>
@@ -427,6 +492,8 @@ export function TimetableWorkspace(props: TimetableWorkspaceProps) {
     return map;
   }, [warnings, selected, t]);
   const maxWeekHours = Math.max(1, ...weekWorkloads.map((week) => week.totalHours));
+  // Tổng giờ cả học kỳ cho ô "Tất cả" (làm tròn 1 chữ số thập phân để tránh sai số cộng số thực).
+  const allWeeksHours = Math.round(weekWorkloads.reduce((sum, week) => sum + week.totalHours, 0) * 10) / 10;
   const activeWeek = weekWorkloads.find((week) => week.weekNumber === selectedWeek);
   const weekAppearance = holidayThemesEnabled && activeWeek && view === "schedule"
     ? holidayAppearanceFor(activeWeek.startIso, activeWeek.endIso, holidays)
@@ -606,6 +673,15 @@ export function TimetableWorkspace(props: TimetableWorkspaceProps) {
   function acceptImport() {
     if (!pendingImport) return;
     tt.replaceSemester(pendingImport.semester, pendingImport.entries);
+    pendingImport.entries.forEach((e) => {
+      if (e.class_code) {
+        track("timetable_add", {
+          module_code: e.code,
+          class_code: e.class_code,
+          semester_id: pendingImport.semester,
+        });
+      }
+    });
     setPendingImport(null);
     window.history.replaceState(null, "", "/timetable");
     flash(t("tt.imported"));
@@ -637,12 +713,19 @@ export function TimetableWorkspace(props: TimetableWorkspaceProps) {
       if (Object.hasOwn(classes, entry.code)) return { ...entry, class_code: classes[entry.code] };
       return entry;
     }));
+    Object.entries(classes).forEach(([modCode, clsCode]) => {
+      track("timetable_add", {
+        module_code: modCode,
+        class_code: clsCode,
+        semester_id: semester,
+      });
+    });
     userSelectedRef.current = true;
     setSelectedWeek("all");
     props.onSaved(t("tt.optimize.saved", { name }));
   }
 
-  if (!mounted) return <Loading />;
+  if (!mounted) return <Loading page />;
 
   return (
     <div className="space-y-3">
@@ -672,14 +755,16 @@ export function TimetableWorkspace(props: TimetableWorkspaceProps) {
         >
           <ChevronRight className="h-5 w-5" aria-hidden />
         </button>
-        <button
-          type="button"
-          className="btn-outline h-9 px-3 text-xs whitespace-nowrap"
-          onClick={goToCurrentSemester}
-          title={t("sem.goToCurrentTitle")}
-        >
-          {t("sem.goToCurrent")}
-        </button>
+        {view !== "optimize" && (
+          <button
+            type="button"
+            className="btn-outline h-9 px-3 text-xs whitespace-nowrap"
+            onClick={goToCurrentSemester}
+            title={t("sem.goToCurrentTitle")}
+          >
+            {t("sem.goToCurrent")}
+          </button>
+        )}
       </div>
 
       {pendingImport && (
@@ -763,10 +848,7 @@ export function TimetableWorkspace(props: TimetableWorkspaceProps) {
           }}
         />
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <button className="btn-outline" onClick={() => setShowNames((v) => !v)} aria-pressed={showNames}>
-              {showNames ? t("tt.hideNames") : t("tt.showNames")}
-            </button>
+          <div className="contents">
             {totalViolations > 0 && (
               <div className="relative inline-flex items-center">
                 <button
@@ -794,7 +876,7 @@ export function TimetableWorkspace(props: TimetableWorkspaceProps) {
                 {showViolationPopover && (
                   <div
                     role="tooltip"
-                    className="absolute left-0 top-full mt-1.5 z-50 w-80 rounded-lg border border-slate-700 bg-slate-900/95 p-3 text-xs text-white shadow-2xl backdrop-blur ring-1 ring-white/10 dark:bg-slate-800/95"
+                    className="absolute left-0 top-full mt-1.5 z-50 w-[min(20rem,calc(100vw-2rem))] rounded-lg border border-slate-700 bg-slate-900/95 p-3 text-xs text-white shadow-2xl backdrop-blur ring-1 ring-white/10 dark:bg-slate-800/95"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <div className="mb-2 flex items-center justify-between border-b border-slate-700 pb-1 font-bold text-rose-400">
@@ -853,13 +935,40 @@ export function TimetableWorkspace(props: TimetableWorkspaceProps) {
               </div>
             )}
           </div>
-          <div className="flex flex-wrap gap-2">
+          {/* Một hàng, 5 nút rộng bằng nhau (cột 1fr). Thứ tự: Ẩn/hiện tên môn → Đặt lại → Chia sẻ → Tải xuống → Đồng bộ.
+              Không đủ một dòng thì chỉ hiện icon và giãn kín dòng. */}
+          <div ref={actionsRef}
+            className={`grid grid-flow-col auto-cols-fr gap-2 sm:contents ${actionsIconOnly ? "grow" : actionsMeasured ? "ml-auto" : "ml-auto max-sm:ml-0 max-sm:grow"}`}>
+            {/* Máy tính (sm trở lên): hàng nút "tan" vào hàng cha; "Ẩn tên môn" luôn ở ngoài cùng bên trái, bốn nút còn lại dồn sang phải. */}
+            <button className={`${ACTION_BTN} sm:order-first`} onClick={() => setShowNames((v) => !v)} aria-pressed={showNames}
+              aria-label={actionsIconOnly ? (showNames ? t("tt.hideNames") : t("tt.showNames")) : undefined}
+              title={actionsIconOnly ? (showNames ? t("tt.hideNames") : t("tt.showNames")) : undefined}>
+              {showNames ? <EyeOff className="h-4 w-4" aria-hidden /> : <Eye className="h-4 w-4" aria-hidden />}
+              {!actionsIconOnly && <span className={actionLabelCls}>{showNames ? t("tt.hideNames") : t("tt.showNames")}</span>}
+            </button>
+            <button
+              className={`${ACTION_BTN} text-red-600 sm:ml-auto`}
+              onClick={async () => {
+                if (entries.length && (await appConfirm(t("tt.confirmReset"), { danger: true, okLabel: t("tt.reset") }))) tt.replaceSemester(semester, []);
+              }}
+              disabled={!entries.length}
+              aria-label={actionsIconOnly ? t("tt.reset") : undefined} title={actionsIconOnly ? t("tt.reset") : undefined}
+            >
+              <RotateCcw className="h-4 w-4" aria-hidden /> {!actionsIconOnly && <span className={actionLabelCls}>{t("tt.reset")}</span>}
+            </button>
+            <button className={ACTION_BTN} onClick={share}
+              aria-label={actionsIconOnly ? t("tt.share") : undefined} title={actionsIconOnly ? t("tt.share") : undefined}>
+              <Share2 className="h-4 w-4" aria-hidden /> {!actionsIconOnly && <span className={actionLabelCls}>{t("tt.share")}</span>}
+            </button>
             <div className="relative">
-              <button className="btn-outline" onClick={() => setDownOpen((v) => !v)} aria-haspopup="menu" aria-expanded={downOpen}>
-                <Download className="h-4 w-4" aria-hidden /> {t("tt.download")} <ChevronDown className="h-3.5 w-3.5" aria-hidden />
+              <button className={ACTION_BTN} onClick={() => setDownOpen((v) => !v)} aria-haspopup="menu" aria-expanded={downOpen}
+                aria-label={actionsIconOnly ? t("tt.download") : undefined} title={actionsIconOnly ? t("tt.download") : undefined}>
+                <Download className="h-4 w-4" aria-hidden />
+                {!actionsIconOnly && <span className={`inline-flex items-center gap-1 ${actionLabelCls ?? ""}`}>{t("tt.download")} <ChevronDown className="h-3.5 w-3.5" aria-hidden /></span>}
               </button>
               {downOpen && (
-                <div className="absolute right-0 z-20 mt-1 w-44 rounded-md border border-slate-200 bg-white py-1 text-sm shadow-md dark:border-slate-700 dark:bg-slate-900" role="menu">
+                <div ref={(el) => { if (el) applyMaxVisibleItems(el, true); }}
+                  className="absolute right-0 z-20 mt-1 w-44 overflow-y-auto whitespace-nowrap rounded-md border border-slate-200 bg-white py-1 text-sm shadow-md dark:border-slate-700 dark:bg-slate-900" role="menu">
                   <button role="menuitem" className="block w-full px-3 py-1.5 text-left hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => { setDownOpen(false); exportPng(); }}>{t("tt.png")}</button>
                   <button role="menuitem" className="block w-full px-3 py-1.5 text-left hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => { setDownOpen(false); exportIcs(); }}>{t("tt.ics")}</button>
                   <button role="menuitem" className="block w-full px-3 py-1.5 text-left hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => { setDownOpen(false); exportXlsx(); }}>{t("tt.xlsx")}</button>
@@ -867,24 +976,17 @@ export function TimetableWorkspace(props: TimetableWorkspaceProps) {
                 </div>
               )}
             </div>
-            <button className="btn-outline" onClick={share}><Share2 className="h-4 w-4" aria-hidden /> {t("tt.share")}</button>
-            <button className="btn-outline" onClick={() => setShowWebcal(true)}><RefreshCw className="h-4 w-4" aria-hidden /> {t("tt.sync")}</button>
-            <button
-              className="btn-outline text-red-600"
-              onClick={async () => {
-                if (entries.length && (await appConfirm(t("tt.confirmReset"), { danger: true, okLabel: t("tt.reset") }))) tt.replaceSemester(semester, []);
-              }}
-              disabled={!entries.length}
-            >
-              <RotateCcw className="h-4 w-4" aria-hidden /> {t("tt.reset")}
+            <button className={ACTION_BTN} onClick={() => setShowWebcal(true)}
+              aria-label={actionsIconOnly ? t("tt.sync") : undefined} title={actionsIconOnly ? t("tt.sync") : undefined}>
+              <RefreshCw className="h-4 w-4" aria-hidden /> {!actionsIconOnly && <span className={actionLabelCls}>{t("tt.sync")}</span>}
             </button>
           </div>
         </div>
       </section>
 
-      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(12rem,23%)]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(12rem,23%)]">
         {/* module list */}
-        <div className="card space-y-3">
+        <div className="card min-w-0 space-y-3">
           <div className="space-y-2">
             <ProgramFilterBar
               showCard={false}
@@ -924,18 +1026,23 @@ export function TimetableWorkspace(props: TimetableWorkspaceProps) {
                   )}
                 </div>
               </div>
-              <div className="flex flex-wrap items-end justify-center gap-x-1 gap-y-2">
-                <button
-                  type="button"
-                  aria-pressed={selectedWeek === "all"}
-                  className={`${weekButtonClass} px-0.5 text-[10px] leading-tight`}
-                  onClick={() => {
-                    userSelectedRef.current = true;
-                    setSelectedWeek("all");
-                  }}
-                >
-                  {t("tt.allWeeks")}
-                </button>
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(2.25rem,1fr))] justify-items-center gap-x-1 gap-y-2 sm:flex sm:flex-wrap sm:justify-center sm:items-end">
+                {/* "Tất cả" cùng cấu trúc với ô tuần (số giờ ở trên, nút ở dưới) để thẳng hàng; số giờ = tổng mọi tuần. */}
+                <div className="grid justify-items-center gap-0.5">
+                  <span className="text-xs font-semibold tabular-nums text-slate-700 dark:text-slate-200" aria-hidden="true">{allWeeksHours}</span>
+                  <button
+                    type="button"
+                    aria-pressed={selectedWeek === "all"}
+                    title={`${t("tt.allWeeks")} · ${allWeeksHours}`}
+                    className={`${weekButtonClass} px-0.5 text-[10px] leading-tight`}
+                    onClick={() => {
+                      userSelectedRef.current = true;
+                      setSelectedWeek("all");
+                    }}
+                  >
+                    {t("tt.allWeeks")}
+                  </button>
+                </div>
                 {weekWorkloads.map((week) => {
                   const isSelected = selectedWeek === week.weekNumber;
                   const label = t("tt.weekButtonLabel", {
@@ -979,6 +1086,7 @@ export function TimetableWorkspace(props: TimetableWorkspaceProps) {
                 track("timetable_add", { module_code: m.code, semester_id: semester || undefined });
               }}
               exclude={entries.map((e) => e.code)}
+              addedCodes={addedElsewhereCodes}
               programId={codeSearch ? undefined : activeProgramId}
               programIds={codeSearch ? undefined : activeProgramIds}
               degree={searchPrimaryGraduate || searchSecondaryGraduate ? "all" : undefined}
@@ -995,7 +1103,7 @@ export function TimetableWorkspace(props: TimetableWorkspaceProps) {
 
             {/* Toggle: Hiện cả học phần hệ tiếng Việt khi mã lớp có đuôi E */}
             {isEnglishTrackActive && !codeSearch && (
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
                 <label className="flex items-center gap-1.5 text-xs text-slate-600 select-none cursor-pointer dark:text-slate-400">
                   <input
                     type="checkbox"
@@ -1023,9 +1131,14 @@ export function TimetableWorkspace(props: TimetableWorkspaceProps) {
                 const progLabel = programLabels[e.code];
                 const currentSec = list?.find((s) => s.class_code === e.class_code);
                 const modTotalHours = currentSec ? getModuleTotalHours(currentSec, occurrenceOptions) : 0;
+                const menuOpen = !!classMenuOpen[e.code];
+                const pickerOpen = pickerFor === e.code;
 
                 return (
-                  <li key={e.code} className={`space-y-1.5 px-2 py-2 ${conflictingCodes.has(e.code) ? "rounded-md bg-rose-50 ring-1 ring-inset ring-rose-400 dark:bg-rose-950/60 dark:ring-rose-600" : ""} ${e.hidden ? "opacity-60" : ""}`}>
+                  <li
+                    key={e.code}
+                    className={`space-y-1.5 px-2 py-2 ${menuOpen ? "relative z-30" : pickerOpen ? "relative z-20" : ""} ${conflictingCodes.has(e.code) ? "rounded-md bg-rose-50 ring-1 ring-inset ring-rose-400 dark:bg-rose-950/60 dark:ring-rose-600" : ""} ${e.hidden && !menuOpen && !pickerOpen ? "opacity-60" : ""}`}
+                  >
                     <div className="flex items-start gap-2">
                       <div className="relative">
                         <button
@@ -1051,7 +1164,7 @@ export function TimetableWorkspace(props: TimetableWorkspaceProps) {
                           </div>
                         )}
                       </div>
-                      <div className="min-w-0 flex-1">
+                      <div className={`min-w-0 flex-1 ${e.hidden && (menuOpen || pickerOpen) ? "opacity-60" : ""}`}>
                         <div className="flex flex-wrap items-center gap-1.5">
                           <Link href={`/modules/${encodeURIComponent(e.code)}`} className="truncate text-sm font-semibold text-brand-700 hover:underline dark:text-brand-300">
                             <span className="font-mono">{e.code}</span> {info ? moduleName(info, lang) : "…"}
@@ -1109,31 +1222,76 @@ export function TimetableWorkspace(props: TimetableWorkspaceProps) {
                     ) : list.length === 0 ? (
                       <p className="text-xs text-amber-600">{t("tt.noOpenClasses")}</p>
                     ) : (
-                      <select
-                        className="input py-1 text-xs"
-                        value={e.class_code ?? ""}
-                        onChange={(ev) => {
-                          tt.setClass(e.code, ev.target.value);
-                          track("timetable_swap_class", { module_code: e.code, class_code: ev.target.value, semester_id: semester || undefined });
-                        }}
-                        aria-label={t("tt.chooseClass", { code: e.code })}
+                      <div
+                        ref={(el) => { classMenuRefs.current[e.code] = el; }}
+                        className="relative min-w-0"
                       >
-                        {list.map((s) => (
-                          <option key={s.class_code} value={s.class_code}>
-                            {s.class_code}{s.lecturer && ` · ${t("tt.scheduleLecturer", { name: s.lecturer })}`} — {s.lessons.map((l) => {
-                              const { start, end } = getLessonTimes(l);
-                              const from = formatDateVi(l.date_start);
-                              const to = formatDateVi(l.date_end);
-                              const dates = from && to && from !== to ? `, ${from}–${to}` : "";
-                              return `${weekdayName(t, l.weekday)}, ${t("tt.scheduleTime", { s: l.start_period, e: l.end_period, start, end })}${dates}`;
-                            }).join("; ") || t("tt.noSchedule")}
-                            {seatsAvailable(s) !== null ? ` (${seatsAvailable(s) === 0 ? t("tt.full") : t("tt.seatsLeft", { n: seatsAvailable(s) ?? 0 })})` : ""}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                    {currentSec?.lecturer && (
-                      <p className="text-xs text-slate-600 dark:text-slate-300">{t("tt.scheduleLecturer", { name: currentSec.lecturer })}</p>
+                        {(() => {
+                          const current = list.find((s) => s.class_code === (e.class_code ?? ""));
+                          const currentText = current
+                            ? `${current.class_code}${current.lecturer ? ` · ${t("tt.scheduleLecturer", { name: current.lecturer })}` : ""}`
+                            : "—";
+                          return (
+                            <button
+                              type="button"
+                              aria-expanded={menuOpen}
+                              aria-label={t("tt.chooseClass", { code: e.code })}
+                              onClick={() => setClassMenuOpen(menuOpen ? {} : { [e.code]: true })}
+                              className={`flex w-full min-w-0 cursor-pointer items-center justify-between gap-2 rounded-md border border-slate-300 bg-white px-2.5 py-2 text-left text-xs font-semibold text-slate-900 transition hover:border-brand-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 ${e.hidden && (menuOpen || pickerOpen) ? "opacity-60" : ""}`}
+                            >
+                              <span className="min-w-0 break-words">{currentText}</span>
+                              <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${menuOpen ? "rotate-180" : ""}`} aria-hidden />
+                            </button>
+                          );
+                        })()}
+                        <fieldset
+                          ref={(el) => { if (el) applyMaxVisibleItems(el, menuOpen); }}
+                          className={`min-w-0 gap-1.5 ${menuOpen
+                            ? "absolute inset-x-0 top-full z-30 mt-1 grid max-h-[60vh] md:max-h-80 overflow-y-auto overscroll-contain rounded-md border border-slate-200 bg-white p-2 shadow-lg dark:border-slate-700 dark:bg-slate-900"
+                            : "hidden"}`}
+                          aria-label={t("tt.chooseClass", { code: e.code })}
+                        >
+                          {list.map((s) => {
+                            const seats = seatsAvailable(s);
+                            const checked = (e.class_code ?? "") === s.class_code;
+                            // Mỗi buổi học (phân cách bằng "; ") nằm trong một box riêng để nội dung xuống dòng đầy đủ.
+                            const sessions = formatSectionSchedule(s, t).split("; ").map((x) => x.trim()).filter(Boolean);
+                            return (
+                              <label
+                                key={s.class_code}
+                                className={`block min-w-0 cursor-pointer rounded-md border px-2.5 py-2 text-xs leading-relaxed transition focus-within:outline-2 focus-within:outline-brand-focus ${
+                                  checked
+                                    ? "border-brand-600 bg-brand-50 text-slate-900 dark:bg-slate-800 dark:text-white"
+                                    : "border-slate-300 bg-white text-slate-700 hover:border-brand-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                                }`}
+                              >
+                                <input
+                                  type="radio"
+                                  name={`class-${e.code}`}
+                                  value={s.class_code}
+                                  checked={checked}
+                                  onChange={() => {
+                                    tt.setClass(e.code, s.class_code);
+                                    setClassMenuOpen({});
+                                    track("timetable_swap_class", { module_code: e.code, class_code: s.class_code, semester_id: semester || undefined });
+                                  }}
+                                  className="sr-only"
+                                />
+                                <span className="block break-words font-semibold">
+                                  {s.class_code}
+                                  {s.lecturer && ` · ${t("tt.scheduleLecturer", { name: s.lecturer })}`}
+                                  {seats !== null ? ` (${seats === 0 ? t("tt.full") : t("tt.seatsLeft", { n: seats ?? 0 })})` : ""}
+                                </span>
+                                {sessions.map((session, i) => (
+                                  <span key={i} className="mt-1 block break-words rounded bg-white/70 px-1.5 py-0.5 dark:bg-slate-950/40">
+                                    {session}
+                                  </span>
+                                ))}
+                              </label>
+                            );
+                          })}
+                        </fieldset>
+                      </div>
                     )}
                   </li>
                 );

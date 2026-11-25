@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 import re
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import func, or_, select
+from sqlalchemy import case, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.db import get_db
@@ -29,10 +29,14 @@ from app.models import (
     OutlineScheduleItem,
     ProgramCatalogEntry,
     ProgramModule,
+    Semester,
 )
 from app.routers.equivalents import codes_with_equivalents, equivalents_for, like_escape
+from app.services.exchange_stats import exchange_stat_items, exchange_totals_subquery
 from app.schemas import (
     ClassRoom,
+    ExchangeStatItem,
+    ExchangeStatList,
     ClassSectionOut,
     LessonOut,
     FacetCount,
@@ -413,6 +417,9 @@ def _build_module_filter_clauses(
         base_clauses.append(or_(
             Module.search_text.like(pattern, escape="\\"),
             Module.name_en.ilike(pattern, escape="\\"),
+            # Tìm thêm theo nội dung (mô tả) học phần — cột này có dấu nên chỉ khớp khi gõ đúng dấu.
+            Module.description.ilike(pattern, escape="\\"),
+            Module.description_en.ilike(pattern, escape="\\"),
         ))
 
     pids: list[str] = []
@@ -574,6 +581,8 @@ def list_modules(
     degree: str = Query("dai_hoc", description="Bậc đào tạo: 'dai_hoc' | 'thac_si' | 'tien_si' | 'all'"),
     program_id: str | None = Query(None, description="Chỉ môn thuộc CTĐT này, vd K23406 (khóa 23, ngành 406)"),
     program_ids: list[str] | None = Query(None, description="Danh sách mã CTĐT (lặp tham số ?program_ids=...)"),
+    priority_codes: str | None = Query(None, max_length=4000, description="Học phần đã chọn/đã học (phân cách bằng dấu phẩy): xếp lên đầu"),
+    exchange_rank: bool = Query(False, description="Sau nhóm ưu tiên, xếp theo số SV trao đổi đã học (nhiều → ít)"),
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
@@ -602,7 +611,17 @@ def list_modules(
     )
     stmt = select(Module).where(*base_clauses, *group_clauses.values())
     total = db.scalar(select(func.count(Module.code)).where(*base_clauses, *group_clauses.values())) or 0
-    rows = list(db.scalars(stmt.order_by(Module.code).offset((page - 1) * size).limit(size)))
+    priority = list(dict.fromkeys(c.strip().upper() for c in (priority_codes or "").split(",") if c.strip()))[:200]
+    order_by = []
+    if priority or exchange_rank:
+        exch = exchange_totals_subquery()
+        stmt = stmt.outerjoin(exch, exch.c.module_code == Module.code)
+        if priority:  # học phần đã chọn/đã học lên đầu
+            order_by.append(case((Module.code.in_(priority), 0), else_=1))
+        if exchange_rank:  # rồi tới học phần SV trao đổi học nhiều
+            order_by.append(func.coalesce(exch.c.total, 0).desc())
+    order_by.append(Module.code)
+    rows = list(db.scalars(stmt.order_by(*order_by).offset((page - 1) * size).limit(size)))
     codes = [m.code for m in rows]
     has_eq = codes_with_equivalents(db, codes)
     plans = _plans_for(db, codes)
@@ -958,6 +977,22 @@ def class_to_out(cs: ClassSection, lecturer_email: str | None = None) -> ClassSe
     )
 
 
+@router.get("/exchange-stats", response_model=ExchangeStatList, summary="Số SV trao đổi đã học các học phần (tổng hợp, công khai)")
+def list_exchange_stats(
+    codes: str = Query(..., max_length=4000, description="Mã học phần, cách nhau bởi dấu phẩy (tối đa 200)"),
+    db: Session = Depends(get_db),
+):
+    wanted = list(dict.fromkeys(c.strip().upper() for c in codes.split(",") if c.strip()))[:200]
+    return ExchangeStatList(items=[ExchangeStatItem(**item) for item in exchange_stat_items(db, wanted)])
+
+
+@router.get("/modules/{code}/exchange-stats", response_model=ExchangeStatItem, summary="Số SV trao đổi đã học một học phần (tổng hợp, công khai)")
+def module_exchange_stats(code: str, db: Session = Depends(get_db)):
+    key = code.strip().upper()
+    found = exchange_stat_items(db, [key])
+    return ExchangeStatItem(**found[0]) if found else ExchangeStatItem(module_code=key, total=0, by_semester=[])
+
+
 @router.get("/modules/{code}/classes", response_model=list[ClassSectionOut], summary="Lớp học phần của một học phần")
 def list_module_classes(
     code: str,
@@ -1163,7 +1198,33 @@ def create_module_comment(
 ):
     m = _get_module(db, code)
 
-    # 1. Rate limit: tối đa 3 bình luận / 10 phút / anon_id
+    # 0. Học kỳ đã học (tùy chọn): phải tồn tại; có học kỳ thì bắt buộc anon_id và chống góp ý trùng.
+    semester = body.semester.strip() if body.semester else None
+    if semester:
+        if not body.anon_id:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Thiếu mã thiết bị (anon_id) để góp ý theo học kỳ.",
+            )
+        if db.get(Semester, semester) is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Học kỳ không hợp lệ.",
+            )
+        duplicate = db.scalar(
+            select(ModuleComment.id).where(
+                ModuleComment.anon_id == body.anon_id,
+                ModuleComment.module_code == m.code,
+                ModuleComment.semester == semester,
+            ).limit(1)
+        )
+        if duplicate:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Bạn đã góp ý học phần này trong học kỳ này.",
+            )
+
+    # 1. Rate limit: tối đa 10 bình luận / 10 phút / anon_id (một sinh viên góp ý nhiều học phần cùng lúc)
     if body.anon_id:
         since = datetime.now(timezone.utc) - timedelta(minutes=10)
         recent_count = db.scalar(
@@ -1172,7 +1233,7 @@ def create_module_comment(
                 ModuleComment.created_at >= since,
             )
         ) or 0
-        if recent_count >= 3:
+        if recent_count >= 10:
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail="Bạn đã gửi quá nhiều bình luận trong 10 phút qua. Vui lòng thử lại sau.",
@@ -1181,19 +1242,30 @@ def create_module_comment(
     # 2. Bộ lọc nội dung (chuẩn hóa, cấm từ block, gắn cờ link/contact)
     flags = check_content(body.body, db=db, min_len=5, max_len=1000)
 
-    # 3. Chế độ kiểm duyệt (admin_settings: 'moderation.mode' = 'pre' -> pending, 'post' -> approved)
+    # 3. Chế độ kiểm duyệt (admin_settings 'moderation.mode'):
+    #    auto (mặc định): approved nếu không có cờ, pending nếu có cờ (link, SĐT/email, từ khóa flag)
+    #    pre: luôn pending; post: luôn approved
     mode_setting = db.scalar(select(AdminSetting.value).where(AdminSetting.key == "moderation.mode"))
-    mode = "pre"
+    mode = "auto"
     if isinstance(mode_setting, dict):
-        mode = mode_setting.get("mode", "pre")
+        mode = mode_setting.get("mode", "auto")
     elif isinstance(mode_setting, str):
         mode = mode_setting
+    mode = str(mode).strip().lower()
+    if mode not in ("auto", "pre", "post"):
+        mode = "pre"  # giá trị không rõ thì giữ chế độ an toàn nhất
 
-    initial_status = "approved" if mode == "post" else "pending"
+    if mode == "post":
+        initial_status = "approved"
+    elif mode == "auto":
+        initial_status = "pending" if flags else "approved"
+    else:
+        initial_status = "pending"
 
     comment = ModuleComment(
         module_code=m.code,
         anon_id=body.anon_id,
+        semester=semester,
         body=body.body.strip(),
         rating=body.rating,
         status=initial_status,
@@ -1210,5 +1282,6 @@ def create_module_comment(
         rating=comment.rating,
         author_name="Sinh viên ẩn danh",
         status=comment.status,
+        semester=comment.semester,
         created_at=comment.created_at,
     )

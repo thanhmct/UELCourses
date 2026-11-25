@@ -4,10 +4,11 @@ import { createPortal } from "react-dom";
 import type { ClassSection, Lesson } from "@/lib/types";
 import { assignLanes, lessonsOverlap } from "@/lib/conflicts";
 import { getLessonTimes } from "@/lib/occurrences";
-import { PERIOD_COUNT, SESSION_BOUNDARIES, WEEKDAYS, periodStartTime, timeToColumn } from "@/lib/periods";
+import { PERIOD_COUNT, SESSION_BOUNDARIES, WEEKDAYS, periodStartTime, timeToColumn, timeToPeriod } from "@/lib/periods";
 import { seatsAvailable } from "@/lib/modules";
 import { useT, weekdayName } from "@/i18n";
 import { normalizeHex, readableText } from "@/lib/appearance";
+import { MarqueeText } from "@/components/MarqueeText";
 
 const isBoundary = (p: number) => p === SESSION_BOUNDARIES.morningEnd || p === SESSION_BOUNDARIES.afternoonEnd;
 
@@ -87,10 +88,26 @@ interface Props {
 
 /** Grid dimensions in pixels. Overlapping sessions have a full-height lane each. */
 const COL_W = 68;
+/** Giờ cuối cùng hiển thị trên lưới (lưới cắt tại mốc này). */
+const GRID_END = "20:00";
 const ROW_H = 57;
 const OVERLAP_LANE_H = 60;
 const MAX_VISIBLE_LANES = 2;
 const LABEL_W = 64;
+
+/** Phone layout is used below the `desk` breakpoint (1280px, see globals.css). */
+const PHONE_QUERY = "(max-width: 1279px)";
+
+/**
+ * Horizontal scroll offset that puts the period running at `now` at the left edge of the grid.
+ * Between periods it points at the next period; before the first or after the last period it stays at the start.
+ */
+export function scrollLeftForNow(now: Date): number {
+  const hhmm = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  const period = timeToPeriod(hhmm);
+  if (period === null) return 0;
+  return LABEL_W + (period - 1) * COL_W;
+}
 
 interface GridSlot {
   block: GridBlock;
@@ -168,6 +185,48 @@ function slotsByDay(slots: Map<string, GridSlot>) {
   return map;
 }
 
+/** Period-only overlap test (the criterion `assignLanes` itself uses for clustering). */
+function periodsOverlap(a: LayoutItem, b: LayoutItem): boolean {
+  return !(a.end_period < b.start_period || b.end_period < a.start_period);
+}
+
+/**
+ * Gom các mục thực sự chồng nhau rồi xếp lane riêng cho mỗi cụm. Hai môn (slot) khác nhau trùng tiết
+ * nhưng ở các tuần/ngày không bao giờ trùng thực tế (vd môn A chỉ học tuần 1-8, môn B chỉ học tuần
+ * 9-16) không bị ép chung lane, nên không làm hàng bị tách đôi/co lại một cách giả tạo — áp dụng cho
+ * cả lưới "Tất cả các tuần" lẫn chiều cao dự trữ cho cả học kỳ. Khối "ghost" (xem lớp khác) vẫn dùng
+ * phép so khớp theo tiết như cũ, giữ nguyên cách hiển thị khi đang xem lớp thay thế.
+ */
+function assignLanesByGenuineOverlap(items: LayoutItem[]): ReturnType<typeof assignLanes<LayoutItem>> {
+  const parent = items.map((_, i) => i);
+  function find(i: number): number {
+    while (parent[i] !== i) {
+      parent[i] = parent[parent[i]];
+      i = parent[i];
+    }
+    return i;
+  }
+  for (let i = 0; i < items.length; i++) {
+    const a = items[i];
+    for (let j = i + 1; j < items.length; j++) {
+      const b = items[j];
+      const overlaps = a.kind === "slot" && b.kind === "slot" ? lessonsOverlap(a.lesson, b.lesson) : periodsOverlap(a, b);
+      if (!overlaps) continue;
+      const ra = find(i);
+      const rb = find(j);
+      if (ra !== rb) parent[ra] = rb;
+    }
+  }
+  const groups = new Map<number, LayoutItem[]>();
+  items.forEach((item, i) => {
+    const root = find(i);
+    const group = groups.get(root) ?? [];
+    group.push(item);
+    groups.set(root, group);
+  });
+  return [...groups.values()].flatMap((group) => assignLanes(group));
+}
+
 function rowHeightFor(laid: ReturnType<typeof assignLanes<LayoutItem>>, slots: Map<string, GridSlot>) {
   const lanes = Math.min(MAX_VISIBLE_LANES, Math.max(1, ...laid.map((entry) => entry.lanes)));
   const hasConflict = laid.some(({ item }) => item.kind === "slot" && slots.get(item.slotKey)?.schedules.some(({ conflict }) => conflict));
@@ -175,7 +234,7 @@ function rowHeightFor(laid: ReturnType<typeof assignLanes<LayoutItem>>, slots: M
 }
 
 function layoutDay(items: LayoutItem[], selectedSlotKey: string | null) {
-  const layout = assignLanes(items);
+  const layout = assignLanesByGenuineOverlap(items);
   const selected = layout.find(({ item }) => item.kind === "slot" && item.slotKey === selectedSlotKey);
   if (!selected || selected.lane < MAX_VISIBLE_LANES) return layout;
 
@@ -761,17 +820,28 @@ export const TimetableGrid = forwardRef<HTMLDivElement, Props>(function Timetabl
   // Reserve room for the semester layout so filtering a week does not move other days.
   const semesterRowHeights = useMemo(() => {
     const slots = groupBlocks(semesterBlocks);
-    return new Map([...slotsByDay(slots)].map(([day, items]) => [day, rowHeightFor(assignLanes(items), slots)]));
+    return new Map([...slotsByDay(slots)].map(([day, items]) => [day, rowHeightFor(assignLanesByGenuineOverlap(items), slots)]));
   }, [semesterBlocks]);
 
   // Keep Sunday across week changes when the semester has a Sunday session.
   const days = WEEKDAYS.filter((d) => d !== 8 || closures?.has(8) || (byDay.get(8)?.length ?? 0) > 0 || semesterBlocks.some((b) => b.lesson.weekday === 8));
 
-  const width = LABEL_W + PERIOD_COUNT * COL_W;
+  // Lưới cắt tại GRID_END (không hiển thị phần tiết sau mốc này); chỉ ghi giờ ở tiêu đề.
+  const visibleColumns = timeToColumn(GRID_END) ?? PERIOD_COUNT;
+  const width = LABEL_W + visibleColumns * COL_W;
+
+  // On phones, open the grid at the period happening now (once, on first load; later scrolling is the user's).
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const scroller = scrollerRef.current;
+    if (!scroller || typeof window === "undefined" || !window.matchMedia(PHONE_QUERY).matches) return;
+    scroller.scrollLeft = scrollLeftForNow(new Date());
+  }, []);
 
   return (
     <div className="space-y-3">
       <div
+        ref={scrollerRef}
         className="overflow-x-auto rounded-md border border-slate-200 dark:border-slate-800"
         role="region"
         aria-label={t("tt.gridAria")}
@@ -782,23 +852,26 @@ export const TimetableGrid = forwardRef<HTMLDivElement, Props>(function Timetabl
           }
         }}
       >
-        <div ref={ref} className="bg-white dark:bg-slate-900" style={{ width, minWidth: width }}>
-          <div className="flex border-b border-slate-200 text-center text-[10px] text-slate-500 dark:border-slate-800">
-            <div aria-hidden="true" className="shrink-0 py-1" style={{ width: LABEL_W }} />
+        <div ref={ref} className="overflow-hidden bg-white dark:bg-slate-900" style={{ width, minWidth: width }}>
+          {/* Trục giờ: mỗi nhãn nằm trên vạch đầu tiết; mốc GRID_END ở mép phải để thấy đủ đến giờ cuối. */}
+          <div className="relative flex h-6 border-b border-slate-200 text-[11px] font-semibold tabular-nums text-slate-700 dark:border-slate-800 dark:text-slate-200">
+            <div aria-hidden="true" className="shrink-0" style={{ width: LABEL_W }} />
             {Array.from({ length: PERIOD_COUNT }, (_, i) => (
               <div
                 key={i}
-                className={`shrink-0 border-l py-1 ${
+                aria-hidden="true"
+                className={`shrink-0 border-l ${
                   isBoundary(i) ? "border-slate-300 dark:border-slate-600" : "border-slate-100 dark:border-slate-800"
                 }`}
                 style={{ width: COL_W }}
-              >
-                <div className="text-xs font-semibold text-slate-700 dark:text-slate-200">
-                  {periodStartTime(i + 1)}
-                </div>
-                <div>{t("period.n", { n: i + 1 })}</div>
-              </div>
+              />
             ))}
+            {Array.from({ length: Math.ceil(visibleColumns) }, (_, i) => (
+              <span key={`tick-${i}`} className="absolute top-1 -translate-x-1/2 leading-4" style={{ left: LABEL_W + i * COL_W }}>
+                {periodStartTime(i + 1)}
+              </span>
+            ))}
+            <span className="absolute right-0.5 top-1 leading-4">{GRID_END}</span>
           </div>
 
           {days.map((d) => {
@@ -881,9 +954,11 @@ export const TimetableGrid = forwardRef<HTMLDivElement, Props>(function Timetabl
                 {closure ? (
                   <div role="cell" aria-colspan={PERIOD_COUNT} className="flex flex-1 items-center border-l border-amber-200 bg-amber-50 text-xs text-amber-950 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100"
                     style={{ minHeight: rowHeight }}>
-                    <div className="sticky left-3 max-w-[min(100%,calc(100vw-7rem))] px-3 py-2">
-                      <time className="font-semibold tabular-nums" dateTime={closure.date}>{fullDate(closure.date)}</time>
-                      {` · ${[...closure.titles].join(" / ")}`}
+                    <div className="flex min-w-0 flex-1 items-center px-3 py-2">
+                      <MarqueeText>
+                        <time className="font-semibold tabular-nums" dateTime={closure.date}>{fullDate(closure.date)}</time>
+                        {` · ${[...closure.titles].join(" / ")}`}
+                      </MarqueeText>
                     </div>
                   </div>
                 ) : <div className="relative" style={{ width: PERIOD_COUNT * COL_W, height: rowHeight }}>
