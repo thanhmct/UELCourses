@@ -1,5 +1,5 @@
 // UELPATH Service Worker for PWA Offline Support
-const CACHE_NAME = "uelpath-cache-v2";
+const CACHE_NAME = "uelpath-cache-v3";
 const OFFLINE_URLS = [
   "/",
   "/today",
@@ -10,11 +10,11 @@ const OFFLINE_URLS = [
   "/equivalents",
   "/regulations",
   "/settings",
-  "/manifest.json?v=uelpath-logo-20261123",
-  "/favicon.ico?v=uelpath-logo-20261123",
-  "/icons/icon-192.png?v=uelpath-logo-20261123",
-  "/icons/icon-512.png?v=uelpath-logo-20261123",
-  "/icons/icon-maskable-512.png?v=uelpath-logo-20261123"
+  "/manifest.json?v=uelpath-logo-20261126",
+  "/favicon.ico?v=uelpath-logo-20261126",
+  "/icons/icon-192.png?v=uelpath-logo-20261126",
+  "/icons/icon-512.png?v=uelpath-logo-20261126",
+  "/icons/icon-maskable-512.png?v=uelpath-logo-20261126"
 ];
 
 self.addEventListener("install", (event) => {

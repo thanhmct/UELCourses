@@ -11,14 +11,14 @@ import { AppDialog } from "@/components/AppDialog";
 export const metadata: Metadata = {
   title: { default: "UELPATH", template: "%s · UELPATH" },
   description: "Module search, timetable planning, multi-semester study planning, and academic regulations Q&A for UEL students.",
-  manifest: "/manifest.json?v=uelpath-logo-20261123",
+  manifest: "/manifest.json?v=uelpath-logo-20261126",
   icons: {
     icon: [
-      { url: "/icon.svg?v=uelpath-logo-20261123", type: "image/svg+xml" },
-      { url: "/favicon.ico?v=uelpath-logo-20261123", type: "image/x-icon" },
+      { url: "/icon.svg?v=uelpath-logo-20261126", type: "image/svg+xml" },
+      { url: "/favicon.ico?v=uelpath-logo-20261126", type: "image/x-icon" },
     ],
-    shortcut: "/favicon.ico?v=uelpath-logo-20261123",
-    apple: "/apple-icon.png?v=uelpath-logo-20261123",
+    shortcut: "/favicon.ico?v=uelpath-logo-20261126",
+    apple: "/apple-icon.png?v=uelpath-logo-20261126",
   },
   appleWebApp: {
     capable: true,

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 667" width="2000" height="667" role="img" aria-label="UELPATH">
+  <title>UELPATH</title>
+  <g transform="translate(88 174)">
+  <g fill="none" stroke="#01285F" stroke-width="78" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M39 39 V180 A100 100 0 0 0 239 180 V39"/>
+    <path d="M349 39 V280 M349 39 H501 M349 156 H481 M349 280 H501"/>
+    <path d="M597 39 V280 H733"/>
+    <path d="M826 280 V39 H925 A67.5 67.5 0 0 1 925 174 H826"/>
+    <path d="M1314 39 H1496 M1405 39 V280"/>
+    <path d="M1589 39 V280 M1788 39 V280 M1589 156 H1788"/>
+  </g>
+  <g transform="translate(887.1 -109.7) scale(0.538)">
+  <path fill="#01285F" d="M205 712 L438 262 C468 204 556 204 586 262 L819 712 C842 755 814 797 764 797 L738 797 C712 797 694 784 684 764 L524 408 Q512 380 500 408 L340 764 C330 784 312 797 286 797 L260 797 C210 797 182 755 205 712 Z"/>
+  <g fill="#FE8002" stroke="#FE8002" stroke-width="30" stroke-linejoin="round">
+    <polygon points="512,478 493,513 531,513"/>
+    <polygon points="468,573 556,573 572,617 452,617"/>
+    <polygon points="431,677 593,677 630,777 394,777"/>
+  </g>
+  </g>
+  </g>
+</svg>
