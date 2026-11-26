@@ -3,9 +3,12 @@
 import { useEffect, useState } from "react";
 import { useT } from "@/i18n";
 
+const OFFLINE_NOTICE_DURATION_MS = 5000;
+
 export function PwaRegister() {
   const { t } = useT();
   const [isOffline, setIsOffline] = useState(false);
+  const [noticeVisible, setNoticeVisible] = useState(false);
 
   useEffect(() => {
     // Register Service Worker
@@ -21,6 +24,7 @@ export function PwaRegister() {
     const updateOnlineStatus = () => {
       setIsOffline(!navigator.onLine);
     };
+    updateOnlineStatus();
 
     window.addEventListener("online", updateOnlineStatus);
     window.addEventListener("offline", updateOnlineStatus);
@@ -31,7 +35,17 @@ export function PwaRegister() {
     };
   }, []);
 
-  if (!isOffline) return null;
+  useEffect(() => {
+    if (!isOffline) {
+      setNoticeVisible(false);
+      return;
+    }
+    setNoticeVisible(true);
+    const timer = setTimeout(() => setNoticeVisible(false), OFFLINE_NOTICE_DURATION_MS);
+    return () => clearTimeout(timer);
+  }, [isOffline]);
+
+  if (!noticeVisible) return null;
 
   return (
     <div
