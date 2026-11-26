@@ -36,15 +36,8 @@ export function AdminLayoutClient({ children }: { children: React.ReactNode }) {
       } catch (err: any) {
         if (!active) return;
 
-        // Nếu API trả về 404: Khu vực quản trị chưa bật (ADMIN_DEV_OPEN=false hoặc production)
-        if (err instanceof AdminApiError && err.status === 404) {
-          setNotEnabled(true);
-          setLoading(false);
-          return;
-        }
-
-        // Nếu 401 (chế độ A0 sau này): chuyển tới trang đăng nhập
-        if (err instanceof AdminApiError && err.status === 401) {
+        // Nếu API trả về 404 (không có phiên đăng nhập) hoặc 401: chuyển tới trang đăng nhập
+        if (err instanceof AdminApiError && (err.status === 404 || err.status === 401)) {
           if (!isLoginPage) {
             router.push(`/admin/login?next=${encodeURIComponent(pathname)}`);
           }

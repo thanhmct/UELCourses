@@ -134,7 +134,7 @@ describe("Brief A1 & PLAN_ADMIN Mục 8: Admin Shell, Login, Layout & Overview",
       expect(await screen.findByTestId("admin-content")).toBeInTheDocument();
     });
 
-    it("hiển thị màn hình 'Khu vực quản trị chưa bật' khi API trả về 404 (chưa bật ADMIN_DEV_OPEN)", async () => {
+    it("chuyển hướng sang /admin/login khi API trả về 404 (không có phiên đăng nhập)", async () => {
       vi.spyOn(adminApi, "getMe").mockRejectedValueOnce(
         new AdminApiError("Not Found", 404)
       );
@@ -145,9 +145,10 @@ describe("Brief A1 & PLAN_ADMIN Mục 8: Admin Shell, Login, Layout & Overview",
         </AdminLayoutClient>
       );
 
-      expect(await screen.findByText("Khu vực quản trị chưa bật")).toBeInTheDocument();
-      expect(screen.queryByTestId("admin-content")).not.toBeInTheDocument();
-      expect(screen.getByText("Về trang sinh viên")).toBeInTheDocument();
+      await waitFor(() => {
+        expect(mockPush).toHaveBeenCalledWith("/admin/login?next=%2Fadmin");
+      });
+      expect(screen.queryByText("Khu vực quản trị chưa bật")).not.toBeInTheDocument();
     });
 
     it("chuyển hướng sang /admin/login khi API trả về 401", async () => {
