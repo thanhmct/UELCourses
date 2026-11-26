@@ -9,9 +9,11 @@ from sqlalchemy.orm import Session
 
 from app.admin.auth import login_admin, logout_admin
 from app.admin.deps import require_admin, require_admin_dev
+from app.admin.security import generate_csrf_token, hash_token
 from app.db import SessionLocal
 from app.models import (
     AcademicEvent,
+    AdminSession,
     AuditLog,
     BannedIp,
     BannedTerm,
@@ -220,10 +222,18 @@ def logout_endpoint(
 def get_me(
     response: Response,
     admin: dict[str, Any] = Depends(require_admin()),
+    db: Session = Depends(get_db),
 ) -> dict[str, Any]:
     """Trả về thông tin phiên quản trị hiện tại (hoặc thông tin chế độ dev)."""
     # Gắn header X-CSRF-Token cho phản hồi
     csrf_val = admin.get("csrf_token")
+    session_id = admin.get("session_id")
+    if not csrf_val and session_id is not None:
+        session = db.scalar(select(AdminSession).where(AdminSession.id == session_id))
+        if session:
+            csrf_val = generate_csrf_token()
+            session.csrf_token_hash = hash_token(csrf_val)
+            db.commit()
     if not csrf_val:
         csrf_val = "dev-csrf-token" if admin.get("actor_type") == "dev" else ""
     if csrf_val:

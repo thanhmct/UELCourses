@@ -186,6 +186,36 @@ def test_me_endpoint_requires_auth(client, db, random_credentials):
     assert data["actor_type"] == "admin"
 
 
+def test_me_returns_csrf_token_header_and_allows_mutating_request(client, db, random_credentials):
+    """GET /api/admin/me phải trả header X-CSRF-Token khác rỗng và dùng được cho POST ghi."""
+    email, password = random_credentials
+    user = AdminUser(
+        email=email,
+        password_hash=hash_password(password),
+        role="admin",
+        is_active=True,
+    )
+    db.add(user)
+    db.commit()
+
+    login_res = client.post("/api/admin/login", json={"email": email, "password": password})
+    assert login_res.status_code == 200
+
+    res_me = client.get("/api/admin/me", cookies=login_res.cookies)
+    assert res_me.status_code == 200
+    csrf_header = res_me.headers.get("X-CSRF-Token")
+    assert csrf_header
+    assert res_me.json()["csrf_token"] == csrf_header
+
+    res_post = client.post(
+        "/api/admin/auth/test-protected",
+        headers={"X-CSRF-Token": csrf_header},
+        cookies=login_res.cookies,
+    )
+    assert res_post.status_code == 200
+    assert res_post.json()["status"] == "ok"
+
+
 def test_session_expiration(client, db, random_credentials):
     """Phiên hết hạn trả về 401 và tự động đánh dấu revoked_at."""
     email, password = random_credentials
