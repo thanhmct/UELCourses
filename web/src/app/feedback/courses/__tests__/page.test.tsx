@@ -122,8 +122,8 @@ describe("CourseReviewsPage", () => {
     // Khối bình luận (ModuleReviews) và khối đánh giá có đăng nhập (LecturerReviewPanel) đều hiển thị
     expect(screen.getByLabelText("Nội dung bình luận")).toBeInTheDocument();
     expect(screen.getByText("Nguyên tắc cộng đồng")).toBeInTheDocument();
-    // Chưa đăng nhập: dòng nút Google/Facebook trong khối đánh giá đã được ẩn (SHOW_SOCIAL_LOGIN_IN_REVIEWS = false)
-    expect(screen.queryByRole("link", { name: "Đăng nhập bằng Google" })).not.toBeInTheDocument();
+    // Chưa đăng nhập: hiện nút Google; nút Facebook đang tạm tắt (FACEBOOK_LOGIN_ENABLED = false)
+    expect(screen.getByRole("link", { name: "Đăng nhập bằng Google" })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Đăng nhập bằng Facebook" })).not.toBeInTheDocument();
   });
 
