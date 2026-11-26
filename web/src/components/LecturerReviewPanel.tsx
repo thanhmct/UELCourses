@@ -8,6 +8,10 @@ import { Loading } from "@/components/ui";
 import { GoogleLoginButton, FacebookLoginButton } from "@/components/SocialLoginButtons";
 import type { AuthMeResponse, AuthProvidersResponse, LecturerReviewList } from "@/lib/types";
 
+/** Ẩn dòng nút "Đăng nhập bằng Google / Facebook" trong khối viết đánh giá môn học.
+ * Đặt true để hiện lại (không ảnh hưởng trang Cài đặt). */
+const SHOW_SOCIAL_LOGIN_IN_REVIEWS = false;
+
 function StarPicker({ rating, onChange }: { rating: number; onChange: (r: number) => void }) {
   return (
     <div className="flex items-center gap-0.5">
@@ -174,21 +178,23 @@ export function LecturerReviewPanel({
           {!user && (
             <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-900/50">
               <p className="text-xs text-slate-600 dark:text-slate-400 mb-2.5">{t("lecturerReview.loginPrompt")}</p>
-              <div className="flex flex-wrap gap-2">
-                {providers?.google?.ready && (
-                  <GoogleLoginButton href={authLoginUrl("google", loginNext)}>
-                    {t("lecturerReview.loginGoogle")}
-                  </GoogleLoginButton>
-                )}
-                {FACEBOOK_LOGIN_ENABLED && providers?.facebook?.ready && (
-                  <FacebookLoginButton href={authLoginUrl("facebook", loginNext)}>
-                    {t("lecturerReview.loginFacebook")}
-                  </FacebookLoginButton>
-                )}
-                {!providers?.google?.ready && !(FACEBOOK_LOGIN_ENABLED && providers?.facebook?.ready) && (
-                  <p className="text-[11px] text-slate-400">{t("lecturerReview.noProviders")}</p>
-                )}
-              </div>
+              {SHOW_SOCIAL_LOGIN_IN_REVIEWS && (
+                <div className="flex flex-wrap gap-2">
+                  {providers?.google?.ready && (
+                    <GoogleLoginButton href={authLoginUrl("google", loginNext)}>
+                      {t("lecturerReview.loginGoogle")}
+                    </GoogleLoginButton>
+                  )}
+                  {FACEBOOK_LOGIN_ENABLED && providers?.facebook?.ready && (
+                    <FacebookLoginButton href={authLoginUrl("facebook", loginNext)}>
+                      {t("lecturerReview.loginFacebook")}
+                    </FacebookLoginButton>
+                  )}
+                  {!providers?.google?.ready && !(FACEBOOK_LOGIN_ENABLED && providers?.facebook?.ready) && (
+                    <p className="text-[11px] text-slate-400">{t("lecturerReview.noProviders")}</p>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
