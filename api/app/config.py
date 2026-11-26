@@ -59,6 +59,14 @@ class Settings(BaseSettings):
     rate_limit_enabled: bool = True
     # BLOCK_EMPTY_USER_AGENT: chặn request không có User-Agent (mặc định false để tránh lỗi SSR web)
     block_empty_user_agent: bool = False
+    # TRUSTED_PROXY_HOPS: số proxy đáng tin đứng trước app (Render = 1). IP khách là phần tử thứ N tính từ CUỐI
+    # của X-Forwarded-For (phần đầu do khách tự gửi nên có thể giả mạo). 0 = bỏ qua X-Forwarded-For (chạy trực tiếp/dev).
+    trusted_proxy_hops: int = 1
+    # TRUST_CLOUDFLARE_IP: true khi API nằm sau Cloudflare -> ưu tiên header CF-Connecting-IP (khách không giả được).
+    trust_cloudflare_ip: bool = False
+    # MAX_INFLIGHT_REQUESTS: số request /api/* xử lý đồng thời tối đa (bảo vệ máy yếu: CPU ít, ít kết nối DB).
+    # Vượt mức trả 503 + Retry-After ngay lập tức thay vì để treo. 0 = tắt.
+    max_inflight_requests: int = 20
 
     # Tự nạp dữ liệu MẪU (api/seed/*.json) khi DB chưa có học phần nào. Tắt mặc định: DB chỉ chứa dữ liệu thật
     # (chủ dự án yêu cầu 2026-11-21). Bật bằng AUTO_SEED=true khi cần DB thử trống.

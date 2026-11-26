@@ -15,6 +15,7 @@ from app.models import AuditLog, Module
 from app.admin.router import router as admin_router
 from app.rate_limit import (
     AppRateLimitMiddleware,
+    InflightLimitMiddleware,
     RateLimitExceeded,
     cache_control_middleware,
     limiter,
@@ -74,6 +75,10 @@ app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
 # Nén phản hồi lớn (/venues ~2 MB JSON, /equivalents ~100 KB). Phản hồi nhỏ hơn 1 KB giữ nguyên.
 app.add_middleware(GZipMiddleware, minimum_size=1024)
+# Bộ bảo vệ tải nằm BÊN TRONG CORS (thêm trước CORS) để phản hồi 429/503 vẫn mang header CORS,
+# trình duyệt hiện đúng lỗi "quá nhiều yêu cầu / máy chủ bận" thay vì lỗi CORS khó hiểu.
+app.add_middleware(InflightLimitMiddleware)
+app.add_middleware(AppRateLimitMiddleware)
 cors_origins = get_settings().cors_origin_list
 if "*" in cors_origins:
     # Browsers reject Access-Control-Allow-Origin: * when credentials are included (allow_credentials=True).
@@ -87,8 +92,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-# Rate limiting middleware cho các route /api/*
-app.add_middleware(AppRateLimitMiddleware)
 
 
 @app.middleware("http")

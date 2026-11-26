@@ -19,12 +19,24 @@ log = logging.getLogger("uelcourses")
 # ---------------------------------------------------------------------------
 
 def get_real_ip(request: Request) -> str:
-    """Lấy IP thật từ X-Forwarded-For (lấy IP đầu tiên nếu có danh sách); nếu không có thì lấy IP kết nối trực tiếp."""
+    """IP khách không thể giả mạo.
+
+    - Sau Cloudflare (TRUST_CLOUDFLARE_IP=true): dùng CF-Connecting-IP.
+    - Sau proxy đáng tin (Render): proxy nối IP khách vào CUỐI X-Forwarded-For, nên lấy phần tử thứ
+      TRUSTED_PROXY_HOPS tính từ cuối. Phần đầu danh sách do khách tự gửi nên không được tin.
+    - Không có proxy (TRUSTED_PROXY_HOPS=0, dev) hoặc không có header: dùng IP kết nối trực tiếp.
+    """
+    settings = get_settings()
+    if settings.trust_cloudflare_ip:
+        cf_ip = (request.headers.get("cf-connecting-ip") or "").strip()
+        if cf_ip:
+            return cf_ip
+    hops = settings.trusted_proxy_hops
     forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        first_ip = forwarded.split(",")[0].strip()
-        if first_ip:
-            return first_ip
+    if forwarded and hops > 0:
+        parts = [p.strip() for p in forwarded.split(",") if p.strip()]
+        if parts:
+            return parts[max(len(parts) - hops, 0)]
     if request.client and request.client.host:
         return request.client.host
     return "127.0.0.1"
@@ -34,7 +46,8 @@ def _rate_limit_key(request: Request) -> str:
     if request.url.path in {"/api/regulations/ask", "/api/modules/ask", "/api/ask/feedback"}:
         from app.rag.safety import private_hash
 
-        peer = request.client.host if request.client else "unknown"
+        # Băm một chiều theo ngày để không lưu IP gốc; dùng IP khách thật (không phải IP của proxy Render).
+        peer = get_real_ip(request)
         return private_hash(f"rate:{peer}", datetime.now(timezone.utc).date().isoformat())
     return get_real_ip(request)
 
@@ -250,6 +263,47 @@ class AppRateLimitMiddleware(_BaseMiddleware):
             return await call_next(request)
 
         return await super().dispatch(request, call_next)
+
+
+# ---------------------------------------------------------------------------
+# Giới hạn số request xử lý đồng thời (bảo vệ máy yếu)
+# ---------------------------------------------------------------------------
+
+class InflightLimitMiddleware:
+    """ASGI middleware: tối đa N request /api/* chạy cùng lúc. Vượt mức -> 503 + Retry-After ngay, không xếp hàng.
+
+    Máy gói miễn phí (CPU rất nhỏ, ít kết nối DB) bị treo khi quá tải; trả lỗi nhanh giúp phục hồi sớm và để
+    người dùng/ trình duyệt thử lại. /api/health được miễn để bộ giám sát không tưởng máy đã chết.
+    """
+
+    def __init__(self, app: Any, limit: int | None = None, retry_after: int = 3):
+        self.app = app
+        self._limit = limit
+        self.retry_after = retry_after
+        self.inflight = 0
+
+    @property
+    def limit(self) -> int:
+        return self._limit if self._limit is not None else get_settings().max_inflight_requests
+
+    async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
+        path = scope.get("path", "") if scope.get("type") == "http" else ""
+        if not path.startswith("/api/") or path == "/api/health" or self.limit <= 0:
+            await self.app(scope, receive, send)
+            return
+        if self.inflight >= self.limit:
+            response = JSONResponse(
+                status_code=503,
+                content={"detail": "Máy chủ đang bận, vui lòng thử lại sau vài giây."},
+                headers={"Retry-After": str(self.retry_after)},
+            )
+            await response(scope, receive, send)
+            return
+        self.inflight += 1
+        try:
+            await self.app(scope, receive, send)
+        finally:
+            self.inflight -= 1
 
 
 # ---------------------------------------------------------------------------

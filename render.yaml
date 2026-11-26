@@ -43,3 +43,9 @@ services:
         value: "true"
       - key: BLOCK_EMPTY_USER_AGENT
         value: "false"
+      # Bảo vệ máy yếu: tối đa 20 request /api/* cùng lúc, vượt mức trả 503 ngay (0 = tắt).
+      - key: MAX_INFLIGHT_REQUESTS
+        value: "20"
+      # Số proxy đáng tin phía trước app để lấy đúng IP khách: Render = 1; thêm Cloudflare = 2 (API đang sau Cloudflare).
+      - key: TRUSTED_PROXY_HOPS
+        value: "2"
