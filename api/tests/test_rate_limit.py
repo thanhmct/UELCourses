@@ -63,6 +63,25 @@ def test_get_real_ip_uses_cloudflare_header_only_when_trusted(monkeypatch):
     assert get_real_ip(_req(headers)) == "203.0.113.50"
 
 
+def test_get_real_ip_trusts_web_proxy_only_with_matching_secret(monkeypatch):
+    monkeypatch.setattr(get_settings(), "proxy_shared_secret", "khoa-bi-mat-thu-nghiem")
+    base = {"x-forwarded-for": "6.6.6.6, 198.51.100.7", "x-uel-client-ip": "203.0.113.9"}
+    # Có đúng khóa: tin IP khách do web gửi
+    assert get_real_ip(_req({**base, "x-uel-proxy-secret": "khoa-bi-mat-thu-nghiem"})) == "203.0.113.9"
+    # Sai khóa hoặc thiếu khóa: bỏ qua header X-UEL-Client-IP, dùng cách thông thường
+    assert get_real_ip(_req({**base, "x-uel-proxy-secret": "sai"})) == "198.51.100.7"
+    assert get_real_ip(_req(base)) == "198.51.100.7"
+    # IP gửi kèm không hợp lệ: không dùng
+    bad = {**base, "x-uel-proxy-secret": "khoa-bi-mat-thu-nghiem", "x-uel-client-ip": "khong-phai-ip"}
+    assert get_real_ip(_req(bad)) == "198.51.100.7"
+
+
+def test_get_real_ip_ignores_proxy_headers_when_secret_not_configured(monkeypatch):
+    monkeypatch.setattr(get_settings(), "proxy_shared_secret", "")
+    req = _req({"x-forwarded-for": "198.51.100.7", "x-uel-proxy-secret": "", "x-uel-client-ip": "203.0.113.9"})
+    assert get_real_ip(req) == "198.51.100.7"
+
+
 def test_ask_endpoints_rate_key_uses_real_client_ip_not_proxy():
     """Trước đây khóa dựa vào IP của proxy -> mọi người dùng chung một bộ đếm. Nay mỗi khách một khóa."""
     from app.rate_limit import _rate_limit_key

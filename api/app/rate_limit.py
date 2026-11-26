@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hmac
+import ipaddress
 import logging
 import threading
 import time
@@ -27,6 +29,17 @@ def get_real_ip(request: Request) -> str:
     - Không có proxy (TRUSTED_PROXY_HOPS=0, dev) hoặc không có header: dùng IP kết nối trực tiếp.
     """
     settings = get_settings()
+    # Yêu cầu do web (Vercel) chuyển tiếp: tin IP khách chỉ khi khóa dùng chung khớp (khách ngoài không có khóa).
+    secret = settings.proxy_shared_secret
+    if secret:
+        given = request.headers.get("x-uel-proxy-secret", "")
+        if given and hmac.compare_digest(given.encode(), secret.encode()):
+            client_ip = (request.headers.get("x-uel-client-ip") or "").strip()
+            try:
+                ipaddress.ip_address(client_ip)
+                return client_ip
+            except ValueError:
+                pass  # IP không hợp lệ -> dùng cách xác định thông thường bên dưới
     if settings.trust_cloudflare_ip:
         cf_ip = (request.headers.get("cf-connecting-ip") or "").strip()
         if cf_ip:

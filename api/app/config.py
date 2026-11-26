@@ -62,6 +62,10 @@ class Settings(BaseSettings):
     # TRUSTED_PROXY_HOPS: số proxy đáng tin đứng trước app (Render = 1). IP khách là phần tử thứ N tính từ CUỐI
     # của X-Forwarded-For (phần đầu do khách tự gửi nên có thể giả mạo). 0 = bỏ qua X-Forwarded-For (chạy trực tiếp/dev).
     trusted_proxy_hops: int = 1
+    # PROXY_SHARED_SECRET: khóa dùng chung giữa web (Vercel) và API. Web chuyển tiếp /api/* kèm header
+    # X-UEL-Proxy-Secret và X-UEL-Client-IP; khi khóa khớp, API tin IP khách trong X-UEL-Client-IP
+    # (sinh viên ở mạng chặn tên miền api. vẫn dùng được web qua tên miền Vercel). Trống = tắt.
+    proxy_shared_secret: str = ""
     # TRUST_CLOUDFLARE_IP: true khi API nằm sau Cloudflare -> ưu tiên header CF-Connecting-IP (khách không giả được).
     trust_cloudflare_ip: bool = False
     # MAX_INFLIGHT_REQUESTS: số request /api/* xử lý đồng thời tối đa (bảo vệ máy yếu: CPU ít, ít kết nối DB).

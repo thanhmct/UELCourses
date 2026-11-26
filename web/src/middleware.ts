@@ -1,9 +1,20 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { buildProxyHeaders, buildProxyTarget, shouldProxyApi } from "@/lib/apiProxy";
 
 export function middleware(request: NextRequest) {
   const surface = process.env.UELPATH_SURFACE || "student";
   const { pathname } = request.nextUrl;
+
+  // Chuyển tiếp /api/* sang API (bật khi đặt API_PROXY_TARGET, vd trên Vercel). Đặt trước mọi kiểm tra khác
+  // vì đường dẫn API có thể chứa dấu chấm (mã học phần) và không được coi là file tĩnh.
+  const proxyBase = process.env.API_PROXY_TARGET;
+  if (proxyBase && shouldProxyApi(pathname)) {
+    const target = buildProxyTarget(proxyBase, pathname, request.nextUrl.search);
+    return NextResponse.rewrite(target, {
+      request: { headers: buildProxyHeaders(request.headers, process.env.PROXY_SHARED_SECRET) },
+    });
+  }
 
   // Always pass through /_next/*, static files (anything with a file extension), favicon/manifest/icons/sw.js, and Next internals
   if (

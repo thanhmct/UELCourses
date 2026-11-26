@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { serverApiOrigin } from "@/lib/apiProxy";
 import { decodeTimetable } from "@/lib/shareUrl";
 import { buildIcs } from "@/lib/ics";
 import type { ClassSection } from "@/lib/types";
@@ -10,7 +11,8 @@ type ModuleDetailResponse = {
 };
 
 async function fetchApi<T>(path: string): Promise<T> {
-  const apiUrl = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/$/, "");
+  // Phía máy chủ cần địa chỉ tuyệt đối: NEXT_PUBLIC_API_URL có thể là "/" (cùng nguồn) khi web chuyển tiếp /api/*.
+  const apiUrl = serverApiOrigin();
   const response = await fetch(`${apiUrl}${path}`, {
     cache: "no-store",
     headers: { Accept: "application/json" },
