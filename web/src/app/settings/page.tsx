@@ -213,7 +213,6 @@ function AccountSection() {
     <section className="card min-w-0 space-y-3 rounded-xl sm:p-5">
       <div className="space-y-1">
         <h2 className="font-semibold">{t("settings.accountTitle")}</h2>
-        <p className="text-xs text-slate-500 leading-relaxed">{t("settings.accountDesc")}</p>
       </div>
       {loading ? (
         <Loading compact />
