@@ -76,6 +76,16 @@ def test_get_real_ip_trusts_web_proxy_only_with_matching_secret(monkeypatch):
     assert get_real_ip(_req(bad)) == "198.51.100.7"
 
 
+def test_api_marks_verified_web_proxy_requests(monkeypatch):
+    monkeypatch.setattr(get_settings(), "proxy_shared_secret", "khoa-bi-mat-thu-nghiem")
+    client = TestClient(app)
+    ok = client.get("/api/health", headers={"x-uel-proxy-secret": "khoa-bi-mat-thu-nghiem", "x-uel-client-ip": "203.0.113.9"})
+    assert ok.headers.get("x-uel-proxy-verified") == "1"
+    bad = client.get("/api/health", headers={"x-uel-proxy-secret": "sai", "x-uel-client-ip": "203.0.113.9"})
+    assert "x-uel-proxy-verified" not in bad.headers
+    assert "x-uel-proxy-verified" not in client.get("/api/health").headers
+
+
 def test_get_real_ip_ignores_proxy_headers_when_secret_not_configured(monkeypatch):
     monkeypatch.setattr(get_settings(), "proxy_shared_secret", "")
     req = _req({"x-forwarded-for": "198.51.100.7", "x-uel-proxy-secret": "", "x-uel-client-ip": "203.0.113.9"})

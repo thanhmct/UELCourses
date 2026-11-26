@@ -16,6 +16,7 @@ from app.admin.router import router as admin_router
 from app.rate_limit import (
     AppRateLimitMiddleware,
     InflightLimitMiddleware,
+    trusted_web_client_ip,
     RateLimitExceeded,
     cache_control_middleware,
     limiter,
@@ -105,6 +106,15 @@ async def audit_5xx_errors_middleware(request: Request, call_next):
     except Exception as exc:
         _record_server_error(request.method, request.url.path, 500, str(exc))
         raise exc
+
+
+@app.middleware("http")
+async def proxy_verified_header_middleware(request: Request, call_next):
+    """Chẩn đoán: báo cho web biết API đã xác nhận đúng khóa chuyển tiếp (không lộ khóa hay IP)."""
+    response = await call_next(request)
+    if trusted_web_client_ip(request):
+        response.headers["X-UEL-Proxy-Verified"] = "1"
+    return response
 
 
 @app.middleware("http")

@@ -20,26 +20,35 @@ log = logging.getLogger("uelcourses")
 # Rate limit & IP detection
 # ---------------------------------------------------------------------------
 
+def trusted_web_client_ip(request: Request) -> str | None:
+    """IP khách do web (Vercel) chuyển tiếp, chỉ tin khi khóa dùng chung khớp (khách bên ngoài không có khóa)."""
+    secret = get_settings().proxy_shared_secret
+    if not secret:
+        return None
+    given = request.headers.get("x-uel-proxy-secret", "")
+    if not given or not hmac.compare_digest(given.encode(), secret.encode()):
+        return None
+    client_ip = (request.headers.get("x-uel-client-ip") or "").strip()
+    try:
+        ipaddress.ip_address(client_ip)
+    except ValueError:
+        return None
+    return client_ip
+
+
 def get_real_ip(request: Request) -> str:
     """IP khách không thể giả mạo.
 
+    - Yêu cầu do web chuyển tiếp kèm khóa dùng chung: dùng X-UEL-Client-IP.
     - Sau Cloudflare (TRUST_CLOUDFLARE_IP=true): dùng CF-Connecting-IP.
     - Sau proxy đáng tin (Render): proxy nối IP khách vào CUỐI X-Forwarded-For, nên lấy phần tử thứ
       TRUSTED_PROXY_HOPS tính từ cuối. Phần đầu danh sách do khách tự gửi nên không được tin.
     - Không có proxy (TRUSTED_PROXY_HOPS=0, dev) hoặc không có header: dùng IP kết nối trực tiếp.
     """
     settings = get_settings()
-    # Yêu cầu do web (Vercel) chuyển tiếp: tin IP khách chỉ khi khóa dùng chung khớp (khách ngoài không có khóa).
-    secret = settings.proxy_shared_secret
-    if secret:
-        given = request.headers.get("x-uel-proxy-secret", "")
-        if given and hmac.compare_digest(given.encode(), secret.encode()):
-            client_ip = (request.headers.get("x-uel-client-ip") or "").strip()
-            try:
-                ipaddress.ip_address(client_ip)
-                return client_ip
-            except ValueError:
-                pass  # IP không hợp lệ -> dùng cách xác định thông thường bên dưới
+    web_ip = trusted_web_client_ip(request)
+    if web_ip:
+        return web_ip
     if settings.trust_cloudflare_ip:
         cf_ip = (request.headers.get("cf-connecting-ip") or "").strip()
         if cf_ip:
