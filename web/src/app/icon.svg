@@ -1,12 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="UELPATH">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="172 194 680 613" role="img" aria-label="UELPATH">
   <title>UELPATH</title>
-  <rect width="1024" height="1024" rx="224" fill="#FFFFFF"/>
-  <g transform="translate(512 512) scale(0.82) translate(-512 -500.5)">
   <path fill="#01285F" d="M205 712 L438 262 C468 204 556 204 586 262 L819 712 C842 755 814 797 764 797 L738 797 C712 797 694 784 684 764 L524 408 Q512 380 500 408 L340 764 C330 784 312 797 286 797 L260 797 C210 797 182 755 205 712 Z"/>
   <g fill="#FE8002" stroke="#FE8002" stroke-width="30" stroke-linejoin="round">
     <polygon points="512,478 493,513 531,513"/>
     <polygon points="468,573 556,573 572,617 452,617"/>
     <polygon points="431,677 593,677 630,777 394,777"/>
-  </g>
   </g>
 </svg>

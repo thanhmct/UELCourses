@@ -26,12 +26,9 @@ const svgMark = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"
 </svg>
 `;
 
-// Biểu tượng tab: nền trắng bo góc để nhìn rõ cả trên thanh tab tối.
-const svgIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="UELPATH">
-  <title>UELPATH</title>
-  <rect width="1024" height="1024" rx="224" fill="#FFFFFF"/>
-  <g transform="translate(512 512) scale(0.82) translate(-512 -500.5)">${MARK_BODY}
-  </g>
+// Biểu tượng tab: nền trong suốt, logo cắt sát lề để lớn nhất có thể.
+const svgIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="172 194 680 613" role="img" aria-label="UELPATH">
+  <title>UELPATH</title>${MARK_BODY}
 </svg>
 `;
 
@@ -119,9 +116,10 @@ write(out("web/src/app/apple-icon.png"), await (await onSquare(180, 0.78, white)
 const sizes = [16, 32, 48];
 const pngs = [];
 for (const s of sizes) {
-  const inner = Math.round(s * 0.92);
+  const inner = Math.round(s * 0.98);
   const mark = await sharp(Buffer.from(svgMarkTight), { density: 384 }).resize(inner, inner, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer();
-  pngs.push(await sharp({ create: { width: s, height: s, channels: 4, background: white } }).composite([{ input: mark, gravity: "center" }]).png().toBuffer());
+  // favicon trong suốt (không nền)
+  pngs.push(await sharp({ create: { width: s, height: s, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } }).composite([{ input: mark, gravity: "center" }]).png().toBuffer());
 }
 const header = Buffer.alloc(6);
 header.writeUInt16LE(0, 0);
