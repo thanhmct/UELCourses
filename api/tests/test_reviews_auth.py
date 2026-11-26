@@ -7,22 +7,36 @@ from app.services.moderation import moderate
 GOOD = "Môn học có nội dung thực tế, giảng viên giải thích rõ và bài tập nhóm hợp lý. Nên chuẩn bị kỹ trước khi thi."
 
 
+def _fake_ai_flags(text: str) -> list[str]:
+    """Mô phỏng mô hình kiểm duyệt AI cho test (không gọi mạng thật): gắn cờ các câu lăng mạ/đe dọa
+    rõ ràng trong bộ dữ liệu test, coi phần còn lại là an toàn."""
+    low = text.lower()
+    if "ngu quá" in low or "đồ ngu" in low:
+        return ["harassment"]
+    if "giết" in low:
+        return ["violence"]
+    return []
+
+
 @pytest.mark.parametrize("text,status", [
     (GOOD, "approved"),
     ("Môn này hơi khó, bài tập nhiều nhưng học được nhiều kiến thức thực tế.", "approved"),  # phê bình xây dựng: được phép
-    ("Thầy này ngu quá, đúng là đồ ngu", "pending"),  # lăng mạ/công kích cá nhân
-    ("Liên hệ zalo 0912345678 để mua tài liệu giá rẻ nhé", "pending"),  # quảng cáo + số điện thoại
-    ("Mail mình: abc@gmail.com, inbox để nhận đề thi", "pending"),  # email/inbox
-    ("Xem thêm tại https://example.com/abc để kiếm tiền online", "pending"),  # liên kết + spam
-    ("Em sẽ giết thầy nếu không cho qua môn này", "pending"),  # đe dọa
+    ("Thầy này ngu quá, đúng là đồ ngu", "pending"),  # lăng mạ/công kích cá nhân -> mô hình AI gắn cờ
+    ("Liên hệ zalo 0912345678 để mua tài liệu giá rẻ nhé", "pending"),  # số điện thoại -> cờ contact_info
+    ("Mail mình: abc@gmail.com, inbox để nhận đề thi", "pending"),  # email -> cờ contact_info
+    ("Xem thêm tại https://example.com/abc để kiếm tiền online", "pending"),  # liên kết -> cờ link
+    ("Em sẽ giết thầy nếu không cho qua môn này", "pending"),  # đe dọa -> mô hình AI gắn cờ
 ])
-def test_moderation_status(text, status):
+def test_moderation_status(text, status, monkeypatch):
+    from app.services import moderation as mod_svc
+
+    monkeypatch.setattr(mod_svc, "ai_flag_categories", _fake_ai_flags)
     assert moderate(text).status == status
 
 
 def test_moderation_reasons_are_reported():
     res = moderate("Liên hệ zalo 0912345678")
-    assert "spam_advertising" in res.reasons and "personal_info" in res.reasons
+    assert "contact_info" in res.reasons
 
 
 def test_guidelines_endpoint(client):
@@ -43,6 +57,40 @@ def test_login_not_configured_returns_503(client, monkeypatch):
 def test_callback_rejects_bad_state(client):
     r = client.get("/api/auth/google/callback?code=x&state=forged", follow_redirects=False)
     assert r.status_code == 302 and "login=error" in r.headers["location"]
+
+
+def test_login_rejects_unsafe_next_and_falls_back_to_root(client, monkeypatch):
+    from urllib.parse import parse_qs, urlsplit
+
+    from app.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "google_client_id", "x")
+    monkeypatch.setattr(get_settings(), "google_client_secret", "y")
+
+    for unsafe in ("https://evil.example.com/", "//evil.example.com/", "modules/BAA4041"):
+        r = client.get(f"/api/auth/google/login?next={unsafe}", follow_redirects=False)
+        state = parse_qs(urlsplit(r.headers["location"]).query)["state"][0]
+        assert svc.state_next(state, "google") is None
+
+
+def test_login_with_next_redirects_back_to_same_page_on_callback(client, monkeypatch):
+    from app.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "google_client_id", "x")
+    monkeypatch.setattr(get_settings(), "google_client_secret", "y")
+    r = client.get("/api/auth/google/login?next=%2Fmodules%2FBAA4041%23mod-reviews", follow_redirects=False)
+    assert r.status_code == 302
+    # state đã ký mang theo "next"; callback với state hợp lệ nhưng không có code -> vẫn quay về đúng trang
+    from urllib.parse import parse_qs, urlsplit
+
+    auth_url = r.headers["location"]
+    state = parse_qs(urlsplit(auth_url).query)["state"][0]
+    cb = client.get(f"/api/auth/google/callback?state={state}", follow_redirects=False)
+    assert cb.status_code == 302
+    location = cb.headers["location"]
+    assert location.startswith(get_settings().frontend_base_url.rstrip("/") + "/modules/BAA4041")
+    assert "mod-reviews" in location
+    assert "login=error" in location
 
 
 def test_session_roundtrip_and_tamper():
@@ -72,13 +120,17 @@ def test_review_requires_login(client, db):
     assert client.post("/api/modules/BAA4041/reviews", json=body).status_code == 401
 
 
-def test_review_flow_publish_pending_and_one_per_user(client, db):
+def test_review_flow_publish_pending_and_one_per_user(client, db, monkeypatch):
+    from app.services import moderation as mod_svc
+
+    monkeypatch.setattr(mod_svc, "ai_flag_categories", _fake_ai_flags)
+
     _module(db)
     _login(client, db)
     ok = client.post("/api/modules/BAA4041/reviews", json={"rating": 4, "difficulty": 3, "workload": 3,
                                                           "semester": "2025-2026-1", "content": GOOD})
     assert ok.status_code == 201 and ok.json()["status"] == "approved"
-    # người dùng khác (cùng module) — đánh giá có nội dung bị đánh dấu -> chờ duyệt, không hiển thị
+    # người dùng khác (cùng module) — đánh giá bị mô hình AI gắn cờ -> chờ duyệt, không hiển thị
     other = User(provider="facebook", subject="fb999", display_name="K23")
     db.add(other)
     db.commit()

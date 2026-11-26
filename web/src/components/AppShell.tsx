@@ -7,6 +7,7 @@ import { FeedbackWidget } from "@/components/FeedbackWidget";
 import { SatisfactionPopup } from "@/components/SatisfactionPopup";
 import { HolidayAppearanceProvider } from "@/components/HolidayAppearance";
 import { ConnectionNotice } from "@/components/MockBadge";
+import { LoginReturnNotice } from "@/components/LoginReturnNotice";
 import { startPlannerTimetableSync } from "@/lib/store";
 import { recordVisit } from "@/lib/navHistory";
 
@@ -18,8 +19,25 @@ function NavHistoryTracker() {
     if (!pathname) return;
     const query = searchParams?.toString();
     recordVisit(query ? `${pathname}?${query}` : pathname);
+    resetMobileZoom();
   }, [pathname, searchParams]);
   return null;
+}
+
+/**
+ * Next.js không tải lại trang khi chuyển route (SPA), nên mức zoom do người dùng vô tình
+ * phóng to/thu nhỏ (vd chạm vào huy hiệu "recommend") vẫn còn nguyên khi xem nội dung mới.
+ * Ép lại maximum-scale=1 trong một nhịp để trình duyệt di động tự co về đúng tỉ lệ gốc,
+ * rồi trả lại thẻ viewport ban đầu để người dùng vẫn phóng to/thu nhỏ thủ công được.
+ */
+function resetMobileZoom() {
+  if (typeof document === "undefined") return;
+  const meta = document.querySelector<HTMLMetaElement>('meta[name="viewport"]');
+  if (!meta) return;
+  const original = meta.getAttribute("content");
+  if (!original) return;
+  meta.setAttribute("content", `${original}, maximum-scale=1.0`);
+  window.setTimeout(() => meta.setAttribute("content", original), 60);
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -45,6 +63,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="flex min-h-dvh flex-col">
       <Suspense fallback={null}>
         <NavHistoryTracker />
+        <LoginReturnNotice />
       </Suspense>
       <Header />
       <SideNav />

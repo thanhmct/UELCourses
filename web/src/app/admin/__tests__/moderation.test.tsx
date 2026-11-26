@@ -48,19 +48,17 @@ describe("Brief A3: Kiểm duyệt nội dung & Đánh giá bình luận học p
       });
     });
 
-    it("thu gọn mặc định và hiển thị số lượng bình luận", async () => {
+    it("hiển thị đầy đủ mặc định (không có nút thu gọn/mở rộng)", async () => {
       render(<ModuleReviews moduleCode="BIM5001" />);
-      expect(screen.getByText("Đánh giá & bình luận")).toBeInTheDocument();
-      // Nút mở rộng
-      const expandBtn = await screen.findByRole("button", { name: /Xem bình luận/i });
-      expect(expandBtn).toBeInTheDocument();
-      expect(expandBtn).toHaveAttribute("aria-expanded", "false");
+      expect(screen.getByText("Đánh giá và bình luận")).toBeInTheDocument();
+      // Hiển thị nội dung bình luận đã duyệt ngay, không cần bấm mở rộng
+      expect(await screen.findByText("Môn học hay, thầy cô nhiệt tình")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /Xem bình luận/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /Thu gọn bình luận/i })).not.toBeInTheDocument();
     });
 
-    it("khi mở rộng: hiển thị danh sách bình luận đã duyệt và form gửi bình luận", async () => {
+    it("hiển thị danh sách bình luận đã duyệt và form gửi bình luận ngay khi tải", async () => {
       render(<ModuleReviews moduleCode="BIM5001" />);
-      const expandBtn = await screen.findByRole("button", { name: /Xem bình luận/i });
-      fireEvent.click(expandBtn);
 
       // Hiển thị nội dung bình luận đã duyệt
       expect(await screen.findByText("Môn học hay, thầy cô nhiệt tình")).toBeInTheDocument();
@@ -83,10 +81,8 @@ describe("Brief A3: Kiểm duyệt nội dung & Đánh giá bình luận học p
       });
 
       render(<ModuleReviews moduleCode="BIM5001" />);
-      const expandBtn = await screen.findByRole("button", { name: /Xem bình luận/i });
-      fireEvent.click(expandBtn);
 
-      const textarea = screen.getByLabelText("Nội dung bình luận");
+      const textarea = await screen.findByLabelText("Nội dung bình luận");
       fireEvent.change(textarea, { target: { value: "Bình luận mới gửi thành công" } });
 
       // Chọn 4 sao
@@ -113,10 +109,8 @@ describe("Brief A3: Kiểm duyệt nội dung & Đánh giá bình luận học p
       });
 
       render(<ModuleReviews moduleCode="BIM5001" />);
-      const expandBtn = await screen.findByRole("button", { name: /Xem bình luận/i });
-      fireEvent.click(expandBtn);
 
-      const textarea = screen.getByLabelText("Nội dung bình luận");
+      const textarea = await screen.findByLabelText("Nội dung bình luận");
       fireEvent.change(textarea, { target: { value: "Bình luận có từ cấm không phù hợp" } });
 
       const submitBtn = screen.getByRole("button", { name: "Gửi bình luận" });
@@ -264,7 +258,7 @@ describe("Brief A3: Kiểm duyệt nội dung & Đánh giá bình luận học p
       const termInput = screen.getByLabelText(/Từ khóa/i);
       fireEvent.change(termInput, { target: { value: "test_new_term" } });
 
-      const severitySelect = screen.getByLabelText(/Mức độ xử lý/i);
+      const severitySelect = screen.getByLabelText(/Mức độ ưu tiên/i);
       fireEvent.change(severitySelect, { target: { value: "block" } });
 
       const addBtn = screen.getByRole("button", { name: "Thêm từ cấm" });

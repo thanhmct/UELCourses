@@ -505,6 +505,14 @@ export default function PlannerPage() {
   const currentYear = cohortStartYear(latestEnrollmentCohort())!;
   const { inputs, scores, updateScore } = usePlannerScores();
 
+  // Khi đã biết khóa (vd K23 nhập học 2023) mà chưa chọn năm học thủ công: tự đặt năm nhập học/tốt
+  // nghiệp (chương trình 4 năm = nhập học + 3) để kế hoạch hiện đúng năm học hiện tại ngay từ đầu.
+  useEffect(() => {
+    if (p.academicYears === null && cohortYear !== null) {
+      p.addAcademicYears({ admission: cohortYear, graduation: cohortYear + 3 });
+    }
+  }, [p.academicYears, cohortYear]);
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 8 } }),

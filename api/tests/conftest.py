@@ -31,6 +31,16 @@ if engine.dialect.name != "sqlite" or engine.url.database != (_TMP / "test.db").
     raise RuntimeError("Test fixtures require the isolated SQLite database created by conftest.")
 
 
+@pytest.fixture(autouse=True)
+def _no_real_ai_moderation(monkeypatch):
+    """Không bao giờ gọi mạng thật tới OpenAI Moderation API trong test (xem comment đầu file).
+    Mặc định coi mọi nội dung an toàn (rỗng); test nào cần mô phỏng vi phạm tự monkeypatch lại hàm này.
+    """
+    from app.services import moderation
+
+    monkeypatch.setattr(moderation, "ai_flag_categories", lambda text: [])
+
+
 @pytest.fixture
 def db():
     from app.services.faculty_admin import invalidate_audit_cache

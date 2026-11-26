@@ -4,6 +4,7 @@ import { Loading } from "@/components/ui";
 import { useRef, useState, type KeyboardEvent } from "react";
 import { ArrowLeft, ChevronDown, ChevronRight, Search } from "lucide-react";
 import { useT } from "@/i18n";
+import { useMaxVisibleItems } from "@/lib/useMaxVisibleItems";
 import {
   hasVerifiedUndergraduateTrack,
   type LookupDegree, type LookupMajor, type LookupOption, lookupTrack,
@@ -30,9 +31,11 @@ export function ProgramLookup({ id, value, lookup, loading, onChange, onSave, pr
   const [browse, setBrowse] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
+  const resultsList = useRef<HTMLDivElement>(null);
   const query = parseLookupQuery(browse ? "" : value);
   const visible = !!open;
   const resultsId = `${id}-results`;
+  useMaxVisibleItems(resultsList, visible);
   const majors = query.code ? [] : searchProgramMajors(lookup.majors, query, degree, lang);
   const selected = majors.find((major) => major.id === majorId);
   const parsedCode = query.code ? parseProgramCode(value) : null;
@@ -152,9 +155,8 @@ export function ProgramLookup({ id, value, lookup, loading, onChange, onSave, pr
         >
           <ChevronDown className={`size-4 transition-transform ${visible ? "rotate-180" : ""}`} aria-hidden />
         </button>
-      </div>
-      {visible && (
-        <div id={resultsId} className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
+        {visible && (
+        <div id={resultsId} className="absolute inset-x-0 top-full z-30 mt-1 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900">
           {selected ? (
             <div className="border-b border-slate-200 px-2 py-1.5 dark:border-slate-700">
               <button type="button" onClick={() => { setMajorId(""); input.current?.focus(); }} className="flex min-h-10 cursor-pointer items-center gap-2 rounded-md px-2 text-sm font-medium text-brand-700 hover:bg-brand-50 dark:text-brand-300 dark:hover:bg-slate-800">
@@ -184,7 +186,7 @@ export function ProgramLookup({ id, value, lookup, loading, onChange, onSave, pr
               ))}
             </div>
           )}
-          <div role="group" aria-label={t("profile.lookupResults")} className="max-h-56 overflow-y-auto overscroll-contain p-1">
+          <div ref={resultsList} role="group" aria-label={t("profile.lookupResults")} className="max-h-56 overflow-y-auto overscroll-contain p-1">
             {loading ? (
               <Loading compact className="px-3 py-4" />
             ) : selected ? [...selected.options].sort((a, b) =>
@@ -216,7 +218,8 @@ export function ProgramLookup({ id, value, lookup, loading, onChange, onSave, pr
             )}
           </div>
         </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

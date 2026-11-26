@@ -11,7 +11,7 @@ import { useProgramProfile } from "@/lib/myProgram";
 import { appConfirm } from "@/lib/dialog";
 import { useMounted } from "@/lib/useMounted";
 import { cohortFromId } from "@/lib/cohort";
-import { api, API_URL, APP_VERSION } from "@/lib/api";
+import { api, API_URL } from "@/lib/api";
 import type { AuthMeResponse, AuthProvidersResponse } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 import { Loading, PageHeader } from "@/components/ui";
@@ -20,6 +20,7 @@ import { ExchangeStudentToggle } from "@/components/ExchangeStudentToggle";
 import { useProfileDialog, hasGlobalProfileDialogHost } from "@/lib/profileDialog";
 import { useLang, useT, type Lang } from "@/i18n";
 import { AppearanceSettings } from "@/components/AppearanceSettings";
+import { GoogleLoginButton, FacebookLoginButton } from "@/components/SocialLoginButtons";
 import { SatisfactionRating } from "@/components/SatisfactionRating";
 import { useHolidayPreferences } from "@/lib/holidayPreferences";
 
@@ -234,14 +235,14 @@ function AccountSection() {
       ) : (
         <div className="flex flex-wrap gap-2">
           {providers?.google?.ready && (
-            <a href={`${API_URL}/api/auth/google/login`} className="btn-primary min-h-9 px-3 text-xs">
+            <GoogleLoginButton href={`${API_URL}/api/auth/google/login`}>
               {t("settings.accountLoginGoogle")}
-            </a>
+            </GoogleLoginButton>
           )}
           {providers?.facebook?.ready && (
-            <a href={`${API_URL}/api/auth/facebook/login`} className="btn-primary min-h-9 px-3 text-xs">
+            <FacebookLoginButton href={`${API_URL}/api/auth/facebook/login`}>
               {t("settings.accountLoginFacebook")}
-            </a>
+            </FacebookLoginButton>
           )}
           {!providers?.google?.ready && !providers?.facebook?.ready && (
             <p className="text-xs text-slate-400">{t("settings.accountNoProviders")}</p>
@@ -460,7 +461,6 @@ export default function SettingsPage() {
         />
       </section>
       <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
-        <p className="min-w-0 wrap-anywhere text-xs text-slate-500">{t("settings.version", { v: APP_VERSION, api: API_URL })}</p>
         {adminAvailable && (
           <a
             href={`${(process.env.NEXT_PUBLIC_ADMIN_URL || "http://localhost:3100").replace(/\/$/, "")}/admin`}

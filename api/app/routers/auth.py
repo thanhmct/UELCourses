@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import re
 from datetime import datetime, timezone
-from urllib.parse import quote
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import RedirectResponse
@@ -21,6 +22,28 @@ from app.services.moderation_ban import as_utc, get_active_ip_ban, is_user_ban_a
 router = APIRouter(tags=["auth"])
 
 _IP_BAN_MESSAGE = "IP này đang bị khóa do vi phạm nhiều lần, không thể đăng nhập hoặc viết đánh giá."
+
+# Chỉ chấp nhận đường dẫn tương đối, nội bộ (vd "/modules/ABC#mod-reviews") làm điểm quay về sau đăng nhập,
+# để tránh open-redirect: không chấp nhận "//host", "https://host" hay bất kỳ ký tự khoảng trắng nào.
+_SAFE_NEXT_RE = re.compile(r"^/[^\s]*$")
+
+
+def _safe_next_path(next_path: str | None) -> str | None:
+    if not next_path:
+        return None
+    candidate = next_path.strip()[:512]
+    if not _SAFE_NEXT_RE.match(candidate):
+        return None
+    if candidate.startswith("//") or "://" in candidate:
+        return None
+    return candidate
+
+
+def _append_query(url: str, **params: str) -> str:
+    parts = urlsplit(url)
+    query = parse_qsl(parts.query, keep_blank_values=True)
+    query.extend(params.items())
+    return urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(query), parts.fragment))
 
 
 def current_user(
@@ -64,12 +87,12 @@ def providers():
 
 
 @router.get("/auth/{provider}/login", summary="Chuyển sang trang đăng nhập của nhà cung cấp")
-def login(provider: str):
+def login(provider: str, next: str | None = Query(None, description="Đường dẫn quay về sau khi đăng nhập xong")):
     p = svc.providers().get(provider)
     if p is None:
         raise HTTPException(404, "Không hỗ trợ phương thức đăng nhập này.")
     try:
-        url = svc.authorize_url(p, svc.make_state(provider))
+        url = svc.authorize_url(p, svc.make_state(provider, _safe_next_path(next)))
     except svc.AuthNotConfigured as e:
         raise HTTPException(503, str(e))
     return RedirectResponse(url, status_code=302)
@@ -85,18 +108,20 @@ def callback(
 ):
     front = get_settings().frontend_base_url.rstrip("/")
     p = svc.providers().get(provider)
+    next_path = svc.state_next(state, provider) if p else None
+    target = f"{front}{next_path}" if next_path else f"{front}/"
     if p is None or not code or not svc.check_state(state, provider):
-        return RedirectResponse(f"{front}/?login=error", status_code=302)
+        return RedirectResponse(_append_query(target, login="error"), status_code=302)
     ip_hash = hash_client_ip(get_real_ip(request))
     if get_active_ip_ban(db, ip_hash) is not None:
         return RedirectResponse(
-            f"{front}/?login=error&reason=ip_banned&message={quote(_IP_BAN_MESSAGE)}",
+            _append_query(target, login="error", reason="ip_banned", message=_IP_BAN_MESSAGE),
             status_code=302,
         )
     try:
         info = svc.exchange_code(p, code)
     except (ValueError, Exception):  # noqa: BLE001 - mạng/nhà cung cấp lỗi: không lộ chi tiết
-        return RedirectResponse(f"{front}/?login=error", status_code=302)
+        return RedirectResponse(_append_query(target, login="error"), status_code=302)
     email = info.get("email")
     user = db.scalar(select(User).where(User.provider == provider, User.subject == info["subject"]))
     if user is None:
@@ -111,7 +136,7 @@ def callback(
         user.email = email
     user.last_login_at = datetime.now(timezone.utc)
     db.commit()
-    resp = RedirectResponse(f"{front}/?login=ok", status_code=302)
+    resp = RedirectResponse(_append_query(target, login="ok"), status_code=302)
     resp.set_cookie(svc.SESSION_COOKIE, svc.make_session(user.id), max_age=svc.SESSION_MAX_AGE, httponly=True,
                     samesite="lax", secure=get_settings().oauth_redirect_base.startswith("https://"), path="/")
     return resp

@@ -73,12 +73,25 @@ describe("ProgramProfileDialog", () => {
     expect(useSettings.getState().programCode).toBe("");
   });
 
-  it("still requires a programme when the exchange option is off", async () => {
+  it("lets any user save without a programme, exchange option or not", async () => {
     useLang.getState().setLang("en");
     useSettings.setState({ exchangeStudent: false });
     const onClose = vi.fn();
     render(<ProgramProfileDialog open={true} onClose={onClose} />);
 
+    fireEvent.click(screen.getByRole("button", { name: /Save profile/i }));
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("still rejects an invalid major code even with nothing else filled in", async () => {
+    useLang.getState().setLang("en");
+    useSettings.setState({ exchangeStudent: false });
+    const onClose = vi.fn();
+    render(<ProgramProfileDialog open={true} onClose={onClose} />);
+
+    const input = screen.getByLabelText(/^Primary major$/i);
+    fireEvent.change(input, { target: { value: "ZZZ999" } });
     fireEvent.click(screen.getByRole("button", { name: /Save profile/i }));
     expect(await screen.findByRole("alert")).toBeInTheDocument();
     expect(onClose).not.toHaveBeenCalled();

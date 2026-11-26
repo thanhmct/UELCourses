@@ -664,6 +664,7 @@ class ModuleCommentOut(ORM):
     author_name: str = "Sinh viên ẩn danh"
     status: str
     semester: str | None = None
+    like_count: int = 0
     created_at: datetime
 
 
@@ -673,6 +674,24 @@ class ModuleCommentListOut(BaseModel):
     page: int
     size: int
     average_rating: float | None = None
+
+
+class CommentLikeIn(BaseModel):
+    anon_id: str = Field(min_length=1, max_length=64, description="Mã thiết bị ẩn danh để chống thích trùng")
+
+
+class CommentLikeOut(BaseModel):
+    liked: bool
+    like_count: int
+
+
+class CommentReportIn(BaseModel):
+    reason: str = Field(min_length=5, max_length=500, description="Lý do báo cáo bình luận")
+
+
+class CommentReportOut(BaseModel):
+    ok: bool
+    message: str
 
 
 class BannedTermIn(BaseModel):

@@ -14,12 +14,15 @@ import { creditsLine, isEnglishCode, moduleName } from "@/i18n/names";
 import { Loading, EnBadge, NoScheduleBadge, RequiredBadge } from "@/components/ui";
 import { getCachedFinalAssessmentKind } from "@/lib/finalAssessment";
 import { activeToken, finishedCodes, parseCodes, rankSuggestions, replaceActiveToken } from "@/lib/codeTokens";
+import { parseSemesterId } from "@/lib/modules";
 
 export interface TimetableModuleSearchProps {
   onPick: (m: ModuleSummary) => void;
   exclude?: string[];
   /** Mã đã có ở học kỳ khác (Kế hoạch/Thời khóa biểu): vẫn hiện trong kết quả nhưng đánh dấu "Đã thêm"; bấm vẫn thêm bình thường. */
   addedCodes?: string[];
+  /** Mã -> học kỳ (id) nơi mã đó đã được thêm, nếu biết; dùng để ghi rõ "Đã thêm ở kỳ N · YY-YY" (thay cho nhãn chung). */
+  addedInSemester?: Record<string, string>;
   placeholder?: string;
   /** chỉ tìm học phần trong CTĐT này (vd K23406 hoặc K23406E) */
   programId?: string;
@@ -46,6 +49,7 @@ export function TimetableModuleSearch({
   onPick,
   exclude = [],
   addedCodes = [],
+  addedInSemester,
   placeholder,
   programId,
   programIds,
@@ -201,6 +205,20 @@ export function TimetableModuleSearch({
     setBusy(false);
   };
 
+  /** Enter: thêm luôn — mã/lô mã đang gõ (chế độ nhập mã) hoặc gợi ý khớp nhất (gõ tên tự do). */
+  const addCurrent = async () => {
+    if (busy || !q.trim()) return;
+    if (codeEntryMode) {
+      await addBatch();
+      return;
+    }
+    if (items.length > 0) {
+      onPick(items[0]);
+      setQ("");
+      setReport([]);
+    }
+  };
+
   const listOpen = !!(focus && searchToken.trim());
   useMaxVisibleItems(listRef, listOpen);
 
@@ -218,6 +236,11 @@ export function TimetableModuleSearch({
             onChange={(e) => {
               setQ(e.target.value);
               setReport([]);
+            }}
+            onKeyDown={(e) => {
+              if (e.key !== "Enter" || e.nativeEvent.isComposing) return;
+              e.preventDefault();
+              void addCurrent();
             }}
             onFocus={() => {
               if (blurTimerRef.current) clearTimeout(blurTimerRef.current);
@@ -251,6 +274,11 @@ export function TimetableModuleSearch({
               const progLabel = programLabels[m.code];
               const req = getRequired(m.code);
               const added = addedCodes.includes(m.code);
+              const addedSemId = addedInSemester?.[m.code];
+              const addedSlot = addedSemId ? parseSemesterId(addedSemId) : null;
+              const addedLabel = addedSlot
+                ? t("mod.addedInSemester", { n: addedSlot.term, y: addedSlot.year.split("-").map((yy) => yy.slice(-2)).join("-") })
+                : null;
 
               return (
                 <li key={m.code} role="option" aria-selected={false}>
@@ -259,13 +287,9 @@ export function TimetableModuleSearch({
                     className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm hover:bg-brand-50 dark:hover:bg-slate-800 min-h-[38px]"
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => {
-                      if (codeEntryMode) {
-                        setQ(replaceActiveToken(q, m.code));
-                        setReport([]);
-                      } else {
-                        onPick(m);
-                        setQ("");
-                      }
+                      // Bấm vào gợi ý chỉ điền mã vào ô, không thêm ngay — người dùng ấn Enter / nút Thêm để xác nhận.
+                      setQ(replaceActiveToken(q, m.code));
+                      setReport([]);
                     }}
                   >
                     <span className="flex flex-wrap items-center gap-x-2 min-w-0 flex-1">
@@ -285,7 +309,11 @@ export function TimetableModuleSearch({
                       <span>
                         {creditsLine({ credits: m.credits, finalAssessment: m.final_assessment || getCachedFinalAssessmentKind(m.code) }, lang)}
                       </span>
-                      {added && (
+                      {addedLabel ? (
+                        <span className="inline-flex items-center gap-1 rounded bg-sky-100 px-1.5 py-0.5 text-xs font-medium text-sky-800 dark:bg-sky-950 dark:text-sky-300">
+                          <Check className="size-3" aria-hidden="true" /> {addedLabel}
+                        </span>
+                      ) : added && (
                         <span className="inline-flex items-center gap-1 rounded bg-emerald-100 px-1.5 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
                           <Check className="size-3" aria-hidden="true" /> {t("mod.alreadyAdded")}
                         </span>
@@ -307,11 +335,12 @@ export function TimetableModuleSearch({
           </button>
         </div>
       )}
-      {report.length > 0 && (
+      {/* Chỉ hiện dòng báo LỖI (không tìm thấy mã…) — việc thêm thành công đã thấy ngay qua danh sách môn, không cần dòng "✓" riêng. */}
+      {report.some((row) => !row.ok) && (
         <ul className="space-y-1 text-xs" aria-live="polite">
-          {report.map((row) => (
-            <li key={row.code} className={row.ok ? "text-emerald-700 dark:text-emerald-300" : "text-red-600 dark:text-red-400"}>
-              {row.ok ? "✓" : "✗"} <span className="font-mono font-bold">{row.code}</span>{row.msg ? ` — ${row.msg}` : ""}
+          {report.filter((row) => !row.ok).map((row) => (
+            <li key={row.code} className="text-red-600 dark:text-red-400">
+              ✗ <span className="font-mono font-bold">{row.code}</span>{row.msg ? ` — ${row.msg}` : ""}
             </li>
           ))}
         </ul>

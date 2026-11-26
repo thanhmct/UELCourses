@@ -948,16 +948,48 @@ class ModuleComment(Base):
     flag_reasons: Mapped[list[str] | None] = mapped_column(JsonType, nullable=True)
     # Biệt danh của người gửi tại thời điểm viết (chỉ có khi đã đăng nhập và đã đặt biệt danh); None = ẩn danh.
     author_name: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    like_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
     moderated_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
     moderated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     moderation_note: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
+class CommentLike(Base):
+    """Lượt thích (tim) một bình luận học phần, theo anon_id để tránh thích trùng (Brief A3+)."""
+
+    __tablename__ = "comment_likes"
+    __table_args__ = (
+        UniqueConstraint("comment_id", "anon_id", name="uq_comment_likes_comment_anon"),
+        Index("ix_comment_likes_comment_id", "comment_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    comment_id: Mapped[int] = mapped_column(ForeignKey("module_comments.id", ondelete="CASCADE"))
+    anon_id: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class CommentReport(Base):
+    """Báo cáo vi phạm cho một bình luận học phần — không cần đăng nhập, chỉ cần lý do (Brief A3+)."""
+
+    __tablename__ = "comment_reports"
+    __table_args__ = (
+        Index("ix_comment_reports_comment_id", "comment_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    comment_id: Mapped[int] = mapped_column(ForeignKey("module_comments.id", ondelete="CASCADE"))
+    reason: Mapped[str] = mapped_column(Text)
+    ip_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    status: Mapped[str] = mapped_column(String(16), default="open", server_default="open")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class BannedTerm(Base):
-    """Từ khóa cấm trong nội dung bình luận / góp ý (Brief A3).
-    severity='block': từ chối ngay (HTTP 422).
-    severity='flag': gắn cờ chuyển vào hàng đợi kiểm duyệt.
+    """Từ khóa do quản trị viên tự thêm, dùng kèm mô hình kiểm duyệt AI (Brief A3).
+    Cả hai mức severity ('block' và 'flag') đều chỉ gắn cờ 'banned_term' và chuyển vào hàng đợi kiểm duyệt
+    để quản trị viên xem lại — không còn tự động từ chối ngay (422) dù severity='block'.
     """
 
     __tablename__ = "banned_terms"

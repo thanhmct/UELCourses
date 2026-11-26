@@ -175,8 +175,6 @@ export function FeedbackForm({ page: propPage, initialCategory = "feature", onSu
         />
       </div>
 
-      <p className="text-xs text-slate-500">{t("fb.meta", { page, v: APP_VERSION })}</p>
-
       {status === "error" && (
         <p className="text-sm font-medium text-red-600 dark:text-red-400">{t("fb.error")}</p>
       )}

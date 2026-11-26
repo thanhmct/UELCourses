@@ -235,17 +235,21 @@ export function TimetableWorkspace(props: TimetableWorkspaceProps) {
 
   const semester = tt.semester;
   const entries = useMemo(() => tt.bySemester[semester] ?? [], [tt.bySemester, semester]);
+  // Danh sách hiển thị trong hộp "Môn đã thêm": môn thêm gần nhất lên đầu, đẩy các môn cũ xuống dưới
+  // (thay cho dòng báo "✓ đã thêm" riêng — xem TimetableModuleSearch.tsx).
+  const entriesMostRecentFirst = useMemo(() => [...entries].reverse(), [entries]);
   const sections = useMemo(() => (loaded.sem === semester ? loaded.data : {}), [loaded, semester]);
   const classFailures = loaded.sem === semester ? loaded.failed : {};
   // Mã đã có ở các học kỳ KHÁC (tt.bySemester đồng bộ 2 chiều với Kế hoạch, xem reconcilePlannerTimetable trong lib/store.ts)
-  const addedElsewhereCodes = useMemo(() => {
-    const codes = new Set<string>();
+  const addedElsewhereMap = useMemo(() => {
+    const map: Record<string, string> = {};
     for (const [sem, list] of Object.entries(tt.bySemester)) {
       if (sem === semester) continue;
-      for (const e of list) codes.add(e.code);
+      for (const e of list) if (!map[e.code]) map[e.code] = sem;
     }
-    return [...codes];
+    return map;
   }, [tt.bySemester, semester]);
+  const addedElsewhereCodes = useMemo(() => Object.keys(addedElsewhereMap), [addedElsewhereMap]);
 
   const flash = useCallback((msg: string) => {
     setToast(msg);
@@ -1087,6 +1091,7 @@ export function TimetableWorkspace(props: TimetableWorkspaceProps) {
               }}
               exclude={entries.map((e) => e.code)}
               addedCodes={addedElsewhereCodes}
+              addedInSemester={addedElsewhereMap}
               programId={codeSearch ? undefined : activeProgramId}
               programIds={codeSearch ? undefined : activeProgramIds}
               degree={searchPrimaryGraduate || searchSecondaryGraduate ? "all" : undefined}
@@ -1124,7 +1129,7 @@ export function TimetableWorkspace(props: TimetableWorkspaceProps) {
             <Empty>{t("tt.emptyList")}</Empty>
           ) : (
             <ul className="divide-y divide-slate-100 dark:divide-slate-800">
-              {entries.map((e) => {
+              {entriesMostRecentFirst.map((e) => {
                 const info = tt.info[e.code];
                 const list = sections[e.code];
                 const finalKind = finalKinds[e.code];

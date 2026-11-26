@@ -45,28 +45,22 @@ def test_moderation_normalization_and_variants():
     assert coll5 == "vcl"
 
 
-def test_moderation_block_and_flag(db):
-    """severity='block' từ chối ngay (422), severity='flag' gắn cờ 'banned_term'."""
-    # Thêm từ cấm tùy biến vào DB
+def test_moderation_banned_term_flags_but_never_blocks(db):
+    """Từ cấm do quản trị viên tự thêm chỉ gắn cờ 'banned_term', dù severity='block' hay 'flag'
+    (không còn chặn cứng 422 — việc duyệt/từ chối nay thuộc về quản trị viên trong hàng đợi)."""
     db.add(BannedTerm(term="cam_dac_biet", severity="block"))
     db.add(BannedTerm(term="luu_y_dac_biet", severity="flag"))
     db.commit()
 
-    # Block: ném 422
-    with pytest.raises(HTTPException) as exc_info:
-        check_content("Nội dung chứa từ cam_dac_biet rất nguy hiểm", db=db)
-    assert exc_info.value.status_code == 422
-    assert exc_info.value.detail == "Nội dung chưa phù hợp"
+    flags_block_severity = check_content("Nội dung chứa từ cam_dac_biet rất nguy hiểm", db=db)
+    assert "banned_term" in flags_block_severity
 
-    # Flag: không ném lỗi, trả cờ banned_term
-    flags = check_content("Nội dung này có luu_y_dac_biet cần xem lại", db=db)
-    assert "banned_term" in flags
+    flags_flag_severity = check_content("Nội dung này có luu_y_dac_biet cần xem lại", db=db)
+    assert "banned_term" in flags_flag_severity
 
-    # Kiểm tra biến thể xen kẽ của từ block mẫu 'du' ("đ.ụ")
-    with pytest.raises(HTTPException) as exc_info:
-        check_content("Môn học này như đ.ụ vậy", db=db)
-    assert exc_info.value.status_code == 422
-    assert exc_info.value.detail == "Nội dung chưa phù hợp"
+    # Nội dung không khớp từ cấm nào -> không có cờ banned_term
+    flags_clean = check_content("Nội dung hoàn toàn bình thường không liên quan", db=db)
+    assert "banned_term" not in flags_clean
 
 
 def test_moderation_contact_and_links(db):
@@ -186,15 +180,8 @@ def test_public_module_comments_only_approved_and_avg_rating(client, db):
 
 
 def test_feedback_moderation(client, db):
-    """POST /api/feedback đi qua cùng bộ lọc nội dung và lưu status='pending'."""
-    # 1. Feedback chứa từ block -> 422
-    res_block = client.post(
-        "/api/feedback",
-        json={"page": "/timetable", "rating": 1, "category": "Lỗi", "message": "Nội dung blockword không hợp lệ"},
-    )
-    assert res_block.status_code == 422
-
-    # 2. Feedback có link -> được lưu với cờ 'link' và status='pending'
+    """POST /api/feedback đi qua cùng bước kiểm tra nội dung (chỉ gắn cờ, không chặn) và lưu status='pending'."""
+    # Feedback có link -> được lưu với cờ 'link' và status='pending'
     res_ok = client.post(
         "/api/feedback",
         json={"page": "/planner", "rating": 5, "category": "Giao diện", "message": "Tham khảo tại https://uel.edu.vn"},

@@ -112,10 +112,10 @@ describe("Brief W32: Ô tìm môn ở Thời khóa biểu: dời nhãn 'Không c
     await waitFor(() => expect(onPick).toHaveBeenCalledTimes(2));
     expect(onPick.mock.calls.map(([module]) => module.code)).toEqual(["BAA2028", "BAA2029"]);
     expect(input).toHaveValue("XXX9999");
-    expect(screen.getByText("BAA2028").closest("li")).toHaveTextContent("✓");
+    // Thêm thành công không hiện dòng "✓ ..." riêng nữa — người dùng thấy ngay trong danh sách đã thêm.
+    expect(screen.queryByText("✓")).toBeNull();
     const failedCode = screen.getAllByText("XXX9999").find((element) => element.tagName === "SPAN");
     expect(failedCode?.closest("li")).toHaveTextContent("✗");
-    expect(screen.getByText("BAA2029").closest("li")).toHaveTextContent("✓");
   });
 
   it("1. Dòng gợi ý có môn không lịch → nhãn 'Không có lịch' nằm trong cụm bên phải cùng với '3 TC', không nằm cạnh tên môn", async () => {

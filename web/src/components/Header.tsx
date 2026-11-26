@@ -315,12 +315,36 @@ export function BottomNav() {
   const restPrimary = visiblePrimary().filter((n) => !n.main);
   const booksItem = visibleSecondary("/books");
   const settingsItem = visibleSecondary("/settings");
+  const moreMenuRef = useRef<HTMLDivElement>(null);
+  const moreButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Bấm/chạm ra ngoài (hoặc Esc) thì tự đóng menu "Thêm".
+  useEffect(() => {
+    if (!more) return;
+    const onPointerDown = (e: PointerEvent) => {
+      const target = e.target as Node;
+      if (moreMenuRef.current?.contains(target) || moreButtonRef.current?.contains(target)) return;
+      setMore(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMore(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [more]);
 
   return (
     <>
       {/* z-50: menu "Thêm" nằm trên các nút tròn nổi (lọc, chat — z-40) để không bị che */}
       {more && (
-        <div className="fixed right-2 bottom-16 z-50 w-max rounded-lg border border-slate-200 bg-white p-[5px] shadow-lg desk:hidden dark:border-slate-800 dark:bg-slate-900">
+        <div
+          ref={moreMenuRef}
+          className="fixed right-2 bottom-16 z-50 w-max rounded-lg border border-slate-200 bg-white p-[5px] shadow-lg desk:hidden dark:border-slate-800 dark:bg-slate-900"
+        >
           <ul className="flex flex-col gap-[2.5px]">
             {restPrimary.map((n) => {
               const on = isActive(path, n.href);
@@ -414,6 +438,7 @@ export function BottomNav() {
           );
         })}
         <button
+          ref={moreButtonRef}
           onClick={() => setMore((v) => !v)}
           aria-expanded={more}
           className="flex flex-1 flex-col items-center justify-center gap-0.5 text-[10px] text-slate-400 dark:text-slate-500"

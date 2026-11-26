@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { useT } from "@/i18n";
-import { api, API_URL, AuthApiError } from "@/lib/api";
+import { api, authLoginUrl, AuthApiError } from "@/lib/api";
 import { Loading } from "@/components/ui";
+import { GoogleLoginButton, FacebookLoginButton } from "@/components/SocialLoginButtons";
 import type { AuthMeResponse, AuthProvidersResponse, LecturerReviewList } from "@/lib/types";
 
 function StarPicker({ rating, onChange }: { rating: number; onChange: (r: number) => void }) {
@@ -35,9 +37,19 @@ function StarDisplay({ rating }: { rating: number }) {
   );
 }
 
-export function LecturerReviewPanel({ moduleCode }: { moduleCode: string }) {
+export function LecturerReviewPanel({
+  moduleCode,
+  loginNext: loginNextProp,
+}: {
+  moduleCode: string;
+  /** Đường dẫn quay về sau khi đăng nhập; mặc định là trang + neo hiện tại (#mod-reviews). Ghi đè khi
+   * dùng lại component này ở nơi khác (vd trang Góp ý học phần), để quay đúng môn/vị trí đã chọn. */
+  loginNext?: string;
+}) {
   const { t } = useT();
-  const [isExpanded, setIsExpanded] = useState(false);
+  const pathname = usePathname();
+  // Lưu lại đúng trang hiện tại để quay về sau khi đăng nhập (kèm neo tới khối Đánh giá và bình luận).
+  const loginNext = loginNextProp ?? `${pathname || "/"}#mod-reviews`;
 
   const [providers, setProviders] = useState<AuthProvidersResponse | null>(null);
   const [me, setMe] = useState<AuthMeResponse | null>(null);
@@ -77,9 +89,9 @@ export function LecturerReviewPanel({ moduleCode }: { moduleCode: string }) {
   };
 
   useEffect(() => {
-    if (isExpanded) loadAll();
+    loadAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isExpanded, moduleCode]);
+  }, [moduleCode]);
 
   const handleLogout = async () => {
     await api.authLogout().catch(() => null);
@@ -143,54 +155,42 @@ export function LecturerReviewPanel({ moduleCode }: { moduleCode: string }) {
   const summary = reviewData?.summary;
 
   return (
-    <div className="mt-4 transition-all duration-200">
-      <button
-        type="button"
-        onClick={() => setIsExpanded(!isExpanded)}
-        aria-expanded={isExpanded}
-        className="inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:text-brand-ink dark:text-brand-400 dark:hover:text-brand-300 py-1 px-2 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-      >
-        <span>{isExpanded ? t("lecturerReview.collapse") : t("lecturerReview.expand")}</span>
-        <span className={`transform transition-transform text-[10px] ${isExpanded ? "rotate-180" : ""}`}>▼</span>
-      </button>
+    <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-800 space-y-4">
+      <div>
+        <h3 className="text-xs font-semibold text-slate-800 dark:text-slate-200 mb-1.5">
+          {t("lecturerReview.guidelinesTitle")}
+        </h3>
+        <ul className="list-disc list-inside space-y-0.5 text-[11px] text-slate-600 dark:text-slate-400">
+          {guidelines.map((g, i) => (
+            <li key={i}>{g}</li>
+          ))}
+        </ul>
+      </div>
 
-      {isExpanded && (
-        <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-800 space-y-4 animate-in fade-in duration-150">
-          <div>
-            <h3 className="text-xs font-semibold text-slate-800 dark:text-slate-200 mb-1.5">
-              {t("lecturerReview.guidelinesTitle")}
-            </h3>
-            <ul className="list-disc list-inside space-y-0.5 text-[11px] text-slate-600 dark:text-slate-400">
-              {guidelines.map((g, i) => (
-                <li key={i}>{g}</li>
-              ))}
-            </ul>
-          </div>
-
-          {loading ? (
-            <Loading compact className="w-full justify-center py-3" />
-          ) : (
-            <>
-              {!user && (
-                <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-900/50">
-                  <p className="text-xs text-slate-600 dark:text-slate-400 mb-2.5">{t("lecturerReview.loginPrompt")}</p>
-                  <div className="flex flex-wrap gap-2">
-                    {providers?.google?.ready && (
-                      <a href={`${API_URL}/api/auth/google/login`} className="btn-primary py-1.5 px-4 text-xs font-medium">
-                        {t("lecturerReview.loginGoogle")}
-                      </a>
-                    )}
-                    {providers?.facebook?.ready && (
-                      <a href={`${API_URL}/api/auth/facebook/login`} className="btn-primary py-1.5 px-4 text-xs font-medium">
-                        {t("lecturerReview.loginFacebook")}
-                      </a>
-                    )}
-                    {!providers?.google?.ready && !providers?.facebook?.ready && (
-                      <p className="text-[11px] text-slate-400">{t("lecturerReview.noProviders")}</p>
-                    )}
-                  </div>
-                </div>
-              )}
+      {loading ? (
+        <Loading compact className="w-full justify-center py-3" />
+      ) : (
+        <>
+          {!user && (
+            <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-900/50">
+              <p className="text-xs text-slate-600 dark:text-slate-400 mb-2.5">{t("lecturerReview.loginPrompt")}</p>
+              <div className="flex flex-wrap gap-2">
+                {providers?.google?.ready && (
+                  <GoogleLoginButton href={authLoginUrl("google", loginNext)}>
+                    {t("lecturerReview.loginGoogle")}
+                  </GoogleLoginButton>
+                )}
+                {providers?.facebook?.ready && (
+                  <FacebookLoginButton href={authLoginUrl("facebook", loginNext)}>
+                    {t("lecturerReview.loginFacebook")}
+                  </FacebookLoginButton>
+                )}
+                {!providers?.google?.ready && !providers?.facebook?.ready && (
+                  <p className="text-[11px] text-slate-400">{t("lecturerReview.noProviders")}</p>
+                )}
+              </div>
+            </div>
+          )}
 
               {user && banned && (
                 <div className="rounded-lg border border-rose-200 bg-rose-50 p-4 text-xs font-medium text-rose-800 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300">
@@ -313,9 +313,9 @@ export function LecturerReviewPanel({ moduleCode }: { moduleCode: string }) {
                       key={r.id}
                       className="rounded-lg border border-slate-200 bg-white p-3.5 dark:border-slate-800 dark:bg-slate-900 shadow-sm"
                     >
-                      <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2 dark:border-slate-800">
-                        <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">{r.display_name}</span>
-                        <div className="flex items-center gap-2 text-[11px] text-slate-400">
+                      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 border-b border-slate-100 pb-2 dark:border-slate-800">
+                        <span className="min-w-0 max-w-full truncate text-xs font-semibold text-slate-800 dark:text-slate-200">{r.display_name}</span>
+                        <div className="flex shrink-0 items-center gap-2 text-[11px] text-slate-400">
                           <StarDisplay rating={r.rating} />
                           <span>{r.created_at ? new Date(r.created_at).toLocaleDateString("vi-VN") : ""}</span>
                         </div>
@@ -334,8 +334,6 @@ export function LecturerReviewPanel({ moduleCode }: { moduleCode: string }) {
               </div>
             </>
           )}
-        </div>
-      )}
     </div>
   );
 }

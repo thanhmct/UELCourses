@@ -8,6 +8,37 @@ import { Loading } from "@/components/ui";
 
 type SubTab = "feedback" | "comment" | "review" | "book" | "banned_terms" | "bans";
 
+// Nhãn cho các cờ kiểm duyệt: link/contact_info/banned_term (bộ lọc định dạng + admin tự thêm) và
+// các category do mô hình AI (omni-moderation-latest) trả về, cộng ai_unavailable/repeated_chars/invalid_length.
+const FLAG_REASON_LABEL_KEYS: Record<string, string> = {
+  link: "admin.flagReasonLink",
+  contact_info: "admin.flagReasonContact",
+  banned_term: "admin.flagReasonBanned",
+  harassment: "admin.flagReasonHarassment",
+  "harassment/threatening": "admin.flagReasonHarassmentThreat",
+  hate: "admin.flagReasonHate",
+  "hate/threatening": "admin.flagReasonHateThreat",
+  sexual: "admin.flagReasonSexual",
+  "sexual/minors": "admin.flagReasonSexualMinors",
+  violence: "admin.flagReasonViolence",
+  "violence/graphic": "admin.flagReasonViolenceGraphic",
+  "self-harm": "admin.flagReasonSelfHarm",
+  "self-harm/intent": "admin.flagReasonSelfHarmIntent",
+  "self-harm/instructions": "admin.flagReasonSelfHarmInstructions",
+  illicit: "admin.flagReasonIllicit",
+  "illicit/violent": "admin.flagReasonIllicitViolent",
+  ai_unavailable: "admin.flagReasonAiUnavailable",
+  repeated_chars: "admin.flagReasonRepeatedChars",
+  invalid_length: "admin.flagReasonInvalidLength",
+};
+
+const FLAG_REASON_COLORS: Record<string, string> = {
+  link: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300",
+  contact_info: "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300",
+  banned_term: "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300",
+  ai_unavailable: "bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
+};
+
 export default function AdminModerationPage() {
   const { t } = useT();
 
@@ -344,18 +375,9 @@ export default function AdminModerationPage() {
     return (
       <div className="flex flex-wrap gap-1">
         {flags.map((fl, idx) => {
-          let label = fl;
-          let colorClass = "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300";
-          if (fl === "link") {
-            label = t("admin.flagReasonLink");
-            colorClass = "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300";
-          } else if (fl === "contact_info") {
-            label = t("admin.flagReasonContact");
-            colorClass = "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300";
-          } else if (fl === "banned_term") {
-            label = t("admin.flagReasonBanned");
-            colorClass = "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300";
-          }
+          const labelKey = FLAG_REASON_LABEL_KEYS[fl];
+          const label = labelKey ? t(labelKey) : fl;
+          const colorClass = FLAG_REASON_COLORS[fl] ?? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300";
           return (
             <span key={idx} className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${colorClass}`}>
               {label}

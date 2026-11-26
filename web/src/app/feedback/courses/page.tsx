@@ -1,13 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { MessageSquarePlus } from "lucide-react";
 import { BackButton } from "@/components/BackButton";
 import { Loading } from "@/components/ui";
+import { ModuleReviews } from "@/components/ModuleReviews";
+import { LecturerReviewPanel } from "@/components/LecturerReviewPanel";
 import { useT } from "@/i18n";
 import { api } from "@/lib/api";
-import { getAnonId } from "@/lib/analytics";
 import {
   pickReviewSemesters,
   readSubmitted,
@@ -20,8 +22,8 @@ import {
 import { currentTimetableDraft, useTimetable } from "@/lib/store";
 import type { Semester } from "@/lib/types";
 
-const MIN_LEN = 5;
-const MAX_LEN = 1000;
+/** Id neo của khối đánh giá đang mở — dùng để quay đúng vị trí sau khi đăng nhập (OAuth redirect). */
+const ACTIVE_PANEL_ID = "cr-active-review";
 
 const STATUS_KEY: Record<SubmittedStatus, string> = {
   approved: "cr.statusApproved",
@@ -37,10 +39,17 @@ const STATUS_STYLE: Record<SubmittedStatus, string> = {
 
 export default function CourseReviewsPage() {
   const { t, lang } = useT();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const timetable = useTimetable();
   const [semesters, setSemesters] = useState<Semester[] | null>(null);
   const [submitted, setSubmitted] = useState<SubmittedMap>({});
-  const [active, setActive] = useState<{ semesterId: string; code: string } | null>(null);
+  // Khôi phục môn đang chọn từ URL (?sem=&code=) — giữ nguyên sau khi quay lại từ đăng nhập OAuth.
+  const [active, setActive] = useState<{ semesterId: string; code: string } | null>(() => {
+    const sem = searchParams?.get("sem");
+    const code = searchParams?.get("code");
+    return sem && code ? { semesterId: sem, code } : null;
+  });
   const [notice, setNotice] = useState<{ status: "approved" | "pending" } | null>(null);
 
   useEffect(() => {
@@ -75,9 +84,24 @@ export default function CourseReviewsPage() {
     return (lang === "en" && info.name_en) || info.name || code;
   };
 
+  // Mở/đóng khối đánh giá của một môn, đồng bộ vào URL để giữ đúng vị trí qua vòng đăng nhập OAuth.
+  const selectModule = (semesterId: string, code: string | null) => {
+    setActive(code ? { semesterId, code } : null);
+    setNotice(null);
+    const params = new URLSearchParams(searchParams?.toString());
+    if (code) {
+      params.set("sem", semesterId);
+      params.set("code", code);
+    } else {
+      params.delete("sem");
+      params.delete("code");
+    }
+    const qs = params.toString();
+    router.replace(`/feedback/courses${qs ? `?${qs}` : ""}`, { scroll: false });
+  };
+
   const finish = (sem: Semester, code: string, status: SubmittedStatus) => {
     setSubmitted(saveSubmitted(submittedKey(sem.id, code), status));
-    setActive(null);
     setNotice(status === "sent" ? null : { status });
   };
 
@@ -140,11 +164,10 @@ export default function CourseReviewsPage() {
                     <li key={code}>
                       <button
                         type="button"
-                        disabled={Boolean(state)}
                         aria-expanded={isActive}
                         aria-label={state ? t(STATUS_KEY[state]) : t("cr.cardLabel")}
                         title={`${code} · ${name}`}
-                        onClick={() => setActive(isActive ? null : { semesterId: sem.id, code })}
+                        onClick={() => selectModule(sem.id, isActive ? null : code)}
                         className={`card flex w-32 flex-col items-center justify-center gap-0.5 px-3 py-2 text-center transition ${
                           isActive ? "ring-2 ring-orange-400" : ""
                         } ${
@@ -165,141 +188,38 @@ export default function CourseReviewsPage() {
               </ul>
             )}
 
-            {active && active.semesterId === sem.id && codes.includes(active.code) && (
-              <ReviewForm
-                key={`${sem.id}:${active.code}`}
-                code={active.code}
-                name={nameOf(active.code)}
-                semester={sem}
-                onDone={(status) => finish(sem, active.code, status)}
-                onCancel={() => setActive(null)}
-              />
-            )}
+            {active && active.semesterId === sem.id && codes.includes(active.code) && (() => {
+              const code = active.code;
+              const name = nameOf(code);
+              const loginNext = `/feedback/courses?sem=${sem.id}&code=${code}#${ACTIVE_PANEL_ID}`;
+              return (
+                <div id={ACTIVE_PANEL_ID} key={`${sem.id}:${code}`} className="card scroll-mt-20 space-y-5 p-4 sm:p-5">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <h3 className="min-w-0 font-semibold text-slate-900 dark:text-slate-100">
+                      {t("cr.reviewingTitle", { code, name })}
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => selectModule(sem.id, null)}
+                      className="btn-outline shrink-0 px-3 py-1 text-xs"
+                    >
+                      {t("cr.cancel")}
+                    </button>
+                  </div>
+
+                  <ModuleReviews
+                    moduleCode={code}
+                    moduleName={name}
+                    semester={sem.id}
+                    onSubmitted={(status) => finish(sem, code, status)}
+                  />
+                  <LecturerReviewPanel moduleCode={code} loginNext={loginNext} />
+                </div>
+              );
+            })()}
           </section>
         ))
       )}
     </div>
-  );
-}
-
-function ReviewForm({
-  code,
-  name,
-  semester,
-  onDone,
-  onCancel,
-}: {
-  code: string;
-  name: string;
-  semester: Semester;
-  onDone: (status: SubmittedStatus) => void;
-  onCancel: () => void;
-}) {
-  const { t } = useT();
-  const [rating, setRating] = useState<number | null>(null);
-  const [body, setBody] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const submit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setError(null);
-    const trimmed = body.trim();
-    if (rating === null) {
-      setError(t("cr.ratingRequired"));
-      return;
-    }
-    if (trimmed.length < MIN_LEN) {
-      setError(t("cr.tooShort"));
-      return;
-    }
-    if (trimmed.length > MAX_LEN) {
-      setError(t("cr.tooLong"));
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      const res = await api.postModuleComment(code, {
-        body: trimmed,
-        rating,
-        anon_id: getAnonId(),
-        semester: semester.id,
-      });
-      onDone(res.status === "approved" ? "approved" : "pending");
-    } catch (err) {
-      const httpStatus = (err as { status?: number } | null)?.status;
-      if (httpStatus === 409) {
-        setError(t("cr.alreadySent"));
-        onDone("sent");
-        return;
-      }
-      if (httpStatus === 422) setError(t("cr.blocked"));
-      else if (httpStatus === 429) setError(t("cr.rateLimited"));
-      else setError(t("cr.errorDefault"));
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <form onSubmit={submit} className="card space-y-4 p-5" aria-label={`${code} ${name}`}>
-      <h3 className="font-semibold text-slate-900 dark:text-slate-100">
-        <span className="text-orange-600 dark:text-orange-400">{code}</span> · {name}
-      </h3>
-
-      <fieldset className="space-y-1.5">
-        <legend className="text-sm font-medium text-slate-700 dark:text-slate-300">{t("cr.ratingLabel")}</legend>
-        <div className="flex items-center gap-1">
-          {[1, 2, 3, 4, 5].map((star) => (
-            <button
-              key={star}
-              type="button"
-              onClick={() => setRating(star)}
-              aria-label={t("comments.starAria", { n: star })}
-              className={`text-2xl transition-transform hover:scale-110 ${
-                rating !== null && star <= rating ? "text-amber-400" : "text-slate-300 dark:text-slate-600"
-              }`}
-            >
-              ★
-            </button>
-          ))}
-        </div>
-      </fieldset>
-
-      <label className="block space-y-1.5">
-        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{t("cr.bodyLabel")}</span>
-        <textarea
-          value={body}
-          onChange={(e) => {
-            setBody(e.target.value);
-            setError(null);
-          }}
-          rows={4}
-          placeholder={t("cr.bodyPlaceholder")}
-          className="w-full rounded-md border border-slate-300 bg-white p-2.5 text-sm text-slate-900 placeholder-slate-400 focus:border-brand-focus focus:outline-none focus:ring-1 focus:ring-brand-focus dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:placeholder-slate-500"
-        />
-      </label>
-      <div className="flex justify-between text-[11px] text-slate-400">
-        <span>{t("comments.lengthHint")}</span>
-        <span>{body.length}/{MAX_LEN}</span>
-      </div>
-
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <button type="submit" disabled={submitting} className="btn-primary px-4 py-1.5 text-sm font-medium disabled:opacity-50">
-            {submitting ? t("cr.submitting") : t("cr.submit")}
-          </button>
-          <button type="button" onClick={onCancel} className="px-3 py-1.5 text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-200">
-            {t("cr.cancel")}
-          </button>
-        </div>
-        {error && (
-          <p role="alert" className="text-sm font-semibold text-rose-600 dark:text-rose-400">
-            {error}
-          </p>
-        )}
-      </div>
-    </form>
   );
 }

@@ -52,8 +52,10 @@ def validate_nickname(raw: str | None, db: Session | None = None) -> str | None:
     folded = _fold(name)
     if any(fragment in folded for fragment in _RESERVED_FRAGMENTS):
         raise HTTPException(422, "Biệt danh này dễ gây nhầm với quản trị viên hoặc hệ thống, vui lòng chọn tên khác.")
-    # check_content ném 422 với từ cấm mức 'block'; còn lại trả cờ (liên kết, email, số điện thoại, từ nghi vấn).
-    flags = check_content(name, db=db, min_len=NICKNAME_MIN, max_len=NICKNAME_MAX)
+    # check_content chỉ trả cờ (liên kết, email, số điện thoại, từ cấm, mô hình AI), không chặn cứng.
+    # Biệt danh không có hàng đợi duyệt nên mọi cờ đều từ chối ngay — trừ 'ai_unavailable' (lỗi tạm
+    # thời khi gọi mô hình AI), để sự cố mạng/API không khóa luôn việc đổi biệt danh.
+    flags = [f for f in check_content(name, db=db, min_len=NICKNAME_MIN, max_len=NICKNAME_MAX) if f != "ai_unavailable"]
     if flags:
         raise HTTPException(422, "Biệt danh không được chứa liên kết, email, số điện thoại hoặc từ ngữ không phù hợp.")
     return name

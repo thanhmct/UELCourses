@@ -558,7 +558,18 @@ export interface ModuleComment {
   status: "pending" | "approved" | "rejected" | "hidden";
   /** Học kỳ sinh viên đã học, vd "2026-2027-1" (có khi góp ý theo học kỳ) */
   semester?: string | null;
+  like_count?: number;
   created_at: string;
+}
+
+export interface CommentLikeResponse {
+  liked: boolean;
+  like_count: number;
+}
+
+export interface CommentReportResponse {
+  ok: boolean;
+  message: string;
 }
 
 export interface ModuleCommentListResponse {

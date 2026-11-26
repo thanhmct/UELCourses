@@ -4,6 +4,7 @@ import { Loading } from "@/components/ui";
 import { useCallback, useEffect, useId, useMemo, useRef } from "react";
 import { GraduationCapIcon, PencilIcon, CloseIcon } from "./icons";
 import { useProgramProfile } from "@/lib/myProgram";
+import { useSettings } from "@/lib/store";
 import { useT } from "@/i18n";
 import { api } from "@/lib/api";
 import { useApi } from "@/lib/useApi";
@@ -78,6 +79,8 @@ export function ProgramFilterBar({
   const { t, lang } = useT();
   const profile = useProgramProfile();
   const isEn = lang === "en";
+  const exchangeStudent = useSettings((s) => s.exchangeStudent);
+  const showExchange = isEn && exchangeStudent;
 
   const { isOpen, open, close } = useProfileDialog();
   const changeBtnRef = useRef<HTMLButtonElement>(null);
@@ -155,7 +158,7 @@ export function ProgramFilterBar({
   const getProgramInfo = useCallback(
     (codeOrId: string, detailName?: string | null) => {
       const parsed = parseProgramCode(codeOrId);
-      if (!parsed) return { name: null, coopName: null, parsed: null };
+      if (!parsed) return { name: null, parsed: null };
       const programId = parsed.programId;
       const fromList = allPrograms?.find(
         (p) => p.program_id === programId || p.program_id === parsed.contextualProgramId,
@@ -163,11 +166,7 @@ export function ProgramFilterBar({
       const fallback = parsed.degree === "thac_si" ? MASTER_MAJORS[parsed.major] || MASTER_ADMISSION_MAJORS[parsed.major]
         : parsed.degree === "tien_si" ? DOCTORAL_MAJORS[parsed.major] : undefined;
       const name = detailName || fromList?.name || fallback || null;
-      const coopMatch = allPrograms?.find(
-        (p) => (p.program_id === `${programId}H` || p.program_id === programId) && /co-?op/i.test(p.name),
-      );
-      const coopName = coopMatch?.name ?? null;
-      return { name, coopName, parsed };
+      return { name, parsed };
     },
     [allPrograms],
   );
@@ -191,11 +190,11 @@ export function ProgramFilterBar({
 
   // Render chip cho một chương trình đào tạo (bản tiêu chuẩn)
   const renderProgramChip = (
-    info: { name: string | null; coopName: string | null; parsed: ParsedProgramCode | null },
+    info: { name: string | null; parsed: ParsedProgramCode | null },
     labelBadge?: string,
     badgeAriaLabel?: string,
   ) => {
-    const { parsed, name, coopName } = info;
+    const { parsed, name } = info;
     if (!parsed) return null;
 
     const isLoading = allProgramsReq.loading && !name;
@@ -211,7 +210,8 @@ export function ProgramFilterBar({
 
     let specialChip: React.ReactNode = null;
     if (parsed.kind === "english") {
-      specialChip = (
+      // Exchange students are English-track by definition; the Exchange chip already covers it.
+      specialChip = showExchange ? null : (
         <span className="rounded bg-sky-100 px-1.5 py-0.5 text-xs font-medium text-sky-800 dark:bg-sky-950 dark:text-sky-300">
           {t("profile.englishShort")}
         </span>
@@ -223,10 +223,10 @@ export function ProgramFilterBar({
         </span>
       );
     } else if (parsed.kind === "coop") {
-      const label = coopName?.trim() || t("profile.coopTrack");
+      // Thống nhất: luôn hiện "Coop"/"Co-op" ngắn gọn, không dùng tên CTĐT dài từ dữ liệu.
       specialChip = (
         <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-          {label}
+          {t("profile.coopTrack")}
         </span>
       );
     }
@@ -238,7 +238,7 @@ export function ProgramFilterBar({
             {labelBadge}
           </span>
         )}
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className={showExchange ? "flex flex-col items-start gap-1 desk:flex-row desk:flex-wrap desk:items-center desk:gap-1.5" : "flex flex-wrap items-center gap-1.5"}>
           {isLoading ? (
             <Loading compact />
           ) : (
@@ -248,6 +248,11 @@ export function ProgramFilterBar({
             {cohortLabel}
           </span>
           {specialChip}
+          {showExchange && (
+            <span className="rounded bg-amber-100 px-1.5 py-0.5 text-xs font-semibold text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+              {t("profile.exchangeChip")}
+            </span>
+          )}
         </div>
       </div>
     );
@@ -255,9 +260,9 @@ export function ProgramFilterBar({
 
   // Render chip gọn cho Header (bản gọn)
   const renderCompactProgramChip = (
-    info: { name: string | null; coopName: string | null; parsed: ParsedProgramCode | null },
+    info: { name: string | null; parsed: ParsedProgramCode | null },
   ) => {
-    const { parsed, name, coopName } = info;
+    const { parsed, name } = info;
     if (!parsed) return null;
 
     const isLoading = allProgramsReq.loading && !name;
@@ -270,10 +275,13 @@ export function ProgramFilterBar({
 
     const cohortNum = parsed.cohort.replace(/\D/g, "").slice(-2);
     const cohortLabel = parsed.degree === "dai_hoc" ? t("profile.cohortChip", { n: cohortNum }) : t(`degree.${parsed.degree}`);
+    // Điện thoại: viết tắt "Cohort 26" thành "C26" cho đỡ chật hàng; máy tính hiện đủ chữ.
+    const cohortShort = parsed.degree === "dai_hoc" ? `${isEn ? "C" : "K"}${cohortNum}` : cohortLabel;
 
     let specialChip: React.ReactNode = null;
     if (parsed.kind === "english") {
-      specialChip = (
+      // Exchange students are English-track by definition; the Exchange chip already covers it.
+      specialChip = showExchange ? null : (
         <span className="rounded bg-sky-100 px-1.5 py-0.5 text-[11px] font-medium text-sky-800 dark:bg-sky-950 dark:text-sky-300">
           {t("profile.englishShort")}
         </span>
@@ -285,31 +293,38 @@ export function ProgramFilterBar({
         </span>
       );
     } else if (parsed.kind === "coop") {
-      const label = coopName?.trim() || t("profile.coopTrack");
-      // Phones: the full co-op name repeats the major, so show only "Co-op" (full name stays in the tooltip).
+      // Thống nhất: luôn hiện "Coop"/"Co-op" ngắn gọn, không dùng tên CTĐT dài từ dữ liệu.
       specialChip = (
-        <span className="shrink-0 whitespace-nowrap rounded bg-emerald-100 px-1.5 py-0.5 text-[11px] font-medium text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300" title={label}>
-          <span className="sm:hidden">{t("profile.coopTrack")}</span>
-          <span className="hidden sm:inline">{label}</span>
+        <span className="shrink-0 whitespace-nowrap rounded bg-emerald-100 px-1.5 py-0.5 text-[11px] font-medium text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+          {t("profile.coopTrack")}
         </span>
       );
     }
 
+    // Luôn một hàng (kể cả trên điện thoại); tràn hết chiều rộng khung thì mới cắt bớt tên ngành ở cuối.
     return (
-      <span className="inline-flex min-w-0 items-center gap-x-1.5 gap-y-0.5">
+      <span className="inline-flex min-w-0 flex-nowrap items-center gap-x-1.5 gap-y-0.5">
         {isLoading ? (
           <Loading compact />
         ) : (
-          <span className="min-w-0 truncate font-semibold text-slate-900 dark:text-slate-100" title={majorDisplay}>
+          <span
+            className="min-w-0 truncate font-semibold text-slate-900 dark:text-slate-100 desk:overflow-visible desk:whitespace-normal"
+            title={majorDisplay}
+          >
             {majorDisplay}
           </span>
         )}
         <span className="shrink-0 whitespace-nowrap rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">
           {parsed.degree === "dai_hoc" ? (
-            <><span className="sm:hidden">{parsed.cohort}</span><span className="hidden sm:inline">{cohortLabel}</span></>
+            <><span className="sm:hidden">{showExchange ? cohortShort : parsed.cohort}</span><span className="hidden sm:inline">{cohortLabel}</span></>
           ) : cohortLabel}
         </span>
         {specialChip}
+        {showExchange && (
+          <span className="shrink-0 whitespace-nowrap rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-semibold text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+            {t("profile.exchangeChip")}
+          </span>
+        )}
       </span>
     );
   };
@@ -321,20 +336,18 @@ export function ProgramFilterBar({
       return t("profile.invalidCodeWarning", { code: primaryCode });
     }
     if (customProgram) {
-      return formatFilterBannerText(customProgram, primaryInfo.name, lang, primaryInfo.coopName);
+      return formatFilterBannerText(customProgram, primaryInfo.name, lang);
     }
     if (profile.hasSecondary && profile.secondaryProgramId) {
       const p1Text = formatFilterBannerText(
         profile.primaryCode || profile.primaryProgramId,
         primaryInfo.name,
         lang,
-        primaryInfo.coopName,
       );
       const p2Text = formatFilterBannerText(
         profile.secondaryCode || profile.secondaryProgramId,
         secondaryInfo.name,
         lang,
-        secondaryInfo.coopName,
       );
       return `${p1Text} (${t("profile.primaryBadge")}) + ${p2Text} (${t("profile.secondaryBadge")})`;
     }
@@ -342,7 +355,6 @@ export function ProgramFilterBar({
       profile.primaryCode || profile.primaryProgramId,
       primaryInfo.name,
       lang,
-      primaryInfo.coopName,
     );
   }, [
     hasProgram,
@@ -355,9 +367,7 @@ export function ProgramFilterBar({
     profile.primaryProgramId,
     profile.secondaryCode,
     primaryInfo.name,
-    primaryInfo.coopName,
     secondaryInfo.name,
-    secondaryInfo.coopName,
     lang,
     t,
   ]);
@@ -369,7 +379,7 @@ export function ProgramFilterBar({
         <div className={`flex items-center ${className}`}>
           <div className="inline-flex min-h-11 max-w-full items-center gap-2 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50/80 px-3 py-1.5 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-200">
             <GraduationCapIcon className="h-5 w-5 shrink-0 text-brand-600 dark:text-brand-400" />
-            <span className="min-w-0 font-medium">{t("profile.title")}</span>
+            <span className="min-w-0 font-medium">{showExchange ? t("profile.exchangeChip") : t("profile.title")}</span>
             <button
               type="button"
               onClick={handleOpenDialog}
@@ -388,7 +398,7 @@ export function ProgramFilterBar({
     const hasTwoMajors = !customProgram && profile.hasSecondary && !!profile.secondaryProgramId;
 
     return (
-      <div className={`flex min-w-0 items-center ${className}`}>
+      <div className={`inline-flex min-w-0 items-start ${className}`}>
         <div
           data-testid="program-filter-bar"
           title={fullSentence}
@@ -486,7 +496,7 @@ export function ProgramFilterBar({
       <div className={`flex flex-wrap items-center justify-between gap-2 ${className}`}>
         {!showCard ? <span /> : <div className="inline-flex max-w-full flex-wrap items-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-3 py-1.5 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300 min-h-[44px]">
           <GraduationCapIcon className="h-4 w-4 text-brand-600 dark:text-brand-400 shrink-0" />
-          <span>{emptyPrompt || t("profile.selectProgrammePrompt")}</span>
+          <span>{emptyPrompt || (showExchange ? t("profile.exchangeOnlyPrompt") : t("profile.selectProgrammePrompt"))}</span>
           <button
             type="button"
             onClick={handleOpenDialog}

@@ -4,15 +4,19 @@ from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 import re
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import case, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.db import get_db
+from app.rate_limit import get_real_ip
 from app.services.catalog_visibility import public_module
+from app.services.ip_utils import hash_client_ip
 from app.models import (
     AdminSetting,
     ClassSection,
+    CommentLike,
+    CommentReport,
     Module,
     ModuleAssessment,
     ModuleComment,
@@ -35,6 +39,10 @@ from app.routers.equivalents import codes_with_equivalents, equivalents_for, lik
 from app.services.exchange_stats import exchange_stat_items, exchange_totals_subquery
 from app.schemas import (
     ClassRoom,
+    CommentLikeIn,
+    CommentLikeOut,
+    CommentReportIn,
+    CommentReportOut,
     ExchangeStatItem,
     ExchangeStatList,
     ClassSectionOut,
@@ -1175,6 +1183,7 @@ def list_module_comments(
             rating=c.rating,
             author_name=public_name(c.author_name),
             status=c.status,
+            like_count=c.like_count or 0,
             created_at=c.created_at,
         )
         for c in comments
@@ -1244,7 +1253,7 @@ def create_module_comment(
                 detail="Bạn đã gửi quá nhiều bình luận trong 10 phút qua. Vui lòng thử lại sau.",
             )
 
-    # 2. Bộ lọc nội dung (chuẩn hóa, cấm từ block, gắn cờ link/contact)
+    # 2. Kiểm duyệt nội dung: gắn cờ link/SĐT/email, từ cấm admin tự thêm và mô hình AI (không chặn cứng)
     flags = check_content(body.body, db=db, min_len=5, max_len=1000)
 
     # 3. Chế độ kiểm duyệt (admin_settings 'moderation.mode'):
@@ -1294,5 +1303,83 @@ def create_module_comment(
         author_name=public_name(comment.author_name),
         status=comment.status,
         semester=comment.semester,
+        like_count=comment.like_count or 0,
         created_at=comment.created_at,
     )
+
+
+# Số lượt báo cáo cho một bình luận khiến nó tự động chuyển về chờ duyệt (Brief A3+).
+_COMMENT_REPORT_AUTO_PENDING_THRESHOLD = 3
+
+
+def _get_comment(db: Session, code: str, comment_id: int) -> ModuleComment:
+    m = _get_module(db, code)
+    comment = db.get(ModuleComment, comment_id)
+    if comment is None or comment.module_code != m.code:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Không tìm thấy bình luận.")
+    return comment
+
+
+@router.post(
+    "/modules/{code}/comments/{comment_id}/like",
+    response_model=CommentLikeOut,
+    summary="Thích / bỏ thích một bình luận (không cần đăng nhập)",
+)
+def like_module_comment(
+    code: str,
+    comment_id: int,
+    body: CommentLikeIn,
+    db: Session = Depends(get_db),
+):
+    comment = _get_comment(db, code, comment_id)
+    anon_id = body.anon_id.strip()
+    existing = db.scalar(
+        select(CommentLike).where(CommentLike.comment_id == comment.id, CommentLike.anon_id == anon_id)
+    )
+    if existing:
+        db.delete(existing)
+        comment.like_count = max(0, (comment.like_count or 0) - 1)
+        liked = False
+    else:
+        db.add(CommentLike(comment_id=comment.id, anon_id=anon_id))
+        comment.like_count = (comment.like_count or 0) + 1
+        liked = True
+    db.commit()
+    return CommentLikeOut(liked=liked, like_count=comment.like_count)
+
+
+@router.post(
+    "/modules/{code}/comments/{comment_id}/report",
+    response_model=CommentReportOut,
+    status_code=status.HTTP_201_CREATED,
+    summary="Báo cáo bình luận vi phạm (không cần đăng nhập, chỉ cần nêu lý do)",
+)
+def report_module_comment(
+    code: str,
+    comment_id: int,
+    body: CommentReportIn,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    comment = _get_comment(db, code, comment_id)
+    ip_hash = hash_client_ip(get_real_ip(request))
+    db.add(CommentReport(comment_id=comment.id, reason=body.reason.strip(), ip_hash=ip_hash))
+
+    # Nhiều người cùng báo cáo một bình luận -> tự động chuyển về chờ duyệt (dù đang approved),
+    # theo đúng "Nguyên tắc cộng đồng": vi phạm sẽ được chuyển sang chờ duyệt hoặc gỡ.
+    report_count = (
+        db.scalar(select(func.count(CommentReport.id)).where(CommentReport.comment_id == comment.id)) or 0
+    ) + 1
+    auto_pending = False
+    if report_count >= _COMMENT_REPORT_AUTO_PENDING_THRESHOLD and comment.status == "approved":
+        comment.status = "pending"
+        comment.flag_reasons = list(dict.fromkeys([*(comment.flag_reasons or []), "reported"]))
+        auto_pending = True
+    db.commit()
+
+    message = (
+        "Đã ghi nhận báo cáo. Bình luận đã được chuyển về chờ duyệt lại."
+        if auto_pending
+        else "Đã ghi nhận báo cáo, cảm ơn bạn. Quản trị viên sẽ xem lại."
+    )
+    return CommentReportOut(ok=True, message=message)

@@ -234,6 +234,8 @@ export default function ModulesPage() {
 
   const [semesters, setSemesters] = useState<string[]>([]);
   const [outline, setOutline] = useState(false);
+  /** SV trao đổi: sắp xếp (không lọc bỏ) môn theo số SV trao đổi kỳ trước đã học, mặc định bật. */
+  const [exchangeRankSort, setExchangeRankSort] = useState(true);
 
   const { academicYear, globalCurrent, currentYearSecondTerm } = useSemesters();
   const yearStr = academicYear ? academicYear.replace("–", "-") : undefined;
@@ -389,10 +391,10 @@ export default function ModulesPage() {
       program_ids: activeProgramIds.length > 0 ? activeProgramIds : undefined,
       has_outline: outline ? "true" : undefined,
       priority_codes: exchangeActive && priorityCodes.length > 0 ? priorityCodes.join(",") : undefined,
-      exchange_rank: exchangeActive ? true : undefined,
+      exchange_rank: exchangeActive && exchangeRankSort ? true : undefined,
       size: PAGE,
     }),
-    [dq, language, credits, faculties, departments, types, finalAssessments, semester, moduleDegree, activeProgramIds, outline, exchangeActive, priorityCodes],
+    [dq, language, credits, faculties, departments, types, finalAssessments, semester, moduleDegree, activeProgramIds, outline, exchangeActive, priorityCodes, exchangeRankSort],
   );
   const filterKey = JSON.stringify(filter);
 
@@ -499,6 +501,7 @@ export default function ModulesPage() {
     setFinalAssessments([]);
     setSemesters([]);
     setOutline(false);
+    setExchangeRankSort(true);
   };
 
   // Faculty items are the API facet index as-is: the server already canonicalizes and orders them.
@@ -577,7 +580,7 @@ export default function ModulesPage() {
                 const descInfo = moduleDescription(m, lang); // VI → description, EN → description_en (thiếu thì dùng bản còn lại)
                 const desc = descInfo.text;
                 const targetOutlineUrl = lang === "en" ? (m.outline_url_en || m.outline_url) : (m.outline_url || m.outline_url_en);
-                // Nút đề cương: luôn đặt ngay sau loại học phần; bộ môn · khoa xuống dòng riêng khi không đủ chỗ.
+                // Nút đề cương: luôn đặt ngay sau loại học phần; bộ môn · khoa luôn xuống dòng riêng.
                 const outlineChip = targetOutlineUrl ? (
                   <a
                     href={targetOutlineUrl}
@@ -615,12 +618,12 @@ export default function ModulesPage() {
                           const deptFaculty = [department, faculty].filter(Boolean).join(" · ");
                           return (
                             <>
-                              {/* Tín chỉ · thi · loại và nút đề cương luôn đi cùng nhau; bộ môn · khoa xuống dòng riêng khi không đủ chỗ. */}
+                              {/* Tín chỉ · thi · loại và nút đề cương luôn đi cùng nhau; bộ môn · khoa luôn xuống dòng riêng. */}
                               <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
                                 <span>{creditsLine({ credits: m.credits, finalAssessment, type: m.type }, lang)}</span>
                                 {outlineChip}
                               </span>
-                              {deptFaculty && <span>{deptFaculty}</span>}
+                              {deptFaculty && <span className="w-full">{deptFaculty}</span>}
                             </>
                           );
                         })()}
@@ -756,6 +759,15 @@ export default function ModulesPage() {
             checked={outline}
             onChange={setOutline}
           />
+
+          {/* SV trao đổi: chỉ SẮP XẾP môn đã được SV trao đổi kỳ trước học lên trước, không lọc bỏ môn khác */}
+          {exchangeActive && (
+            <CheckFacet
+              label={t("mod.filterExchangeRank")}
+              checked={exchangeRankSort}
+              onChange={setExchangeRankSort}
+            />
+          )}
 
           {/* Final assessment: chỉ hiện khi có dữ liệu thật (Requirement 5) */}
           {facetsData?.final_assessment && facetsData.final_assessment.some((x: FacetCount) => x.count > 0) && (

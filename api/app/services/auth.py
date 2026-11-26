@@ -87,13 +87,25 @@ def _unsign(token: str | None, max_age: int) -> dict | None:
     return payload
 
 
-def make_state(provider: str) -> str:
-    return _sign({"p": provider, "n": secrets.token_urlsafe(12), "iat": int(time.time())})
+def make_state(provider: str, next_path: str | None = None) -> str:
+    payload = {"p": provider, "n": secrets.token_urlsafe(12), "iat": int(time.time())}
+    if next_path:
+        payload["r"] = next_path
+    return _sign(payload)
 
 
 def check_state(state: str | None, provider: str) -> bool:
     data = _unsign(state, STATE_MAX_AGE)
     return bool(data) and data.get("p") == provider
+
+
+def state_next(state: str | None, provider: str) -> str | None:
+    """Đường dẫn (tương đối) để quay lại sau khi đăng nhập, nếu có và state hợp lệ cho đúng provider."""
+    data = _unsign(state, STATE_MAX_AGE)
+    if not data or data.get("p") != provider:
+        return None
+    r = data.get("r")
+    return r if isinstance(r, str) and r else None
 
 
 def make_session(user_id: int) -> str:

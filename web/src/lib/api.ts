@@ -11,6 +11,8 @@ import type {
   Backlink,
   CheckResult,
   ClassSection,
+  CommentLikeResponse,
+  CommentReportResponse,
   ElectiveGroup,
   LecturerReviewList,
   PostLecturerReviewPayload,
@@ -88,6 +90,12 @@ function interfaceLang(): Lang {
   }
 }
 export const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || "0.1.0";
+
+/** Link đăng nhập OAuth kèm đường dẫn quay về (vd trang + vị trí cuộn), để không mất chỗ sau khi đăng nhập. */
+export function authLoginUrl(provider: "google" | "facebook", nextPath?: string): string {
+  const qs = nextPath ? `?next=${encodeURIComponent(nextPath)}` : "";
+  return `${API_URL}/api/auth/${provider}/login${qs}`;
+}
 
 export interface ApiResult<T> {
   data: T;
@@ -842,6 +850,22 @@ export const api = {
       credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
+    }),
+
+  /** Thích / bỏ thích một bình luận (không cần đăng nhập, chống thích trùng bằng anon_id). */
+  likeModuleComment: (code: string, commentId: number, anonId: string) =>
+    raw<CommentLikeResponse>(`/api/modules/${encodeURIComponent(code)}/comments/${commentId}/like`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ anon_id: anonId }),
+    }),
+
+  /** Báo cáo một bình luận vi phạm — không cần đăng nhập, chỉ cần nêu lý do. */
+  reportModuleComment: (code: string, commentId: number, reason: string) =>
+    raw<CommentReportResponse>(`/api/modules/${encodeURIComponent(code)}/comments/${commentId}/report`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason }),
     }),
 
   authProviders: () => authFetch<AuthProvidersResponse>("/api/auth/providers"),

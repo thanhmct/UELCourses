@@ -4,23 +4,27 @@ Nguyên tắc:
   1. Phê bình tiêu cực được phép nếu mang tính xây dựng, không công kích cá nhân.
   2. Không spam hoặc quảng cáo (liên kết, số điện thoại, mạng xã hội).
   3. Không ngôn từ thù ghét, lăng mạ, đe dọa, quấy rối hoặc nội dung độc hại.
-  4. Bộ lọc chuẩn hóa: bỏ dấu tiếng Việt, chữ thường, gộp ký tự lặp, bỏ ký tự xen kẽ kiểu "đ.ụ".
-  5. severity='block' -> từ chối ngay (HTTP 422: 'Nội dung chưa phù hợp').
-  6. severity='flag' -> lưu vào flag_reasons, chuyển vào hàng đợi kiểm duyệt.
-  7. Phát hiện số điện thoại, email, link -> gắn cờ 'contact_info' / 'link'.
-  8. Độ dài hợp lệ: 5–1000 ký tự.
+  4. Không tự động chặn (422) nội dung theo kiểm duyệt — chỉ độ dài không hợp lệ mới bị chặn ngay.
+     Mọi nghi vấn khác chỉ GẮN CỜ và chuyển vào hàng đợi; quản trị viên quyết định duyệt/từ chối/ẩn.
+  5. Nguồn gắn cờ: (a) định dạng số điện thoại/email/liên kết, (b) từ cấm do quản trị viên tự thêm
+     (BannedTerm), (c) mô hình kiểm duyệt AI (OpenAI omni-moderation-latest) — bắt các vi phạm diễn đạt
+     khéo (công kích cá nhân, thù ghét, quấy rối, đe dọa, tình dục...) mà danh sách từ cố định không bắt được.
+  6. Độ dài hợp lệ: 5–1000 ký tự cho bình luận (feedback/đánh giá dùng giới hạn riêng của chúng).
 """
 
 from __future__ import annotations
 
+import os
 import re
 import unicodedata
 from dataclasses import dataclass, field
 
+import httpx
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.config import get_settings
 from app.models import BannedTerm
 
 
@@ -33,52 +37,14 @@ GUIDELINES_VI = [
     "Lưu ý: nhà trường (UEL) không kiểm duyệt các đánh giá này. Muốn phản hồi chính thức, dùng kênh góp ý của trường. Nội dung do sinh viên tự viết, chưa được xác minh.",
 ]
 
-# Từ mẫu trung tính (để test và khởi tạo mặc định)
-DEFAULT_SAMPLE_BANNED_TERMS: list[tuple[str, str]] = [
-    ("blockword", "block"),
-    ("tucam_block", "block"),
-    ("cam_tuyet_doi", "block"),
-    ("du", "block"),
-    ("kys", "block"),
-    ("kill yourself", "block"),
-    ("flagword", "flag"),
-    ("tucam_flag", "flag"),
-    ("can_kiem_duyet", "flag"),
-    ("spam_advertising", "flag"),
-    ("vay tien", "flag"),
-    ("ca cuoc", "flag"),
-]
-
-
-# Các nhóm lý do của đánh giá học phần, dùng để chuyển nội dung sang chờ duyệt.
-_REVIEW_TERMS = {
-    "hate_or_slur": (
-        "dit", "dm", "dcm", "dkm", "vcl", "vkl", "con cho", "con lon", "thang ngu", "do ngu", "ngu nhu bo", "oc cho",
-        "con di", "thieu nang", "cave", "me may", "lon ma", "cu ngu",
-        "retard", "idiot", "stupid bitch", "fuck", "shit", "bitch", "faggot", "nigger", "kys", "kill yourself",
-    ),
-    "threat": (
-        "se giet", "giet may", "giet ban", "dam chet", "danh chet", "cho may chet", "dot nha",
-        "i will kill", "i'll kill", "going to kill", "beat you up", "find where you live",
-    ),
-    "sexual": (
-        "khieu dam", "sex", "nude", "khoa than", "xxx", "porn", "lam tinh", "gai goi", "showfree", "ban dam",
-    ),
-    "harassment_personal": (
-        "thang giang vien", "con giang vien", "giang vien ngu", "giang vien do", "giang vien ngu dot",
-        "lua dao", "gian lan", "dao duc kem", "cho chet", "xau xa", "ban than no",
-    ),
-    "spam_advertising": (
-        "inbox", "ib", "lien he zalo", "zalo", "telegram", "kiem tien", "lam giau", "dang ky ngay", "giam gia",
-        "mua ngay", "link nhom", "tham gia nhom", "bit.ly", "tinyurl",
-        "casino", "ca cuoc", "vay tien", "cho vay", "dich vu lam", "nhan tai lieu",
-    ),
-}
-_REVIEW_FLAG_REASONS = {"contact_info": "personal_info", "link": "spam_advertising"}
+# OpenAI Moderation API — mô hình đọc hiểu ngữ nghĩa, thay cho danh sách từ cấm cố định trong code.
+AI_MODERATION_URL = "https://api.openai.com/v1/moderations"
+AI_MODERATION_MODEL = "omni-moderation-latest"
+AI_MODERATION_TIMEOUT = 8.0
 
 
 def normalize_for_moderation(text: str) -> tuple[str, str]:
-    """Chuẩn hóa văn bản để kiểm duyệt:
+    """Chuẩn hóa văn bản để so khớp từ cấm (BannedTerm):
     - Bỏ dấu tiếng Việt, chữ thường, đ/Đ -> d.
     - Bản clean: gộp khoảng trắng.
     - Bản collapsed: bỏ các ký tự phân cách xen giữa các chữ cái (d.u -> du, d-m -> dm, f.u.c.k -> fuck),
@@ -124,72 +90,79 @@ def validate_content_length(text: str, min_len: int = 5, max_len: int = 1000) ->
     return stripped
 
 
+def _ai_api_key() -> str | None:
+    """Khóa OpenAI dùng cho Moderation API (tái dùng CODEX_API_KEY đã cấu hình sẵn cho RAG)."""
+    settings = get_settings()
+    return os.getenv("CODEX_API_KEY") or settings.codex_api_key or None
+
+
+def ai_flag_categories(text: str) -> list[str]:
+    """Gọi OpenAI Moderation API (omni-moderation-latest) để phát hiện vi phạm theo ngữ nghĩa.
+
+    Trả về danh sách category bị gắn cờ (rỗng nếu an toàn). Khi thiếu khóa API hoặc gọi lỗi, trả về
+    ['ai_unavailable'] để nội dung vào hàng chờ duyệt thủ công thay vì tự động đăng lúc không kiểm
+    tra được — an toàn hơn là cho qua mặc định.
+    """
+    text = (text or "").strip()
+    if not text:
+        return []
+    api_key = _ai_api_key()
+    if not api_key:
+        return ["ai_unavailable"]
+    try:
+        r = httpx.post(
+            AI_MODERATION_URL,
+            headers={"Authorization": f"Bearer {api_key}"},
+            json={"model": AI_MODERATION_MODEL, "input": text},
+            timeout=AI_MODERATION_TIMEOUT,
+        )
+        r.raise_for_status()
+        result = r.json()["results"][0]
+        if not result.get("flagged"):
+            return []
+        categories = result.get("categories") or {}
+        return sorted(name for name, hit in categories.items() if hit)
+    except Exception:  # noqa: BLE001 - lỗi mạng/API bất kỳ -> coi là không kiểm tra được, không chặn người dùng
+        return ["ai_unavailable"]
+
+
 def check_content(
     text: str,
     db: Session | None = None,
     min_len: int = 5,
     max_len: int = 1000,
 ) -> list[str]:
-    """Kiểm tra nội dung theo Brief A3:
-    1. Kiểm tra độ dài 5–1000 ký tự (vi phạm -> 422).
-    2. Phát hiện số điện thoại / email -> cờ 'contact_info'.
-    3. Phát hiện liên kết web -> cờ 'link'.
-    4. So khớp từ cấm (BannedTerm từ DB + mẫu trung tính):
-       - severity='block': ném HTTP 422 ('Nội dung chưa phù hợp').
-       - severity='flag': gắn cờ 'banned_term'.
-    5. Trả về danh sách cờ vi phạm (list rỗng nếu an toàn).
+    """Kiểm tra nội dung theo Brief A3 (chỉ gắn cờ, không chặn cứng):
+    1. Độ dài 5–1000 ký tự (vi phạm -> 422; đây là chốt chặn ngay duy nhất).
+    2. Phát hiện số điện thoại/email -> cờ 'contact_info'; liên kết -> cờ 'link'.
+    3. Từ cấm do quản trị viên tự thêm (BannedTerm) -> cờ 'banned_term' (chỉ gắn cờ, mọi severity).
+    4. Mô hình kiểm duyệt AI -> cờ theo từng category (harassment, hate, sexual, violence, ...).
+    Trả về danh sách cờ vi phạm (rỗng nếu an toàn); nơi gọi quyết định approved/pending dựa trên cờ.
     """
     raw = validate_content_length(text, min_len, max_len)
     flags: list[str] = []
 
-    # 1. Phát hiện số điện thoại VN (10-11 số bắt đầu bằng 0)
     if re.search(r"(?<!\d)(0\d{9,10})(?!\d)", raw):
         flags.append("contact_info")
-
-    # 2. Phát hiện email
     if re.search(r"[\w.+-]+@[\w-]+\.[\w.]+", raw):
         flags.append("contact_info")
-
-    # 3. Phát hiện link
     if re.search(r"(https?://|www\.|\bbit\.ly/|\btinyurl\.com/)\S+", raw, re.I):
         flags.append("link")
 
-    # 4. Chuẩn hóa văn bản
-    clean, collapsed = normalize_for_moderation(raw)
-
-    # 5. Danh sách từ cấm
-    terms: list[tuple[str, str]] = []
     if db is not None:
         try:
-            db_terms = list(db.scalars(select(BannedTerm)).all())
-            for bt in db_terms:
-                terms.append((bt.term.strip(), bt.severity.strip()))
+            db_terms = [bt.term.strip() for bt in db.scalars(select(BannedTerm)).all() if bt.term.strip()]
         except Exception:
-            pass
+            db_terms = []
+        if db_terms:
+            clean, collapsed = normalize_for_moderation(raw)
+            for term in db_terms:
+                norm_term, _ = normalize_for_moderation(term)
+                if norm_term and _match_term(norm_term, clean, collapsed):
+                    flags.append("banned_term")
+                    break
 
-    for st, ssev in DEFAULT_SAMPLE_BANNED_TERMS:
-        if not any(t[0].lower() == st.lower() for t in terms):
-            terms.append((st, ssev))
-
-    # Kiểm tra block trước (chặn ngay)
-    for term, severity in terms:
-        if severity != "block":
-            continue
-        norm_term, _ = normalize_for_moderation(term)
-        if norm_term and _match_term(norm_term, clean, collapsed):
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="Nội dung chưa phù hợp",
-            )
-
-    # Kiểm tra flag (gắn cờ chờ duyệt)
-    for term, severity in terms:
-        if severity != "flag":
-            continue
-        norm_term, _ = normalize_for_moderation(term)
-        if norm_term and _match_term(norm_term, clean, collapsed):
-            flags.append("banned_term")
-
+    flags.extend(ai_flag_categories(raw))
     return list(dict.fromkeys(flags))
 
 
@@ -201,27 +174,14 @@ class ModerationResult:
 
 
 def moderate(text: str, db: Session | None = None) -> ModerationResult:
-    """Hàm tương thích ngược cho endpoint review hiện có."""
+    """Dùng cho đánh giá học phần/giảng viên: không bao giờ chặn cứng, chỉ approved hoặc pending."""
     try:
         flags = check_content(text, db=db, min_len=1, max_len=5000)
-    except HTTPException as e:
-        if e.status_code == 422:
-            return ModerationResult(status="pending", reasons=["blocked_content"], matched=["blocked_content"])
-        raise
+    except HTTPException:
+        return ModerationResult(status="pending", reasons=["invalid_length"])
 
-    clean, collapsed = normalize_for_moderation(text)
-    reasons = []
-    matched = []
-    for reason, terms in _REVIEW_TERMS.items():
-        hits = [term for term in terms if _match_term(term, clean, collapsed)]
-        if hits:
-            reasons.append(reason)
-            matched.extend(hits[:5])
-    reasons.extend(_REVIEW_FLAG_REASONS.get(flag, flag) for flag in flags)
+    reasons = list(flags)
     if re.search(r"(.)\1{7,}", text):
         reasons.append("repeated_chars")
-    return ModerationResult(
-        status="pending" if reasons else "approved",
-        reasons=list(dict.fromkeys(reasons)),
-        matched=matched[:10],
-    )
+    reasons = list(dict.fromkeys(reasons))
+    return ModerationResult(status="pending" if reasons else "approved", reasons=reasons)

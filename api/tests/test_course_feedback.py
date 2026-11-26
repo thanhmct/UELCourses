@@ -42,15 +42,20 @@ def test_auto_mode_sends_flagged_comment_to_pending(client, db):
     assert client.get("/api/modules/BIM5001/comments").json()["total"] == 0
 
 
-def test_auto_mode_blocked_term_is_rejected(client, db):
-    """Từ khóa 'block' bị từ chối ngay với 422, không lưu bình luận."""
+def test_auto_mode_ai_flagged_content_goes_to_pending_not_rejected(client, db, monkeypatch):
+    """Nội dung bị mô hình kiểm duyệt AI gắn cờ -> chờ duyệt, không còn bị từ chối ngay (422)."""
     _setup(db)
+    from app.services import moderation as mod_svc
+
+    monkeypatch.setattr(mod_svc, "ai_flag_categories", lambda text: ["self-harm"] if "kys" in text.lower() else [])
+
     res = client.post(
         "/api/modules/BIM5001/comments",
         json={"body": "Môn này làm mình muốn kys thật sự", "rating": 1, "anon_id": "anon-auto-3"},
     )
-    assert res.status_code == 422
-    assert res.json()["detail"] == "Nội dung chưa phù hợp"
+    assert res.status_code == 201
+    assert res.json()["status"] == "pending"
+    assert client.get("/api/modules/BIM5001/comments").json()["total"] == 0
 
 
 def test_auto_mode_explicit_setting_and_invalid_value(client, db):

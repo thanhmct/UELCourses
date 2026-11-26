@@ -56,7 +56,6 @@ export function ProgramProfileDialog({
   const storeSecondary = useSettings((s) => s.secondaryProgramCode);
   const setProgramProfile = useSettings((s) => s.setProgramProfile);
   const setProgramPrompted = useSettings((s) => s.setProgramPrompted);
-  const exchangeStudent = useSettings((s) => s.exchangeStudent);
 
   const [primary, setPrimary] = useState(storePrimary);
   const [secondary, setSecondary] = useState(storeSecondary);
@@ -99,15 +98,9 @@ export function ProgramProfileDialog({
       || isProgramInCatalog(parsed);
 
   const getProgramInfo = (parsed: ParsedProgramCode | null) => {
-    if (!parsed) return { name: null, coopName: null };
-    const programId = parsed.programId;
+    if (!parsed) return { name: null };
     const name = lookup.getName(parsed);
-
-    const coopMatch = programs?.find(
-      (p) => (p.program_id === `${programId}H` || p.program_id === programId) && /co-?op/i.test(p.name),
-    );
-    const coopName = coopMatch?.name ?? null;
-    return { name, coopName };
+    return { name };
   };
 
   const primaryInfo = getProgramInfo(primaryParsed);
@@ -140,16 +133,9 @@ export function ProgramProfileDialog({
     if (waitingForLookup) return;
     let hasErr = false;
 
-    // Sinh viên trao đổi (giao diện tiếng Anh) được lưu mà không cần chọn CTĐT.
-    const exchangeWithoutProgram = !primary.trim() && !secondary.trim() && lang === "en" && exchangeStudent;
-
+    // Ngành chính không bắt buộc: bỏ trống vẫn lưu được, chỉ báo lỗi khi nhập sai.
     if (!primary.trim()) {
-      if (exchangeWithoutProgram) {
-        setPrimaryError("");
-      } else {
-        setPrimaryError(t("profile.errPrimaryRequired"));
-        hasErr = true;
-      }
+      setPrimaryError("");
     } else if (!primaryParsed) {
       setPrimaryError(t("profile.errInvalidFormat"));
       hasErr = true;
@@ -287,7 +273,7 @@ export function ProgramProfileDialog({
               <p className="text-xs text-red-600 dark:text-red-400">{primaryGroupValidation.error}</p>
             ) : primaryParsed ? (
               <div className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700 dark:bg-slate-800/60 dark:text-slate-300">
-                <p>{`→ ${describeProgramCodeFull(primaryParsed, primaryInfo.name, lang, primaryInfo.coopName)}`}</p>
+                <p>{`→ ${describeProgramCodeFull(primaryParsed, primaryInfo.name, lang)}`}</p>
                 {(primaryParsed.degree !== "dai_hoc" || hasVerifiedUndergraduateTrack(primaryParsed.contextualProgramId)) && !loading
                   && !lookup.hasCurriculum(primaryParsed.contextualProgramId) && (
                     <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">{t("profile.lookupByModuleHelp")}</p>
@@ -340,7 +326,7 @@ export function ProgramProfileDialog({
             ) : (
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 {secondaryParsed
-                  ? `→ ${describeProgramCodeFull(secondaryParsed, secondaryInfo.name, lang, secondaryInfo.coopName)}`
+                  ? `→ ${describeProgramCodeFull(secondaryParsed, secondaryInfo.name, lang)}`
                   : t("profile.secondaryHelp")}
               </p>
             )}

@@ -83,7 +83,7 @@ export const useSettings = create<SettingsState>()(
       secondaryProgramCode: "",
       programPrompted: false,
       englishCertExempt: false,
-      exchangeStudent: true,
+      exchangeStudent: false,
       setCohort: (cohort) => set({ cohort }),
       setMajor: (major) => set({ major }),
       setTheme: (theme) => set({ theme }),
