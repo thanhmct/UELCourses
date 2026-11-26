@@ -150,3 +150,59 @@ def test_review_validation(client, db):
     _login(client, db)
     assert client.post("/api/modules/BAA4041/reviews", json={"rating": 9, "content": GOOD}).status_code == 422
     assert client.post("/api/modules/BAA4041/reviews", json={"rating": 3, "content": "ngắn"}).status_code == 422
+
+
+def _enable_google_with_origins(monkeypatch, origins: str):
+    from app.config import get_settings
+
+    s = get_settings()
+    monkeypatch.setattr(s, "google_client_id", "x")
+    monkeypatch.setattr(s, "google_client_secret", "y")
+    monkeypatch.setattr(s, "cors_origins", origins)
+
+
+def test_login_redirect_uri_follows_allowed_origin(client, monkeypatch):
+    from urllib.parse import parse_qs, urlsplit
+
+    _enable_google_with_origins(monkeypatch, "https://uelpath.vercel.app,https://uelpath.uelcourses.id.vn")
+    r = client.get("/api/auth/google/login?origin=https%3A%2F%2Fuelpath.uelcourses.id.vn", follow_redirects=False)
+    q = parse_qs(urlsplit(r.headers["location"]).query)
+    assert q["redirect_uri"][0] == "https://uelpath.uelcourses.id.vn/api/auth/google/callback"
+
+
+def test_login_ignores_origin_not_in_allowlist(client, monkeypatch):
+    from urllib.parse import parse_qs, urlsplit
+
+    from app.config import get_settings
+
+    _enable_google_with_origins(monkeypatch, "https://uelpath.vercel.app")
+    r = client.get("/api/auth/google/login?origin=https%3A%2F%2Fevil.example.com", follow_redirects=False)
+    q = parse_qs(urlsplit(r.headers["location"]).query)
+    expected = get_settings().oauth_redirect_base.rstrip("/") + "/api/auth/google/callback"
+    assert q["redirect_uri"][0] == expected
+    assert svc.state_origin(q["state"][0], "google") is None
+
+
+def test_callback_returns_to_origin_and_sets_session_cookie_there(client, monkeypatch):
+    from urllib.parse import parse_qs, urlsplit
+
+    _enable_google_with_origins(monkeypatch, "https://uelpath.vercel.app,https://uelpath.uelcourses.id.vn")
+    r = client.get(
+        "/api/auth/google/login?next=%2Fsettings&origin=https%3A%2F%2Fuelpath.uelcourses.id.vn",
+        follow_redirects=False,
+    )
+    state = parse_qs(urlsplit(r.headers["location"]).query)["state"][0]
+
+    seen = {}
+
+    def fake_exchange(p, code, origin=None):
+        seen["origin"] = origin
+        return {"subject": "google-42", "name": "Sinh viên", "email": None}
+
+    monkeypatch.setattr(svc, "exchange_code", fake_exchange)
+    cb = client.get(f"/api/auth/google/callback?code=abc&state={state}", follow_redirects=False)
+
+    assert seen["origin"] == "https://uelpath.uelcourses.id.vn"
+    assert cb.headers["location"] == "https://uelpath.uelcourses.id.vn/settings?login=ok"
+    set_cookie = cb.headers["set-cookie"].lower()
+    assert svc.SESSION_COOKIE in set_cookie and "secure" in set_cookie

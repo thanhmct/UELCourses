@@ -87,12 +87,17 @@ def providers():
 
 
 @router.get("/auth/{provider}/login", summary="Chuyển sang trang đăng nhập của nhà cung cấp")
-def login(provider: str, next: str | None = Query(None, description="Đường dẫn quay về sau khi đăng nhập xong")):
+def login(
+    provider: str,
+    next: str | None = Query(None, description="Đường dẫn quay về sau khi đăng nhập xong"),
+    origin: str | None = Query(None, description="Gốc của web bắt đầu đăng nhập; phải nằm trong CORS_ORIGINS, nếu không sẽ dùng cấu hình mặc định"),
+):
     p = svc.providers().get(provider)
     if p is None:
         raise HTTPException(404, "Không hỗ trợ phương thức đăng nhập này.")
+    o = svc.allowed_origin(origin)
     try:
-        url = svc.authorize_url(p, svc.make_state(provider, _safe_next_path(next)))
+        url = svc.authorize_url(p, svc.make_state(provider, _safe_next_path(next), o), o)
     except svc.AuthNotConfigured as e:
         raise HTTPException(503, str(e))
     return RedirectResponse(url, status_code=302)
@@ -106,8 +111,10 @@ def callback(
     state: str | None = Query(None),
     db: Session = Depends(get_db),
 ):
-    front = get_settings().frontend_base_url.rstrip("/")
     p = svc.providers().get(provider)
+    # Origin lấy từ state đã ký (và phải còn nằm trong CORS_ORIGINS); không có thì dùng cấu hình mặc định.
+    origin = svc.allowed_origin(svc.state_origin(state, provider)) if p else None
+    front = (origin or get_settings().frontend_base_url).rstrip("/")
     next_path = svc.state_next(state, provider) if p else None
     target = f"{front}{next_path}" if next_path else f"{front}/"
     if p is None or not code or not svc.check_state(state, provider):
@@ -119,7 +126,7 @@ def callback(
             status_code=302,
         )
     try:
-        info = svc.exchange_code(p, code)
+        info = svc.exchange_code(p, code, origin)
     except (ValueError, Exception):  # noqa: BLE001 - mạng/nhà cung cấp lỗi: không lộ chi tiết
         return RedirectResponse(_append_query(target, login="error"), status_code=302)
     email = info.get("email")
@@ -138,7 +145,7 @@ def callback(
     db.commit()
     resp = RedirectResponse(_append_query(target, login="ok"), status_code=302)
     resp.set_cookie(svc.SESSION_COOKIE, svc.make_session(user.id), max_age=svc.SESSION_MAX_AGE, httponly=True,
-                    samesite="lax", secure=get_settings().oauth_redirect_base.startswith("https://"), path="/")
+                    samesite="lax", secure=(origin or get_settings().oauth_redirect_base).startswith("https://"), path="/")
     return resp
 
 

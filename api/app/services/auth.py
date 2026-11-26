@@ -59,8 +59,19 @@ def providers() -> dict[str, Provider]:
     }
 
 
-def redirect_uri(provider: str) -> str:
-    return f"{get_settings().oauth_redirect_base.rstrip('/')}/api/auth/{provider}/callback"
+def redirect_uri(provider: str, origin: str | None = None) -> str:
+    """Địa chỉ callback. Với origin (web đã gọi đăng nhập) thì callback quay về đúng domain đó để cookie gắn với domain đó."""
+    base = (origin or get_settings().oauth_redirect_base).rstrip("/")
+    return f"{base}/api/auth/{provider}/callback"
+
+
+def allowed_origin(raw: str | None) -> str | None:
+    """Chuẩn hóa origin do trình duyệt gửi lên; chỉ chấp nhận khi nằm trong CORS_ORIGINS (danh sách web được phép)."""
+    if not raw:
+        return None
+    candidate = raw.strip().rstrip("/")
+    allowed = {o.rstrip("/") for o in get_settings().cors_origin_list}
+    return candidate if candidate in allowed else None
 
 
 # ---------------------------------------------------------------- ký / kiểm tra (HMAC-SHA256, không cần thư viện ngoài)
@@ -87,10 +98,12 @@ def _unsign(token: str | None, max_age: int) -> dict | None:
     return payload
 
 
-def make_state(provider: str, next_path: str | None = None) -> str:
+def make_state(provider: str, next_path: str | None = None, origin: str | None = None) -> str:
     payload = {"p": provider, "n": secrets.token_urlsafe(12), "iat": int(time.time())}
     if next_path:
         payload["r"] = next_path
+    if origin:
+        payload["o"] = origin
     return _sign(payload)
 
 
@@ -108,6 +121,15 @@ def state_next(state: str | None, provider: str) -> str | None:
     return r if isinstance(r, str) and r else None
 
 
+def state_origin(state: str | None, provider: str) -> str | None:
+    """Origin của web đã bắt đầu đăng nhập (đã ký trong state), hoặc None nếu không có/không hợp lệ."""
+    data = _unsign(state, STATE_MAX_AGE)
+    if not data or data.get("p") != provider:
+        return None
+    o = data.get("o")
+    return o if isinstance(o, str) and o else None
+
+
 def make_session(user_id: int) -> str:
     return _sign({"uid": user_id, "iat": int(time.time())})
 
@@ -118,10 +140,10 @@ def read_session(token: str | None) -> int | None:
 
 
 # ---------------------------------------------------------------- OAuth
-def authorize_url(p: Provider, state: str) -> str:
+def authorize_url(p: Provider, state: str, origin: str | None = None) -> str:
     if not p.ready():
         raise AuthNotConfigured(f"Chưa cấu hình đăng nhập {p.name} (thiếu khóa OAuth).")
-    params = {"client_id": p.client_id, "redirect_uri": redirect_uri(p.name), "response_type": "code",
+    params = {"client_id": p.client_id, "redirect_uri": redirect_uri(p.name, origin), "response_type": "code",
               "scope": p.scope, "state": state}
     if p.name == "google":
         params.update({"prompt": "select_account"})
@@ -135,12 +157,12 @@ def _clean_optional_email(raw: object) -> str | None:
     return cleaned or None
 
 
-def exchange_code(p: Provider, code: str) -> dict:
-    """Trả về {subject, name, email}. Ném ValueError nếu nhà cung cấp từ chối."""
+def exchange_code(p: Provider, code: str, origin: str | None = None) -> dict:
+    """Trả về {subject, name, email}. Ném ValueError nếu nhà cung cấp từ chối. redirect_uri phải khớp với lúc đăng nhập."""
     with httpx.Client(timeout=15) as client:
         if p.name == "google":
             tok = client.post(p.token_url, data={"code": code, "client_id": p.client_id, "client_secret": p.client_secret,
-                                                 "redirect_uri": redirect_uri(p.name), "grant_type": "authorization_code"})
+                                                 "redirect_uri": redirect_uri(p.name, origin), "grant_type": "authorization_code"})
             if tok.status_code != 200:
                 raise ValueError("Google từ chối mã xác thực.")
             access = tok.json().get("access_token")
@@ -155,7 +177,7 @@ def exchange_code(p: Provider, code: str) -> dict:
                 "email": _clean_optional_email(d.get("email")),
             }
         tok = client.get(p.token_url, params={"client_id": p.client_id, "client_secret": p.client_secret,
-                                              "redirect_uri": redirect_uri(p.name), "code": code})
+                                              "redirect_uri": redirect_uri(p.name, origin), "code": code})
         if tok.status_code != 200:
             raise ValueError("Facebook từ chối mã xác thực.")
         access = tok.json().get("access_token")
