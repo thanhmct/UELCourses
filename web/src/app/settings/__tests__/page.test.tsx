@@ -22,6 +22,7 @@ vi.mock("@/lib/adminApi", () => ({
 vi.mock("@/lib/api", () => ({
   API_URL: "http://localhost:8000",
   authLoginUrl: (provider: string) => `http://localhost:8000/api/auth/${provider}/login`,
+  FACEBOOK_LOGIN_ENABLED: false,
   APP_VERSION: "0.1.0",
   api: {
     programs: vi.fn().mockResolvedValue({ data: [], mock: false }),

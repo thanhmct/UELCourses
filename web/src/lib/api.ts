@@ -91,6 +91,9 @@ function interfaceLang(): Lang {
 }
 export const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || "0.1.0";
 
+/** Tạm tắt nút đăng nhập Facebook (app Facebook đang không hoạt động). Đặt true để bật lại. */
+export const FACEBOOK_LOGIN_ENABLED = false;
+
 /** Link đăng nhập OAuth kèm đường dẫn quay về (vd trang + vị trí cuộn), để không mất chỗ sau khi đăng nhập. */
 export function authLoginUrl(provider: "google" | "facebook", nextPath?: string): string {
   const params = new URLSearchParams();

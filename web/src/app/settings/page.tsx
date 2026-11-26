@@ -11,7 +11,7 @@ import { useProgramProfile } from "@/lib/myProgram";
 import { appConfirm } from "@/lib/dialog";
 import { useMounted } from "@/lib/useMounted";
 import { cohortFromId } from "@/lib/cohort";
-import { api, authLoginUrl } from "@/lib/api";
+import { api, authLoginUrl, FACEBOOK_LOGIN_ENABLED } from "@/lib/api";
 import type { AuthMeResponse, AuthProvidersResponse } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 import { Loading, PageHeader } from "@/components/ui";
@@ -239,12 +239,12 @@ function AccountSection() {
               {t("settings.accountLoginGoogle")}
             </GoogleLoginButton>
           )}
-          {providers?.facebook?.ready && (
+          {FACEBOOK_LOGIN_ENABLED && providers?.facebook?.ready && (
             <FacebookLoginButton href={authLoginUrl("facebook", "/settings")}>
               {t("settings.accountLoginFacebook")}
             </FacebookLoginButton>
           )}
-          {!providers?.google?.ready && !providers?.facebook?.ready && (
+          {!providers?.google?.ready && !(FACEBOOK_LOGIN_ENABLED && providers?.facebook?.ready) && (
             <p className="text-xs text-slate-400">{t("settings.accountNoProviders")}</p>
           )}
         </div>

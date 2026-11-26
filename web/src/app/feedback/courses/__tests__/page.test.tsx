@@ -22,6 +22,7 @@ vi.mock("@/lib/api", () => ({
     moduleReviews: vi.fn(),
   },
   authLoginUrl: (provider: string) => `http://localhost:8000/api/auth/${provider}/login`,
+  FACEBOOK_LOGIN_ENABLED: false,
   API_URL: "http://localhost:8000",
 }));
 
@@ -121,9 +122,9 @@ describe("CourseReviewsPage", () => {
     // Khối bình luận (ModuleReviews) và khối đánh giá có đăng nhập (LecturerReviewPanel) đều hiển thị
     expect(screen.getByLabelText("Nội dung bình luận")).toBeInTheDocument();
     expect(screen.getByText("Nguyên tắc cộng đồng")).toBeInTheDocument();
-    // Chưa đăng nhập: hiện 2 nút Google/Facebook
+    // Chưa đăng nhập: hiện nút Google; nút Facebook đang tạm tắt (FACEBOOK_LOGIN_ENABLED = false)
     expect(screen.getByRole("link", { name: "Đăng nhập bằng Google" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Đăng nhập bằng Facebook" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Đăng nhập bằng Facebook" })).not.toBeInTheDocument();
   });
 
   it("bắt buộc nội dung ít nhất 5 ký tự trước khi gửi", async () => {

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useT } from "@/i18n";
-import { api, authLoginUrl, AuthApiError } from "@/lib/api";
+import { api, authLoginUrl, AuthApiError, FACEBOOK_LOGIN_ENABLED } from "@/lib/api";
 import { Loading } from "@/components/ui";
 import { GoogleLoginButton, FacebookLoginButton } from "@/components/SocialLoginButtons";
 import type { AuthMeResponse, AuthProvidersResponse, LecturerReviewList } from "@/lib/types";
@@ -180,12 +180,12 @@ export function LecturerReviewPanel({
                     {t("lecturerReview.loginGoogle")}
                   </GoogleLoginButton>
                 )}
-                {providers?.facebook?.ready && (
+                {FACEBOOK_LOGIN_ENABLED && providers?.facebook?.ready && (
                   <FacebookLoginButton href={authLoginUrl("facebook", loginNext)}>
                     {t("lecturerReview.loginFacebook")}
                   </FacebookLoginButton>
                 )}
-                {!providers?.google?.ready && !providers?.facebook?.ready && (
+                {!providers?.google?.ready && !(FACEBOOK_LOGIN_ENABLED && providers?.facebook?.ready) && (
                   <p className="text-[11px] text-slate-400">{t("lecturerReview.noProviders")}</p>
                 )}
               </div>
