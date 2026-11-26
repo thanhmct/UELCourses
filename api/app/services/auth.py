@@ -52,7 +52,9 @@ def providers() -> dict[str, Provider]:
         ),
         "facebook": Provider(
             "facebook", "https://www.facebook.com/v19.0/dialog/oauth", "https://graph.facebook.com/v19.0/oauth/access_token",
-            "public_profile,email", s.facebook_app_id, s.facebook_app_secret,
+            # Chỉ xin public_profile: quyền email của Facebook cần Meta xét duyệt mới cấp được cho người dùng thường,
+            # còn email trong hệ thống chỉ là tùy chọn (thông báo khi bị khóa). Thêm lại "email" sau khi được duyệt.
+            "public_profile", s.facebook_app_id, s.facebook_app_secret,
         ),
     }
 
