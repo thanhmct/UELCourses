@@ -11,7 +11,7 @@ import { useProgramProfile } from "@/lib/myProgram";
 import { appConfirm } from "@/lib/dialog";
 import { useMounted } from "@/lib/useMounted";
 import { cohortFromId } from "@/lib/cohort";
-import { api, API_URL } from "@/lib/api";
+import { api, authLoginUrl } from "@/lib/api";
 import type { AuthMeResponse, AuthProvidersResponse } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 import { Loading, PageHeader } from "@/components/ui";
@@ -235,12 +235,12 @@ function AccountSection() {
       ) : (
         <div className="flex flex-wrap gap-2">
           {providers?.google?.ready && (
-            <GoogleLoginButton href={`${API_URL}/api/auth/google/login`}>
+            <GoogleLoginButton href={authLoginUrl("google", "/settings")}>
               {t("settings.accountLoginGoogle")}
             </GoogleLoginButton>
           )}
           {providers?.facebook?.ready && (
-            <FacebookLoginButton href={`${API_URL}/api/auth/facebook/login`}>
+            <FacebookLoginButton href={authLoginUrl("facebook", "/settings")}>
               {t("settings.accountLoginFacebook")}
             </FacebookLoginButton>
           )}
