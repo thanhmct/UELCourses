@@ -584,7 +584,7 @@ export const api = {
     }),
 
   /** 404 (no syllabus yet) or any error -> null, never marks the app as sample data. */
-  outline: async (code: string, options?: { cohort?: string; ctdt_year?: number }): Promise<OutlineData | null> => {
+  outline: async (code: string, options?: { program_id?: string; cohort?: string; ctdt_year?: number }): Promise<OutlineData | null> => {
     try {
       const q = options ? qs(options as Record<string, unknown>) : "";
       return await raw<OutlineData>(`/api/modules/${encodeURIComponent(code)}/outline${q}`);

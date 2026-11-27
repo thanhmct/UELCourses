@@ -9,8 +9,9 @@ import type { ModuleAssessment, ModuleTextbook } from "@/lib/types";
 
 const STAGES = ["process", "midterm", "final", "advanced"] as const;
 
-export function OutlineBlock({ code, cohort, assessment, textbooks }: {
+export function OutlineBlock({ code, programId, cohort, assessment, textbooks }: {
   code: string;
+  programId?: string;
   cohort?: string;
   assessment?: ModuleAssessment | null;
   textbooks?: ModuleTextbook[];
@@ -20,11 +21,11 @@ export function OutlineBlock({ code, cohort, assessment, textbooks }: {
   useEffect(() => {
     let active = true;
     setData(null);
-    api.outline(code, { cohort }).then((outline) => {
+    api.outline(code, { program_id: programId, cohort }).then((outline) => {
       if (active) setData(outline);
     });
     return () => { active = false; };
-  }, [code, cohort]);
+  }, [code, programId, cohort]);
 
   const assessments = STAGES.flatMap((stage) => {
     const form = assessment?.[`${stage}_form`]?.trim();

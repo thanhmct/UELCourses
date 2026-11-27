@@ -112,6 +112,8 @@ export type ModuleAssessment = {
   exam_type?: string | null;
   /** thời lượng thi, ví dụ "60'" */
   exam_duration?: string | null;
+  source?: string | null;
+  applies_to_cohorts?: string[];
 };
 
 export interface ModuleTextbook {
@@ -122,6 +124,8 @@ export interface ModuleTextbook {
   /** ghi chú về tài liệu */
   note?: string | null;
   is_main: boolean;
+  source?: string | null;
+  applies_to_cohorts?: string[];
 }
 
 export interface Lesson {

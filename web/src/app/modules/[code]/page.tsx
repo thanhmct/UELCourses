@@ -105,7 +105,7 @@ export default function ModuleDetailPage() {
       return;
     }
     let alive = true;
-    api.outline(code, { cohort: userCohort }).then((outline) => {
+    api.outline(code, { program_id: treeProgramId, cohort: userCohort }).then((outline) => {
       if (!alive) return;
       const kind = finalAssessmentKind(outline?.assessments);
       setCachedFinalAssessmentKind(code, kind);
@@ -355,7 +355,7 @@ export default function ModuleDetailPage() {
       </section>
 
       <div id="mod-outline">
-        <OutlineBlock code={m.code} cohort={userCohort} assessment={m.assessment} textbooks={m.textbooks} />
+        <OutlineBlock code={m.code} programId={treeProgramId} cohort={userCohort} assessment={m.assessment} textbooks={m.textbooks} />
       </div>
 
       <section id="mod-reviews" className="card">
