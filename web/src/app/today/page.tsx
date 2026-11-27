@@ -1,7 +1,7 @@
 "use client";
 
 import { PartyPopper } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import { api } from "@/lib/api";
 import { useMounted } from "@/lib/useMounted";
 import { useSettings, useTimetable } from "@/lib/store";
@@ -76,6 +76,7 @@ export default function TodayPage() {
   // Map visibility follows the saved setting (Cài đặt); toggling here saves it too.
   const [showMap, setShowMap] = useState(false);
   const setDefaultShowMap = useSettings((s) => s.setDefaultShowMap);
+  const todayRoomColor = useSettings((s) => s.todayRoomColor);
 
   useEffect(() => {
     setShowMap(useSettings.getState().defaultShowMap);
@@ -257,12 +258,15 @@ export default function TodayPage() {
                         type="button"
                         aria-pressed={activeSelection.room === nextLesson.lesson.room}
                         onClick={() => selectLesson(nextLesson)}
-                        className="rounded px-1 text-xl font-bold text-amber-300 transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
+                        style={{ "--today-room-color": todayRoomColor } as CSSProperties}
+                        className="today-room-color rounded px-1 text-xl font-bold transition hover:bg-white/10"
                       >
                         {t("today.room", { room: nextLesson.lesson.room })}
                       </button>
                     ) : (
-                      <span className="text-xl font-bold text-amber-300">{t("today.noRoom")}</span>
+                      <span style={{ "--today-room-color": todayRoomColor } as CSSProperties} className="today-room-color text-xl font-bold">
+                        {t("today.noRoom")}
+                      </span>
                     )}
                   </div>
                   <p className="mt-2 truncate text-xs text-brand-100">

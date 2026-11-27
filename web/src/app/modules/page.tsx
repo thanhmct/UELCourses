@@ -275,7 +275,6 @@ export default function ModulesPage() {
     for (const c of studiedCodes) codes.add(c);
     return Array.from(codes);
   }, [ttBySemester, plannedTerms, plannerBacklog, studiedCodes]);
-  const prioritySet = useMemo(() => new Set(priorityCodes), [priorityCodes]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -637,11 +636,6 @@ export default function ModulesPage() {
                           );
                         })()}
                         {(m.language_track === "en" || (!m.language_track && m.is_english)) && !isEnglishCode(m.code) && <EnBadge />}
-                        {exchangeActive && prioritySet.has(m.code) && (
-                          <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
-                            {t("exchange.chip.selected")}
-                          </span>
-                        )}
                       </div>
                       <div className="sm:hidden">
                         <TermStrip m={m} year={yearStr} />

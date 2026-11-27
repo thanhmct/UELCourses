@@ -25,6 +25,7 @@ import { parseSemesterId, seatsAvailable } from "@/lib/modules";
 import { Empty, EnBadge, Loading, RequiredBadge } from "@/components/ui";
 import { TimetableModuleSearch } from "@/components/TimetableModuleSearch";
 import { TimetableGrid, type BlockViolation, type GridBlock, type GridClosure } from "@/components/TimetableGrid";
+import { TimetableTable } from "@/components/TimetableTable";
 import { ProgramFilterBar } from "@/components/ProgramFilterBar";
 import { formatDateVi } from "@/lib/dates";
 import {
@@ -92,6 +93,7 @@ export function TimetableWorkspace(props: TimetableWorkspaceProps) {
   const mounted = useMounted();
   const tt = useTimetable();
   const paletteOverrides = useSettings((s) => s.timetableColors);
+  const timetableViewMode = useSettings((s) => s.timetableViewMode);
   const settingsCohort = useSettings((s) => s.cohort);
   const holidayThemesEnabled = useSettings((s) => s.holidayAppearance);
   const actionsRef = useRef<HTMLDivElement>(null);
@@ -837,20 +839,29 @@ export function TimetableWorkspace(props: TimetableWorkspaceProps) {
       <div className="space-y-3">
       {/* grid + toolbar */}
       <section className="min-w-0 space-y-2" aria-label={t("tt.title")}>
-        <TimetableGrid
-          ref={gridRef}
-          blocks={activeBlocks}
-          semesterBlocks={blocks}
-          alternatives={sections}
-          colors={colors}
-          closures={closures}
-          showNames={showNames}
-          onChangeClass={(code, cls) => {
-            tt.setClass(code, cls);
-            track("timetable_swap_class", { module_code: code, class_code: cls, semester_id: semester });
-            flash(t("tt.changed", { code, cls }));
-          }}
-        />
+        {timetableViewMode === "table" ? (
+          <TimetableTable
+            ref={gridRef}
+            blocks={activeBlocks}
+            closures={closures}
+            showNames={showNames}
+          />
+        ) : (
+          <TimetableGrid
+            ref={gridRef}
+            blocks={activeBlocks}
+            semesterBlocks={blocks}
+            alternatives={sections}
+            colors={colors}
+            closures={closures}
+            showNames={showNames}
+            onChangeClass={(code, cls) => {
+              tt.setClass(code, cls);
+              track("timetable_swap_class", { module_code: code, class_code: cls, semester_id: semester });
+              flash(t("tt.changed", { code, cls }));
+            }}
+          />
+        )}
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="contents">
             {totalViolations > 0 && (

@@ -15,8 +15,10 @@ export function WebcalSyncModal({ open, onClose, sharedData, semName }: Props) {
   const { t } = useT();
   const [copied, setCopied] = useState(false);
 
-  const { webcalUrl, httpsUrl } = useMemo(() => {
-    if (typeof window === "undefined") return { webcalUrl: "", httpsUrl: "" };
+  const { webcalUrl, httpsUrl, downloadUrl, googleCalendarUrl } = useMemo(() => {
+    if (typeof window === "undefined") {
+      return { webcalUrl: "", httpsUrl: "", downloadUrl: "", googleCalendarUrl: "" };
+    }
     const query = encodeTimetable(sharedData);
     const host = window.location.host;
     const protocol = window.location.protocol;
@@ -24,7 +26,14 @@ export function WebcalSyncModal({ open, onClose, sharedData, semName }: Props) {
 
     const https = `${protocol}//${host}${path}`;
     const webcal = `webcal://${host}${path}`;
-    return { webcalUrl: webcal, httpsUrl: https };
+    const download = `${https}&dl=1`;
+    const googleCalendar = `https://calendar.google.com/calendar/u/0/r?cid=${encodeURIComponent(webcal)}`;
+    return {
+      webcalUrl: webcal,
+      httpsUrl: https,
+      downloadUrl: download,
+      googleCalendarUrl: googleCalendar,
+    };
   }, [sharedData, semName]);
 
   if (!open) return null;
@@ -78,14 +87,21 @@ export function WebcalSyncModal({ open, onClose, sharedData, semName }: Props) {
               <li><strong>{t("webcal.apple")}</strong> {t("webcal.appleSteps")}</li>
               <li><strong>{t("webcal.google")}</strong> {t("webcal.googleSteps")}</li>
               <li><strong>{t("webcal.outlook")}</strong> {t("webcal.outlookSteps")}</li>
+              <li><strong>{t("webcal.samsung")}</strong> {t("webcal.samsungSteps")}</li>
             </ul>
           </div>
 
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex flex-wrap justify-end gap-2 pt-2">
+            <a href={googleCalendarUrl} className="btn-outline text-xs" target="_blank" rel="noreferrer">
+              {t("webcal.googleDirect")}
+            </a>
+            <a href={downloadUrl} download="UELPATH-timetable.ics" className="btn-outline text-xs">
+              {t("webcal.download")}
+            </a>
             <a href={webcalUrl} className="btn-outline text-xs" target="_blank" rel="noreferrer">
               {t("webcal.openDirect")}
             </a>
-            <button onClick={onClose} className="btn-primary text-xs">{t("webcal.done")}</button>
+            <button type="button" onClick={onClose} className="btn-primary text-xs">{t("webcal.done")}</button>
           </div>
         </div>
       </div>

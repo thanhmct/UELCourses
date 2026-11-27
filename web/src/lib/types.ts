@@ -972,3 +972,52 @@ export interface AdminSettingsData {
   updated_by?: string | null;
   updated_at?: string | null;
 }
+
+// ---------- Feedback & Star Ratings Admin ----------
+export interface AdminFeedbackStats {
+  total: number;
+  average_rating: number | null;
+  rating_distribution: Record<string, number>;
+}
+
+export interface ModuleReviewStat {
+  module_code: string;
+  module_name?: string | null;
+  count: number;
+  average_rating: number;
+}
+
+export interface AdminReviewsStats {
+  total: number;
+  average_rating: number | null;
+  by_module: ModuleReviewStat[];
+}
+
+export interface AdminFeedbackItem {
+  id: number;
+  page: string;
+  category: string;
+  rating: number;
+  message: string;
+  created_at: string | null;
+  app_version?: string | null;
+  status: string;
+}
+
+export interface AdminFeedbackDetail extends AdminFeedbackItem {
+  contact?: string | null;
+  moderated_by?: string | null;
+  moderated_at?: string | null;
+  moderation_note?: string | null;
+  flag_reasons?: string[] | null;
+  is_quick_rating: boolean;
+}
+
+export interface AdminFeedbackSummaryResponse {
+  feedback_stats: AdminFeedbackStats;
+  reviews_stats: AdminReviewsStats;
+  items: AdminFeedbackItem[];
+  total: number;
+  page: number;
+  size: number;
+}

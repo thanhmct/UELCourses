@@ -151,6 +151,13 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("path", nargs="?", default=str(Path(__file__).resolve().parents[2] / "regulations" / "catalog.json"))
     p = sub.add_parser("import-academic-calendar", help="Nạp lịch năm học (academic_events) từ file seed JSON")
     p.add_argument("--file", help="Đường dẫn file JSON (mặc định: api/seed/academic_calendar_2026_2027.json)")
+    p = sub.add_parser("import-banned-terms", help="Nạp danh sách từ cấm vào bảng banned_terms từ file văn bản")
+    p.add_argument(
+        "--file",
+        default=str(Path(__file__).resolve().parents[1] / "seed" / "banned_terms_vi.txt"),
+        help="Đường dẫn file từ cấm (mặc định: api/seed/banned_terms_vi.txt)",
+    )
+    p.add_argument("--dry-run", action="store_true", help="Chỉ kiểm tra và đếm, không ghi vào DB")
     p = sub.add_parser("aggregate-analytics", help="Tổng hợp sự kiện vào analytics_daily và analytics_pairs")
     p.add_argument("--since", help="Ngày bắt đầu tổng hợp (YYYY-MM-DD)")
     p = sub.add_parser("purge-analytics", help="Xóa sự kiện thô analytics_events cũ hơn số ngày quy định")
@@ -262,6 +269,48 @@ def main(argv: list[str] | None = None) -> int:
                 if args.dry_run or res.get("status") == "already_loaded":
                     print(json.dumps(res, ensure_ascii=False, default=str))
                     return 0
+            elif args.cmd == "import-banned-terms":
+                from sqlalchemy import select
+                from app.models import BannedTerm
+
+                file_p = _path(args.file)
+                existing_terms = {
+                    t.strip().lower()
+                    for t in db.scalars(select(BannedTerm.term)).all()
+                    if t and t.strip()
+                }
+                seen = set(existing_terms)
+                read_count = 0
+                added_count = 0
+                skipped_count = 0
+
+                for raw_line in file_p.read_text(encoding="utf-8").splitlines():
+                    stripped = raw_line.strip()
+                    if not stripped or stripped.startswith("#"):
+                        continue
+                    term = " ".join(stripped.split())
+                    read_count += 1
+                    key = term.lower()
+                    if key in seen or len(term) > 128:
+                        skipped_count += 1
+                        continue
+                    seen.add(key)
+                    added_count += 1
+                    if not args.dry_run:
+                        db.add(BannedTerm(term=term, severity="flag"))
+
+                if not args.dry_run and added_count > 0:
+                    db.commit()
+
+                res = {
+                    "file": str(file_p),
+                    "dry_run": args.dry_run,
+                    "read": read_count,
+                    "added": added_count,
+                    "skipped": skipped_count,
+                }
+                print(json.dumps(res, ensure_ascii=False, default=str))
+                return 0
             elif args.cmd == "import-equivalents":
                 res = import_equivalents(db, extract_rows(_json(args.path))).model_dump()
             elif args.cmd == "import-uis-classes":

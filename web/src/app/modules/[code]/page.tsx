@@ -32,13 +32,8 @@ export default function ModuleDetailPage() {
   const params = useParams<{ code: string }>();
   const code = decodeURIComponent(params.code);
   const sems = useSemesters();
-  const { primaryProgramId, secondaryProgramId, primaryParsed } = useProgramProfile();
-  const userCohort = primaryParsed?.cohort;
+  const { primaryProgramId, secondaryProgramId, primaryParsed, secondaryParsed } = useProgramProfile();
   const [semester, setSemester] = useState("");
-  const mod = useApi(
-    () => api.module(code, { program_id: primaryProgramId || undefined, cohort: userCohort }),
-    [code, primaryProgramId, userCohort],
-  );
   const exchangeActive = useExchangeViewActive();
   const exchangeStats = useExchangeStats([code], exchangeActive);
 
@@ -77,13 +72,16 @@ export default function ModuleDetailPage() {
   }, [code, progPrimary.data, progSecondary.data, electivesPrimary.data, electivesSecondary.data]);
 
   const treeProgramId = useMemo(() => {
-    if (!secondaryProgramId) return primaryProgramId || undefined;
-    if (!primaryProgramId) return secondaryProgramId || undefined;
-    const inPrimary = progPrimary.data?.blocks.some((b) => b.modules.some((x) => x.code === code));
-    const inSecondary = progSecondary.data?.blocks.some((b) => b.modules.some((x) => x.code === code));
-    if (inSecondary && !inPrimary) return secondaryProgramId;
-    return primaryProgramId || undefined;
-  }, [code, primaryProgramId, secondaryProgramId, progPrimary.data, progSecondary.data]);
+    if (!programModuleInfo) return undefined;
+    return programModuleInfo.inSecondary ? secondaryProgramId || undefined : primaryProgramId || undefined;
+  }, [programModuleInfo, primaryProgramId, secondaryProgramId]);
+  const userCohort = programModuleInfo
+    ? (programModuleInfo.inSecondary ? secondaryParsed?.cohort : primaryParsed?.cohort)
+    : undefined;
+  const mod = useApi(
+    () => api.module(code, { program_id: treeProgramId, cohort: userCohort }),
+    [code, treeProgramId, userCohort],
+  );
 
   useEffect(() => {
     // Học kỳ đang chọn không còn trong danh sách (đổi khóa): chọn lại học kỳ hiện tại.
@@ -118,7 +116,7 @@ export default function ModuleDetailPage() {
     return () => {
       alive = false;
     };
-  }, [code, mod.data?.final_assessment, userCohort]);
+  }, [code, mod.data?.final_assessment, treeProgramId, userCohort]);
 
   if (mod.loading) return <Loading page />;
   if (mod.error) return <ErrorBox>{mod.error}</ErrorBox>;

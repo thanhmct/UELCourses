@@ -393,6 +393,18 @@ export default function SettingsPage() {
               ))}
             </div>
           </fieldset>
+          <fieldset className="min-w-0 border-t border-slate-200 pt-4 dark:border-slate-800">
+            <legend className="label">{t("settings.timetableView")}</legend>
+            <p className="mb-2 text-xs text-slate-500">{t("settings.timetableViewDesc")}</p>
+            <div className="grid grid-cols-2 gap-2">
+              {([["grid", t("settings.timetableViewGrid")], ["table", t("settings.timetableViewTable")]] as ["grid" | "table", string][]).map(([v, l]) => (
+                <label key={v} className={`btn min-h-10 min-w-0 cursor-pointer border px-2 text-center focus-within:outline-2 focus-within:outline-brand-focus ${s.timetableViewMode === v ? "border-brand-600 bg-brand-50 text-brand-700 dark:bg-brand-900/40 dark:text-brand-200" : "border-slate-300 dark:border-slate-700"}`}>
+                  <input type="radio" name="timetableViewMode" checked={s.timetableViewMode === v} onChange={() => s.setTimetableViewMode(v)} className="sr-only" />
+                  {l}
+                </label>
+              ))}
+            </div>
+          </fieldset>
         </section>
       </div>
       <AppearanceSettings />

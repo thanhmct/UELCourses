@@ -2,6 +2,8 @@ import { contrastRatio, UEL_COLORS } from "./brand";
 
 export const DEFAULT_GRADIENT = [UEL_COLORS.blue, "#266CA8"] as const;
 export const DEFAULT_PLANNER_TERM_COLOR = UEL_COLORS.blue;
+/** Màu chữ phòng học / nhãn "Chưa có phòng" ở khối lớp hiện tại-sắp tới trên trang Hôm nay. */
+export const DEFAULT_TODAY_ROOM_COLOR = "#FBBF24";
 
 export function normalizeHex(value: string): string | null {
   const hex = value.trim().replace(/^#/, "");

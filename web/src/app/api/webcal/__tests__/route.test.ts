@@ -24,8 +24,8 @@ describe("timetable subscription name", () => {
     expect(calendar).toContain("PRODID:-//UELPATH//Timetable//VI\r\n");
   });
 
-  it("loads selected classes and module names from the backend", async () => {
-    const fetchMock = vi.fn(async (input: string | URL | Request) => {
+  it("loads selected classes and module names from the backend with a non-empty User-Agent", async () => {
+    const fetchMock = vi.fn(async (input: string | URL | Request, _init?: RequestInit) => {
       const url = String(input);
       if (url.endsWith("/api/modules/BAA1001/classes?semester=2026-2027-1")) {
         return Response.json([
@@ -61,8 +61,22 @@ describe("timetable subscription name", () => {
 
     expect(response.status).toBe(200);
     expect(fetchMock).toHaveBeenCalledTimes(2);
+    for (const [, init] of fetchMock.mock.calls) {
+      const headers = new Headers(init?.headers);
+      expect(headers.get("User-Agent")?.trim()).toBeTruthy();
+    }
     expect(calendar).toContain("SUMMARY:BAA1001 Kinh tế học\r\n");
     expect(calendar).toContain("LOCATION:A.101\r\n");
+  });
+
+  it("returns Content-Disposition attachment when dl=1 and inline otherwise", async () => {
+    const inlineResponse = await GET(new NextRequest(new URL("http://localhost/api/webcal?sem=261")));
+    expect(inlineResponse.status).toBe(200);
+    expect(inlineResponse.headers.get("Content-Disposition")).toBe('inline; filename="UELPATH-timetable.ics"');
+
+    const downloadResponse = await GET(new NextRequest(new URL("http://localhost/api/webcal?sem=261&dl=1")));
+    expect(downloadResponse.status).toBe(200);
+    expect(downloadResponse.headers.get("Content-Disposition")).toBe('attachment; filename="UELPATH-timetable.ics"');
   });
 
   it("returns 502 when the backend request fails", async () => {

@@ -1,0 +1,8 @@
+{
+  "name": "uelpath",
+  "private": true,
+  "description": "Lệnh gốc: npm run dev khởi động Postgres (Docker) + FastAPI (venv) + giao diện admin (Next.js) cùng lúc.",
+  "scripts": {
+    "dev": "node scripts/dev-all.mjs"
+  }
+}

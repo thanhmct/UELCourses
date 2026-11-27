@@ -6,8 +6,10 @@ import pytest
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
-from app.models import Base, Module, OutlineCourse, OutlineDocument, OutlineModuleLink
-from app.routers.modules import resolve_ctdt_year
+from fastapi import HTTPException
+
+from app.models import Base, Module, OutlineCourse, OutlineDocument, OutlineModuleLink, Program, ProgramModule
+from app.routers.modules import get_module_outline, resolve_ctdt_year
 from app.services.outline_docx import (
     export_chan_quyen_csv,
     parse_docx_document,
@@ -27,6 +29,69 @@ def test_resolve_ctdt_year():
     assert resolve_ctdt_year(ctdt_year=2023) == 2023
     assert resolve_ctdt_year(cohort="K26", ctdt_year=2023) == 2023
     assert resolve_ctdt_year(cohort=None, ctdt_year=None) is None
+
+
+def test_module_outline_uses_program_cohort_or_latest_available_year():
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+
+    with Session(engine) as db:
+        db.add(Module(code="OUT1001", name="Test module", degree="dai_hoc"))
+        db.add(Program(id="K23401", name="Test programme", cohort="K23", degree="dai_hoc"))
+        db.flush()
+        db.add(ProgramModule(program_id="K23401", module_code="OUT1001"))
+        for doc_id, year in ((1, 2023), (2, 2025)):
+            doc = OutlineDocument(
+                id=doc_id,
+                sha256=f"{doc_id:064d}",
+                file_name=f"outline-{year}.docx",
+                rel_path=f"outline-{year}.docx",
+                size_bytes=1,
+                ctdt_year=year,
+            )
+            db.add(doc)
+            db.flush()
+            db.add(OutlineCourse(
+                document_id=doc_id,
+                doc_type="syllabus_vi",
+                course_code_norm="OUT1001",
+                parse_status="ok",
+                parse_detail={"counts": {}},
+            ))
+            db.add(OutlineModuleLink(document_id=doc_id, module_code="OUT1001", ctdt_year=year))
+        db.commit()
+
+        selected = get_module_outline("OUT1001", "K23401", "K23", None, db)
+        default = get_module_outline("OUT1001", None, None, None, db)
+
+        assert selected.outline_year == 2023
+        assert selected.document.document_id == 1
+        assert default.outline_year == 2025
+        assert default.document.document_id == 2
+
+
+def test_module_outline_rejects_program_with_wrong_degree_or_module():
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+
+    with Session(engine) as db:
+        db.add_all([
+            Module(code="OUT2001", name="Test module", degree="dai_hoc"),
+            Module(code="OUT2002", name="Other module", degree="dai_hoc"),
+            Program(id="K23401", name="Test programme", cohort="K23", degree="dai_hoc"),
+            Program(id="M601NC", name="Master programme", cohort=None, degree="thac_si"),
+        ])
+        db.flush()
+        db.add(ProgramModule(program_id="K23401", module_code="OUT2001"))
+        db.add(ProgramModule(program_id="M601NC", module_code="OUT2001"))
+
+        with pytest.raises(HTTPException) as wrong_module:
+            get_module_outline("OUT2002", "K23401", "K23", None, db)
+        assert wrong_module.value.status_code == 404
+
+        with pytest.raises(HTTPException) as wrong_degree:
+            get_module_outline("OUT2001", "M601NC", None, None, db)
+        assert wrong_degree.value.status_code == 409
 
 
 def test_export_chan_quyen_csv(tmp_path: Path):

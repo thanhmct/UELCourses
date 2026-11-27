@@ -6,7 +6,7 @@ import type { ModuleRef } from "./types";
 import { completePlannerYears, moveModule, plannerEnrollmentYear, plannerSemesterId, type PlannerAcademicYears, type PlanState, type PlannedModule } from "./planner";
 
 import { parseProgramCode } from "./programCode";
-import { DEFAULT_PLANNER_TERM_COLOR, normalizeHex } from "./appearance";
+import { DEFAULT_PLANNER_TERM_COLOR, DEFAULT_TODAY_ROOM_COLOR, normalizeHex } from "./appearance";
 import { track } from "./analytics";
 
 export { COHORTS } from "./cohort";
@@ -24,6 +24,9 @@ interface SettingsState {
   brandGradient: [string, string] | null;
   timetableColors: Record<number, string>;
   plannerTermColor: string;
+  /** Màu chữ phòng học ở khối lớp hiện tại/sắp tới trên trang Hôm nay */
+  todayRoomColor: string;
+  setTodayRoomColor: (color: string) => void;
   holidayAppearance: boolean;
   tetFlower: "mai" | "dao";
   winterMascot: "snowman" | "reindeer" | "custom";
@@ -31,6 +34,9 @@ interface SettingsState {
   /** Bản đồ ở trang Hôm nay: mặc định hiện hay ẩn (lưu bền, nhớ lựa chọn gần nhất) */
   defaultShowMap: boolean;
   setDefaultShowMap: (show: boolean) => void;
+  /** Dạng xem thời khóa biểu: lưới theo tiết (mặc định) hoặc bảng lớp theo cột/thứ theo hàng */
+  timetableViewMode: "grid" | "table";
+  setTimetableViewMode: (mode: "grid" | "table") => void;
   setBrandGradient: (gradient: [string, string] | null) => void;
   setTimetableColor: (slot: number, color: string) => void;
   resetTimetableColors: () => void;
@@ -72,12 +78,19 @@ export const useSettings = create<SettingsState>()(
       brandGradient: null,
       timetableColors: {},
       plannerTermColor: DEFAULT_PLANNER_TERM_COLOR,
+      todayRoomColor: DEFAULT_TODAY_ROOM_COLOR,
+      setTodayRoomColor: (color) => {
+        const normalized = normalizeHex(color);
+        if (normalized) set({ todayRoomColor: normalized });
+      },
       holidayAppearance: false,
       tetFlower: "mai",
       winterMascot: "snowman",
       winterImage: "",
       defaultShowMap: false,
       setDefaultShowMap: (defaultShowMap) => set({ defaultShowMap }),
+      timetableViewMode: "grid",
+      setTimetableViewMode: (timetableViewMode) => set({ timetableViewMode }),
       degree: "dai_hoc",
       programCode: "",
       secondaryProgramCode: "",

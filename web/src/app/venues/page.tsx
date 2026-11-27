@@ -409,8 +409,12 @@ export default function VenuesPage() {
         <section className="@container card relative min-h-[480px] min-w-0" aria-labelledby="venue-calendar-title">
           <header className="mb-3 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 border-b border-slate-100 pb-2 @lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] dark:border-slate-800">
             <h2 id="venue-calendar-title" className="col-start-1 row-start-1 min-w-0 font-semibold text-slate-900 dark:text-slate-100">
-              {selected ? t("venues.schedTitle", { room: selected.room }) : t("venues.pick")}
-              {selected && <span className="hidden @lg:inline" aria-hidden="true"> ·</span>}
+              {selected && (
+                <>
+                  {t("venues.schedTitle", { room: selected.room })}
+                  <span className="hidden @lg:inline" aria-hidden="true"> ·</span>
+                </>
+              )}
             </h2>
             <div className="col-span-2 col-start-1 row-start-2 flex items-center gap-1 justify-self-center @lg:col-span-1 @lg:col-start-2 @lg:row-start-1">
               <button type="button" className="btn-outline size-9 shrink-0 p-0"

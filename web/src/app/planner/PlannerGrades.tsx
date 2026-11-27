@@ -168,6 +168,7 @@ export function ModuleGrade({
         </dl>
       </div>
       {invalid && <p id={errorId} className="mt-1 text-red-700 dark:text-red-300">{t("pl.scoreInvalid")}</p>}
+      {score !== null && score < 4 && <p className="mt-1 font-semibold text-red-700 dark:text-red-300">{t("pl.needRetake")}</p>}
       {excluded && <p className="mt-1 text-slate-600 dark:text-slate-400">{t("pl.scoreExcluded")}</p>}
     </div>
   );

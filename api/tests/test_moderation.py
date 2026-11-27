@@ -582,3 +582,80 @@ def test_guidelines_include_constructive_criticism_and_autoban_policy(client):
     assert "3 lần" in joined and "30 ngày" in joined
     assert "vĩnh viễn" in joined
     assert "không kiểm duyệt" in joined
+
+
+def test_cli_import_banned_terms_idempotent_and_dry_run(db, tmp_path, capsys):
+    """CLI import-banned-terms bỏ dòng trống/#, chuẩn hóa khoảng trắng, không trùng và tôn trọng --dry-run."""
+    import json
+    from app.cli import main as cli_main
+
+    db.add(BannedTerm(term="da_co_san", severity="flag"))
+    db.commit()
+
+    terms_file = tmp_path / "banned_terms.txt"
+    terms_file.write_text(
+        "\n"
+        "# ghi chú đầu file\n"
+        "   # ghi chú có khoảng trắng đầu dòng\n"
+        "  tu_cam_1  \n"
+        "tu   cam   2\n"
+        "TU_CAM_1\n"
+        "DA_CO_SAN\n"
+        "\n",
+        encoding="utf-8",
+    )
+
+    # 1. --dry-run không ghi DB
+    assert cli_main(["import-banned-terms", "--file", str(terms_file), "--dry-run"]) == 0
+    dry_out = json.loads(capsys.readouterr().out.strip().splitlines()[-1])
+    assert dry_out["dry_run"] is True
+    assert dry_out["read"] == 4
+    assert dry_out["added"] == 2
+    assert dry_out["skipped"] == 2
+    assert len(db.scalars(select(BannedTerm)).all()) == 1
+
+    # 2. Chạy thật thêm đúng 2 mục mới
+    assert cli_main(["import-banned-terms", "--file", str(terms_file)]) == 0
+    run1_out = json.loads(capsys.readouterr().out.strip().splitlines()[-1])
+    assert run1_out["dry_run"] is False
+    assert run1_out["read"] == 4
+    assert run1_out["added"] == 2
+    assert run1_out["skipped"] == 2
+    terms_in_db = {bt.term for bt in db.scalars(select(BannedTerm)).all()}
+    assert terms_in_db == {"da_co_san", "tu_cam_1", "tu cam 2"}
+
+    # 3. Chạy lại không thêm trùng
+    assert cli_main(["import-banned-terms", "--file", str(terms_file)]) == 0
+    run2_out = json.loads(capsys.readouterr().out.strip().splitlines()[-1])
+    assert run2_out["read"] == 4
+    assert run2_out["added"] == 0
+    assert run2_out["skipped"] == 4
+    assert len(db.scalars(select(BannedTerm)).all()) == 3
+
+
+def test_review_with_db_banned_term_flagged_pending(client, db):
+    """Đánh giá chứa từ cấm trong bảng BannedTerm bị gắn cờ 'banned_term' và status='pending'."""
+    from app.services import auth as auth_svc
+
+    _setup_module(db, "BAA4041", "Kế toán tài chính")
+    db.add(BannedTerm(term="tu_cam_review", severity="flag"))
+    user = User(provider="google", subject="rev-banned-1", display_name="Sinh viên test")
+    db.add(user)
+    db.commit()
+    client.cookies.set(auth_svc.SESSION_COOKIE, auth_svc.make_session(user.id))
+
+    res = client.post(
+        "/api/modules/BAA4041/reviews",
+        json={
+            "rating": 4,
+            "content": "Môn học khá ổn nhưng có từ tu_cam_review trong bài.",
+        },
+    )
+    assert res.status_code == 201
+    payload = res.json()
+    assert payload["status"] == "pending"
+
+    review = db.get(Review, payload["id"])
+    assert review is not None
+    assert review.status == "pending"
+    assert "banned_term" in (review.moderation_reasons or [])

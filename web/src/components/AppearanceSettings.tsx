@@ -3,7 +3,7 @@
 import { useState, type CSSProperties } from "react";
 import { Palette } from "lucide-react";
 import { useT } from "@/i18n";
-import { brandVariables, DEFAULT_GRADIENT, DEFAULT_PLANNER_TERM_COLOR, normalizeHex, plannerTermColorVariables } from "@/lib/appearance";
+import { brandVariables, DEFAULT_GRADIENT, DEFAULT_PLANNER_TERM_COLOR, DEFAULT_TODAY_ROOM_COLOR, normalizeHex, plannerTermColorVariables } from "@/lib/appearance";
 import { PALETTE, useSettings } from "@/lib/store";
 import { HolidaySettings } from "./HolidaySettings";
 
@@ -70,10 +70,12 @@ function ColorsSettings() {
   const gradient = useSettings((s) => s.brandGradient) ?? DEFAULT_GRADIENT;
   const slots = useSettings((s) => s.timetableColors);
   const termColor = useSettings((s) => s.plannerTermColor);
+  const roomColor = useSettings((s) => s.todayRoomColor);
   const setGradient = useSettings((s) => s.setBrandGradient);
   const setColor = useSettings((s) => s.setTimetableColor);
   const resetColors = useSettings((s) => s.resetTimetableColors);
   const setPlannerTermColor = useSettings((s) => s.setPlannerTermColor);
+  const setTodayRoomColor = useSettings((s) => s.setTodayRoomColor);
   const [start, end] = gradient;
 
   return (
@@ -104,16 +106,29 @@ function ColorsSettings() {
           <button type="button" className="btn-outline" onClick={() => setPlannerTermColor(DEFAULT_PLANNER_TERM_COLOR)}>{t("appearance.resetPlannerTerm")}</button>
         </div>
       </div>
-      <div className="space-y-3 border-t border-slate-200 pt-4 dark:border-slate-800">
-        <h3 className="text-sm font-semibold">{t("appearance.timetable")}</h3>
-        <p className="text-xs text-slate-600 dark:text-slate-300">{t("appearance.timetableHelp")}</p>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-          {PALETTE.map((color, index) => (
-            <HexField key={index} value={slots[index] ?? color} label={t("tt.colorN", { n: index + 1 })}
-              onChange={(value) => setColor(index, value)} />
-          ))}
+      <div className="grid gap-5 border-t border-slate-200 pt-4 lg:grid-cols-2 dark:border-slate-800">
+        <div className="min-w-0 space-y-3">
+          <h3 className="text-sm font-semibold">{t("appearance.todayRoom")}</h3>
+          <p className="text-xs text-slate-600 dark:text-slate-300">{t("appearance.todayRoomHelp")}</p>
+          <div className="grid gap-3 sm:grid-cols-[minmax(0,16rem)_minmax(10rem,1fr)] sm:items-end">
+            <HexField value={roomColor} label={t("appearance.todayRoomColor")} onChange={setTodayRoomColor} />
+            <div className="flex h-14 items-center justify-center rounded-lg bg-brand-700 px-3 font-bold">
+              <span style={{ color: normalizeHex(roomColor) ?? roomColor }}>{t("appearance.todayRoomPreview")}</span>
+            </div>
+          </div>
+          <button type="button" className="btn-outline" onClick={() => setTodayRoomColor(DEFAULT_TODAY_ROOM_COLOR)}>{t("appearance.resetTodayRoom")}</button>
         </div>
-        <button type="button" className="btn-outline" onClick={resetColors}>{t("appearance.resetPalette")}</button>
+        <div className="min-w-0 space-y-3 border-t border-slate-200 pt-4 lg:border-l lg:border-t-0 lg:pt-0 lg:pl-5 dark:border-slate-800">
+          <h3 className="text-sm font-semibold">{t("appearance.timetable")}</h3>
+          <p className="text-xs text-slate-600 dark:text-slate-300">{t("appearance.timetableHelp")}</p>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
+            {PALETTE.map((color, index) => (
+              <HexField key={index} value={slots[index] ?? color} label={t("tt.colorN", { n: index + 1 })}
+                onChange={(value) => setColor(index, value)} />
+            ))}
+          </div>
+          <button type="button" className="btn-outline" onClick={resetColors}>{t("appearance.resetPalette")}</button>
+        </div>
       </div>
     </section>
   );

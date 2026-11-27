@@ -2065,5 +2065,139 @@ def update_settings_endpoint(
     )
 
 
+# =============================================================================
+# Góp ý và đánh giá sao (Feedback & Star Ratings)
+# =============================================================================
+
+
+def _as_utc_iso(dt: datetime | None) -> str | None:
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc).isoformat()
+
+
+def _sort_dt(dt: datetime | None) -> datetime:
+    if dt is None:
+        return datetime.min.replace(tzinfo=timezone.utc)
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
+@router.get("/feedback-summary", summary="Thống kê góp ý và đánh giá sao")
+def get_feedback_summary(
+    page: int = Query(default=1, ge=1),
+    size: int = Query(default=20, ge=1, le=100),
+    rating: int | None = Query(default=None, ge=1, le=5),
+    _admin: dict[str, Any] = Depends(require_admin()),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """Tổng hợp bằng Python để chạy giống nhau trên SQLite và PostgreSQL."""
+    # (a) Thống kê sao cộng dồn bảng feedback (1-5)
+    feedback_rows = list(db.scalars(select(Feedback)))
+    fb_ratings = [r.rating for r in feedback_rows if 1 <= r.rating <= 5]
+    fb_dist = {str(i): 0 for i in range(1, 6)}
+    for r_val in fb_ratings:
+        fb_dist[str(r_val)] += 1
+    fb_total = len(fb_ratings)
+    fb_avg = round(sum(fb_ratings) / fb_total, 2) if fb_total else None
+
+    # (b) Trung bình sao bảng reviews theo từng học phần (module_code) và trung bình tổng
+    review_rows = list(db.scalars(select(Review)))
+    valid_reviews = [r for r in review_rows if 1 <= r.rating <= 5]
+    rev_total = len(valid_reviews)
+    rev_avg = round(sum(r.rating for r in valid_reviews) / rev_total, 2) if rev_total else None
+
+    by_module_acc: dict[str, list[int]] = {}
+    for rev in valid_reviews:
+        by_module_acc.setdefault(rev.module_code, []).append(rev.rating)
+
+    module_names: dict[str, str] = {}
+    if by_module_acc:
+        mod_rows = db.execute(
+            select(Module.code, Module.name).where(Module.code.in_(list(by_module_acc.keys())))
+        ).all()
+        module_names = {code: name for code, name in mod_rows}
+
+    by_module = [
+        {
+            "module_code": code,
+            "module_name": module_names.get(code),
+            "count": len(vals),
+            "average_rating": round(sum(vals) / len(vals), 2),
+        }
+        for code, vals in by_module_acc.items()
+    ]
+    by_module.sort(key=lambda x: (-x["count"], -x["average_rating"], x["module_code"]))
+
+    # (c) Danh sách góp ý dạng text (message không rỗng), phân trang & lọc theo rating
+    text_rows = [r for r in feedback_rows if r.message and r.message.strip()]
+    if rating is not None:
+        text_rows = [r for r in text_rows if r.rating == rating]
+    text_rows.sort(key=lambda r: (_sort_dt(r.created_at), r.id), reverse=True)
+
+    text_total = len(text_rows)
+    start = (page - 1) * size
+    paged = text_rows[start : start + size]
+
+    return {
+        "feedback_stats": {
+            "total": fb_total,
+            "average_rating": fb_avg,
+            "rating_distribution": fb_dist,
+        },
+        "reviews_stats": {
+            "total": rev_total,
+            "average_rating": rev_avg,
+            "by_module": by_module,
+        },
+        "items": [
+            {
+                "id": r.id,
+                "page": r.page,
+                "category": r.category,
+                "rating": r.rating,
+                "message": r.message,
+                "created_at": _as_utc_iso(r.created_at),
+                "app_version": r.app_version,
+                "status": r.status,
+            }
+            for r in paged
+        ],
+        "total": text_total,
+        "page": page,
+        "size": size,
+    }
+
+
+@router.get("/feedback/{feedback_id}", summary="Chi tiết một góp ý")
+def get_feedback_detail(
+    feedback_id: int,
+    _admin: dict[str, Any] = Depends(require_admin()),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    fb = db.get(Feedback, feedback_id)
+    if not fb:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Không tìm thấy góp ý.")
+    return {
+        "id": fb.id,
+        "page": fb.page,
+        "category": fb.category,
+        "rating": fb.rating,
+        "message": fb.message,
+        "contact": fb.contact,
+        "app_version": fb.app_version,
+        "created_at": _as_utc_iso(fb.created_at),
+        "status": fb.status,
+        "moderated_by": fb.moderated_by,
+        "moderated_at": _as_utc_iso(fb.moderated_at),
+        "moderation_note": fb.moderation_note,
+        "flag_reasons": fb.flag_reasons,
+        "is_quick_rating": fb.is_quick_rating,
+    }
+
+
 
 

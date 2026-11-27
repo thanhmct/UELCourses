@@ -1,0 +1,512 @@
+﻿# =============================================================================
+# DANH SÁCH TỪ CẤM TIẾNG VIỆT — tổng hợp từ 2 nguồn, dùng để nhập vào bảng BannedTerm
+# (Kiểm duyệt đánh giá, bình luận, góp ý). File này KHÔNG tự động nạp vào hệ thống.
+#
+# NGUỒN:
+#  1. blue-eyes-vn/vietnamese-offensive-words (GitHub) — vn_offensive_words.txt
+#     https://github.com/blue-eyes-vn/vietnamese-offensive-words
+#     Giấy phép: MIT License, Copyright (c) 2023 Blue Eyes.
+#  2. Eris-js/vn-badwords (GitHub) — src/lib/lang/vi.json
+#     https://github.com/Eris-js/vn-badwords (trang được đưa là Eris-182/vn-badwords đã chuyển về Eris-js)
+#     Giấy phép: MIT License (đọc từ nhãn trên trang; chưa đọc file LICENSE).
+#  3. vn_badwords_filter (pub.dev) — không có danh sách từ trên trang; giấy phép BSD-3-Clause.
+#     Trang gốc ghi nguồn danh sách là repo nêu ở mục 2, nên không thêm riêng.
+#  4. viet-badwords-filter (PyPI) — không đọc được (trang kiểm tra bot).
+#
+# ĐÃ LOẠI: các mục có ký tự lỗi do định dạng nguồn (` ~ ' hoặc mảnh 1 ký tự). Mục trùng đã gộp.
+#
+# GHI CHÚ PHÁP LUẬT (cần đối chiếu văn bản gốc trước khi trích dẫn chính thức):
+#  - Nghị định 15/2020/NĐ-CP: mức phạt đối với spam, thông tin sai sự thật và xúc phạm danh dự
+#    trên mạng. Các nguồn tìm được có số liệu không thống nhất, và nghị định đã được sửa đổi.
+#    Tham khảo: https://www.tapchitoaan.vn/index.php/nghi-dinh-15-2020-nd-cp-chia-se-thong-tin-gia-mao-sai-su-that-tren-mang-xa-hoi-bi-phat-den-20-trieu-dong
+#               https://thuvienphapluat.vn
+#
+# LƯU Ý SỬ DỤNG:
+#  - Từ khóa chỉ bắt được các từ đã biết; cần kết hợp duyệt thủ công.
+#  - Tránh từ ngắn dễ nhầm sau khi bỏ dấu (ví dụ "lon" khớp "lớn", "du" khớp "dù").
+#    Một số mục ngắn/mơ hồ như "cl", "vl", "ml", "lờ", "má", "đìu", "mé" có thể gắn cờ nhầm.
+#  - Cần giữ thông báo bản quyền MIT khi dùng lại danh sách.
+# =============================================================================
+buồi
+buoi
+dau buoi
+daubuoi
+caidaubuoi
+nhucaidaubuoi
+dau boi
+bòi
+dauboi
+caidauboi
+đầu bòy
+đầu bùi
+dau boy
+dauboy
+caidauboy
+cặc
+kak
+kac
+cac
+concak
+nungcak
+bucak
+caiconcac
+caiconcak
+cu
+cặk
+cak
+dái
+giái
+zái
+kiu
+cứt
+cuccut
+cutcut
+cứk
+cuk
+cười ỉa
+cười ẻ
+đéo
+đếch
+đếk
+dek
+đết
+đệt
+đách
+dech
+deo
+đel
+đél
+del
+dell ngửi
+dell ngui
+dell chịu
+dell chiu
+dell hiểu
+dell hieu
+dellhieukieugi
+dell nói
+dell noi
+dellnoinhieu
+dell biết
+dell biet
+dell nghe
+dell ăn
+dell an
+dell được
+dell duoc
+dell làm
+dell lam
+dell đi
+dell di
+dell chạy
+dell chay
+deohieukieugi
+địt
+đm
+dm
+đmm
+dmm
+đmmm
+dmmm
+đmmmm
+dmmmm
+đmmmmm
+dmmmmm
+đcm
+dcm
+đcmm
+dcmm
+đcmmm
+dcmmm
+đcmmmm
+dcmmmm
+đệch
+dit
+dis
+diz
+đjt
+djt
+địt mẹ
+địt mịe
+địt má
+địt mía
+địt ba
+địt bà
+địt cha
+địt con
+địt bố
+địt cụ
+dis me
+disme
+dismje
+dismia
+dis mia
+dis mie
+đis mịa
+đis mịe
+ditmemayconcho
+ditmemay
+ditmethangoccho
+ditmeconcho
+dmconcho
+dmcs
+ditmecondi
+ditmecondicho
+đụ
+đụ mẹ
+đụ mịa
+đụ mịe
+đụ má
+đụ cha
+đụ bà
+đú cha
+đú con mẹ
+đú má
+đú mẹ
+đù cha
+đù má
+đù mẹ
+đù mịe
+đù mịa
+đủ cha
+đủ má
+đủ mẹ
+đủ mé
+đủ mía
+đủ mịa
+đủ mịe
+đủ mie
+đủ mia
+đìu
+đờ mờ
+đê mờ
+đờ ma ma
+đờ mama
+đê mama
+đề mama
+đê ma ma
+đề ma ma
+dou
+doma
+duoma
+dou má
+duo má
+dou ma
+đou má
+đìu má
+á đù
+á đìu
+đậu mẹ
+đậu má
+đĩ
+đuỹ
+điếm
+cđĩ
+đilol
+điloz
+đilon
+diloz
+dilol
+dilon
+condi
+dime
+di me
+dimemay
+condime
+condimay
+condimemay
+con di cho
+condicho
+bitch
+biz
+bít chi
+con bích
+con bic
+con bíc
+con bít
+phò
+lồn
+loz
+lìn
+nulo
+ml
+matlon
+cailon
+matlol
+matloz
+thangmatlon
+thangml
+đỗn lì
+tml
+thml
+diml
+dml
+hãm
+xàm lol
+xam lol
+xạo lol
+xao lol
+con lol
+ăn lol
+an lol
+cái lol
+cai lol
+lòi lol
+loi lol
+ham lol
+củ lol
+cu lol
+ngu lol
+tuổi lol
+tuoi lol
+mõm lol
+mồm lol
+mom lol
+như lol
+nhu lol
+nứng lol
+nung lol
+nug lol
+nuglol
+rảnh lol
+ranh lol
+đách lol
+dach lol
+mu lol
+banh lol
+tét lol
+tet lol
+vạch lol
+vach lol
+cào lol
+cao lol
+tung lol
+mặt lol
+mát lol
+mat lol
+xàm lon
+xam lon
+xạo lon
+xao lon
+con lon
+ăn lon
+an lon
+cái lon
+cai lon
+lòi lon
+loi lon
+ham lon
+củ lon
+cu lon
+ngu lon
+tuổi lon
+tuoi lon
+mõm lon
+mồm lon
+mom lon
+như lon
+nhu lon
+nứng lon
+nung lon
+nug lon
+nuglon
+rảnh lon
+ranh lon
+đách lon
+dach lon
+mu lon
+banh lon
+tét lon
+tet lon
+vạch lon
+vach lon
+cào lon
+cao lon
+tung lon
+mặt lon
+mát lon
+mat lon
+cái lờ
+cl
+clgt
+cờ lờ gờ tờ
+cái lề gì thốn
+đốn cửa lòng
+sml
+sapmatlol
+sapmatlon
+sapmatloz
+sấp mặt
+sap mat
+vlon
+vloz
+vlol
+vailon
+vai lon
+vai lol
+vailol
+nốn lừng
+vcl
+vl
+vleu
+chịch
+chich
+vãi
+nứng
+nug
+đút đít
+chổng mông
+banh háng
+xéo háng
+xhct
+xephinh
+la liếm
+đổ vỏ
+xoạc
+xoac
+chich choac
+húp sò
+fuck
+fck
+bỏ bú
+buscu
+ngu
+óc chó
+occho
+lao cho
+láo chó
+bố láo
+chó má
+cờ hó
+sảng
+thằng chó
+thang cho
+chó điên
+thằng điên
+thang dien
+đồ điên
+sủa bậy
+sủa tiếp
+sủa đi
+sủa càn
+mẹ bà
+mẹ cha mày
+me cha may
+mẹ cha anh
+mẹ cha nhà anh
+mẹ cha nhà mày
+me cha nha may
+mả cha mày
+mả cha nhà mày
+ma cha may
+ma cha nha may
+mả mẹ
+mả cha
+kệ mẹ
+kệ mịe
+kệ mịa
+kệ mje
+kệ mja
+ke me
+ke mie
+ke mia
+ke mja
+ke mje
+bỏ mẹ
+bỏ mịa
+bỏ mịe
+bỏ mja
+bỏ mje
+bo me
+bo mia
+bo mie
+bo mje
+bo mja
+chetme
+chet me
+chết mẹ
+chết mịa
+chết mja
+chết mịe
+chết mie
+chet mia
+chet mie
+chet mja
+chet mje
+thấy mẹ
+thấy mịe
+thấy mịa
+thay me
+thay mie
+thay mia
+tổ cha
+bà cha mày
+cmn
+cmnl
+tiên sư nhà mày
+tiên sư bố
+tổ sư
+đit
+dit chi may
+ditchimay
+dit me
+dit me may
+dit con me may
+địtconmẹmày
+ditconmemay
+địtconmẹ
+ditconme
+dkm
+dkmm
+đkm
+đkmm
+đê ca mờ
+cmm
+con me may
+conmemay
+con mẹ mày
+con mặt lồn
+thằng mặt lồn
+đis
+con cặc
+lon
+lozz
+cacc
+concac
+concu
+lồng
+lờ
+mé
+má
+mọe
+con mẹ
+vãi lồn
+vãi cả lồn
+vãi cặc
+vãi lồng
+vãi lìn
+vãi con cặc
+vcc
+như cái lồn
+như con cặc
+lếu lều
+liếm lồn
+bú cu
+mặt lồn
+mặt lờ
+đầu buồi
+đồ khỉ
+cailonmemay
+cailonme
+dell
+b`
+l`
+4`
+đ'
+d'
+di~
+cdi~
+condi~
+v~
+con di cho'
+thang cho'

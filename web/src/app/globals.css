@@ -661,6 +661,15 @@ body:is([data-festival="national"], [data-festival="reunification"]) .header-hol
   color: var(--planner-term-dark-text);
 }
 
+/** Màu chữ phòng học / "Chưa có phòng" ở khối lớp hiện tại-sắp tới trên trang Hôm nay; màu do người dùng chọn trong Cài đặt (xem --today-room-color). */
+.today-room-color {
+  color: var(--today-room-color);
+}
+.today-room-color:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--today-room-color);
+}
+
 @keyframes uel-firework-burst {
   0% {
     opacity: 0;

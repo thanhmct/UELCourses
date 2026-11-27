@@ -2,6 +2,8 @@ import { API_URL } from "./api";
 import { connectionErrorMessage, useDataSource } from "./dataSource";
 import type {
   AdminAcademicEvent,
+  AdminFeedbackDetail,
+  AdminFeedbackSummaryResponse,
   AdminOverview,
   AdminPasswordResetResponse,
   AdminRole,
@@ -1076,5 +1078,17 @@ export const adminApi = {
     return this.request<{ success: boolean; message?: string }>(`/api/admin/bans/${userId}/notify`, {
       method: "POST",
     });
+  },
+
+  // ---------- Feedback & Star Ratings ----------
+  async getFeedbackSummary(
+    params: { page?: number; size?: number; rating?: number } = {}
+  ): Promise<AdminFeedbackSummaryResponse> {
+    const qs = this.buildQueryString(params);
+    return this.request<AdminFeedbackSummaryResponse>(`/api/admin/feedback-summary${qs}`);
+  },
+
+  async getFeedbackDetail(id: number): Promise<AdminFeedbackDetail> {
+    return this.request<AdminFeedbackDetail>(`/api/admin/feedback/${id}`);
   },
 };

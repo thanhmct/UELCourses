@@ -173,6 +173,35 @@ describe("Brief B7: Hiển thị liên kết PDF đề cương trên trang chi t
     expect(syllabus.closest("header")).toContainElement(screen.getByRole("heading", { name: /BKB4060/ }));
   });
 
+  it("uses the matching secondary programme for module and syllabus details", async () => {
+    act(() => useSettings.getState().setProgramProfile("K25414", "K23405"));
+    vi.spyOn(api, "module").mockResolvedValue({ data: mockBkb4060, mock: true });
+    vi.spyOn(api, "program").mockImplementation(async (programId) => ({
+      data: {
+        program: {
+          program_id: programId,
+          name: "Law",
+          cohort: programId === "K23405" ? "K23" : "K25",
+          total_credits: 120,
+        },
+        blocks: [{
+          name: "Core modules",
+          modules: programId === "K23405"
+            ? [{ code: mockBkb4060.code, name: mockBkb4060.name, credits: mockBkb4060.credits, required: true }]
+            : [],
+        }],
+      },
+      mock: true,
+    }));
+    vi.spyOn(api, "electiveGroups").mockResolvedValue({ data: [], mock: true });
+
+    render(<ModuleDetailPage />);
+
+    await screen.findByRole("heading", { name: /BKB4060/ });
+    expect(api.module).toHaveBeenLastCalledWith("BKB4060", { program_id: "K23405", cohort: "K23" });
+    expect(api.outline).toHaveBeenLastCalledWith("BKB4060", { program_id: "K23405", cohort: "K23" });
+  });
+
   it("updates class capacity, remaining seats, and full sections when switching language", async () => {
     vi.spyOn(api, "module").mockResolvedValue({ data: mockBkb4060, mock: true });
     vi.mocked(api.classes).mockResolvedValue({

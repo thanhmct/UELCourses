@@ -96,7 +96,7 @@ def create_review(
     if db.scalar(select(Review.id).where(Review.module_code == mcode, Review.user_id == user.id).limit(1)):
         raise HTTPException(409, "Bạn đã đánh giá học phần này. Liên hệ quản trị viên nếu cần sửa.")
     ip_hash = hash_client_ip(get_real_ip(request))
-    res = moderate(body.content + " " + (body.professor or ""))
+    res = moderate(body.content + " " + (body.professor or ""), db=db)
     # Tên riêng cho bài này (nếu nhập) > biệt danh của tài khoản > "Sinh viên ẩn danh". Không bao giờ dùng tên thật từ Google/Facebook.
     shown_name = public_name(validate_nickname(body.display_name, db) or user.nickname)
     review = Review(

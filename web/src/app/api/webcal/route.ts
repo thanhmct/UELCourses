@@ -5,6 +5,7 @@ import { buildIcs } from "@/lib/ics";
 import type { ClassSection } from "@/lib/types";
 
 const FETCH_CONCURRENCY = 4;
+const WEBCAL_USER_AGENT = "UELPATH-Webcal/1.0 (+https://uelpath.uelcourses.id.vn)";
 
 type ModuleDetailResponse = {
   name?: string;
@@ -15,7 +16,10 @@ async function fetchApi<T>(path: string): Promise<T> {
   const apiUrl = serverApiOrigin();
   const response = await fetch(`${apiUrl}${path}`, {
     cache: "no-store",
-    headers: { Accept: "application/json" },
+    headers: {
+      Accept: "application/json",
+      "User-Agent": WEBCAL_USER_AGENT,
+    },
   });
   if (!response.ok) throw new Error(`API returned ${response.status}`);
   return response.json() as Promise<T>;
@@ -80,13 +84,14 @@ export async function GET(req: NextRequest) {
     return new NextResponse("Không thể tải dữ liệu thời khóa biểu.", { status: 502 });
   }
 
+  const isDownload = searchParams.get("dl") === "1";
   const ics = buildIcs(selectedSections, { calendarName: name, moduleNames });
 
   return new NextResponse(ics, {
     status: 200,
     headers: {
       "Content-Type": "text/calendar; charset=utf-8",
-      "Content-Disposition": `inline; filename="UELPATH-timetable.ics"`,
+      "Content-Disposition": `${isDownload ? "attachment" : "inline"}; filename="UELPATH-timetable.ics"`,
       "Cache-Control": "no-cache, no-store, must-revalidate",
     },
   });

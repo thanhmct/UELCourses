@@ -1,10 +1,24 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ExchangeStudentToggle } from "@/components/ExchangeStudentToggle";
 import { ExchangeStatBadge } from "@/components/ExchangeStatBadge";
 import { canOfferExchangeTick, isExchangeViewActive } from "@/lib/exchangeStats";
 import { useLang } from "@/i18n";
 import { useSettings } from "@/lib/store";
+
+function makeRect(left: number, top: number, width: number, height: number): DOMRect {
+  return {
+    x: left,
+    y: top,
+    left,
+    top,
+    right: left + width,
+    bottom: top + height,
+    width,
+    height,
+    toJSON: () => ({}),
+  } as DOMRect;
+}
 
 describe("exchange student gating", () => {
   it("offers the option in English UI regardless of the program", () => {
@@ -20,9 +34,19 @@ describe("exchange student gating", () => {
 });
 
 describe("ExchangeStudentToggle and ExchangeStatBadge", () => {
+  const originalInnerWidth = window.innerWidth;
+  const originalInnerHeight = window.innerHeight;
+
   beforeEach(() => {
     useLang.setState({ lang: "en" });
     useSettings.setState({ programCode: "K23406E", exchangeStudent: false });
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: originalInnerWidth });
+    Object.defineProperty(window, "innerHeight", { configurable: true, value: originalInnerHeight });
   });
 
   it("shows the tick in English and syncs with the store", () => {
@@ -67,13 +91,61 @@ describe("ExchangeStudentToggle and ExchangeStatBadge", () => {
   });
 
   it("renders the count in English and nothing without data", () => {
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      if (this.getAttribute("role") === "tooltip") return makeRect(0, 0, 200, 60);
+      if (this.tagName === "BUTTON") return makeRect(10, 10, 20, 20);
+      return makeRect(0, 0, 0, 0);
+    });
     const { rerender, container } = render(
       <ExchangeStatBadge stat={{ module_code: "ELB1048", total: 3, by_semester: [{ semester_id: "2025-2026-1", students: 2 }, { semester_id: "2026-2027-1", students: 1 }] }} />,
     );
-    expect(screen.getByTestId("exchange-stat").textContent).toBe("3 exchange students took this module in earlier semesters");
+    fireEvent.click(container.querySelector("button")!);
+    expect(screen.getByRole("tooltip").textContent).toBe("3 exchange students took this module in earlier semesters");
     rerender(<ExchangeStatBadge stat={{ module_code: "ELB1048", total: 1, by_semester: [{ semester_id: "2025-2026-1", students: 1 }] }} />);
-    expect(screen.getByTestId("exchange-stat").textContent).toBe("1 exchange student took this module in earlier semesters");
+    expect(screen.getByRole("tooltip").textContent).toBe("1 exchange student took this module in earlier semesters");
     rerender(<ExchangeStatBadge stat={undefined} />);
     expect(container.querySelector("[data-testid='exchange-stat']")).toBeNull();
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+  });
+
+  it("shifts the tooltip inside the viewport and updates after resizing", () => {
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 400 });
+    Object.defineProperty(window, "innerHeight", { configurable: true, value: 800 });
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      if (this.getAttribute("role") === "tooltip") return makeRect(0, 0, 200, 60);
+      if (this.tagName === "BUTTON") return makeRect(300, 100, 20, 20);
+      return makeRect(0, 0, 0, 0);
+    });
+
+    const { container } = render(
+      <ExchangeStatBadge
+        stat={{ module_code: "ELB1048", total: 3, by_semester: [] }}
+      />,
+    );
+    fireEvent.click(container.querySelector("button")!);
+    const tooltip = screen.getByRole("tooltip");
+    expect(tooltip.style.left).toBe("188px");
+
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 320 });
+    fireEvent(window, new Event("resize"));
+    expect(tooltip.style.left).toBe("108px");
+  });
+
+  it("flips above the button when the tooltip would not fit below", () => {
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 400 });
+    Object.defineProperty(window, "innerHeight", { configurable: true, value: 800 });
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      if (this.getAttribute("role") === "tooltip") return makeRect(0, 0, 200, 60);
+      if (this.tagName === "BUTTON") return makeRect(100, 740, 20, 20);
+      return makeRect(0, 0, 0, 0);
+    });
+
+    const { container } = render(
+      <ExchangeStatBadge
+        stat={{ module_code: "ELB1048", total: 3, by_semester: [] }}
+      />,
+    );
+    fireEvent.click(container.querySelector("button")!);
+    expect(screen.getByRole("tooltip").style.top).toBe("672px");
   });
 });
