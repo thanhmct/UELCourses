@@ -60,6 +60,14 @@ async def lifespan(_app: FastAPI):
 
                 counts = run_seed(db)
                 log.warning("DB trống -> đã nạp dữ liệu MẪU: %s", counts)
+    with SessionLocal() as db:
+        from app.services.calendar_stickers import (
+            ensure_calendar_sticker_defaults,
+            ensure_sticker_assets,
+        )
+
+        ensure_calendar_sticker_defaults(db)
+        ensure_sticker_assets(db)
     yield
 
 

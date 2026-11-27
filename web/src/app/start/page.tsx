@@ -41,7 +41,7 @@ export default function StartPage() {
         </p>
       </header>
 
-      {programs.error && <ErrorBox>{programs.offline ? t("api.connectionError") : t("start.loadError", { error: programs.error })}</ErrorBox>}
+      {programs.error && <ErrorBox severity={programs.offline ? "critical" : "error"}>{programs.offline ? t("api.connectionError") : t("start.loadError", { error: programs.error })}</ErrorBox>}
 
       <div className="card space-y-4">
         <div>

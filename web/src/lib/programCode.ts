@@ -530,6 +530,13 @@ export function describeProgramCodeFull(
 
   const part1 = isEn ? `Cohort ${yearStr}` : `Khóa ${yearStr}`;
   const cleaned = cleanMajorName(programName);
+  if (parsed.kind === "coop") {
+    const baseMajor = cleaned?.replace(/\s*[-–—]?\s*(?:Co-?op|Hợp tác doanh nghiệp)\s*$/i, "").trim();
+    const major = baseMajor && isEn ? MAJOR_EN[baseMajor.toLowerCase()] ?? baseMajor : baseMajor;
+    return isEn
+      ? `${part1}, ${major ? `${major} major` : `major code ${parsed.major}`}, Corporate Partnership programme.`
+      : `${part1}, ${major ? `ngành ${major}` : `mã ngành ${parsed.major}`}, chương trình Hợp tác doanh nghiệp.`;
+  }
   let part2: string;
   if (cleaned) {
     if (isEn) {
@@ -556,12 +563,6 @@ export function describeProgramCodeFull(
         ? (isEn ? "English-language Talent Bachelor programme" : "chương trình Cử nhân tài năng tiếng Anh")
         : (isEn ? "Talent Bachelor programme" : "chương trình Cử nhân tài năng");
       break;
-    case "coop": {
-      // Mọi chương trình Coop hiển thị thống nhất "Coop Khóa NN", không dùng tên dài.
-      const cohortShort = yearStr.slice(-2);
-      part3 = isEn ? `Co-op Cohort ${cohortShort}` : `Coop Khóa ${cohortShort}`;
-      break;
-    }
     case "standard":
       part3 = isEn ? "Vietnamese-language programme" : "chương trình tiếng Việt";
       break;

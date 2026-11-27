@@ -2,6 +2,12 @@
 
 Frontend Next.js 15 của dự án UELPATH — Nền tảng lập kế hoạch học tập, xếp thời khóa biểu và tra cứu quy chế dành cho sinh viên Trường Đại học Kinh tế – Luật (UEL).
 
+## Dùng khi ngoại tuyến
+
+- Hôm nay, Thời khóa biểu và Tối ưu lịch học dùng trạng thái đã lưu trên thiết bị; dữ liệu API công khai đã tải được giữ trong `localStorage` để tiếp tục đọc khi mất mạng.
+- Service Worker lưu bộ khung trang và sticker trong Cache Storage để có thể mở lại các trang đã truy cập khi ngoại tuyến. Hãy mở ứng dụng khi có mạng ít nhất một lần để các tài nguyên được lưu.
+- Góp ý, đánh giá và báo cáo tạo hàng đợi cục bộ khi không gửi được; ứng dụng tự gửi lại khi kết nối trở lại. Đánh giá yêu cầu đăng nhập chỉ được gửi lại đúng tài khoản đã tạo yêu cầu.
+
 ## 🚀 Tính năng đã hoàn thiện
 
 1. **Trang chủ (`/`)**:
@@ -56,7 +62,7 @@ Frontend Next.js 15 của dự án UELPATH — Nền tảng lập kế hoạch h
 9. **Cài đặt & Widget phản hồi (`/settings`)**:
    - Tùy chọn khóa tuyển sinh (K19 – K26) để tự động lọc quy chế và CTĐT phù hợp.
    - Chế độ sáng / tối (Dark Mode).
-   - Widget **Góp ý** nổi ở mọi trang hỗ trợ gửi đánh giá 1–5 sao và phản hồi (tự động lưu hàng đợi cục bộ nếu offline).
+   - Biểu mẫu **Góp ý** hỗ trợ gửi đánh giá 1–5 sao và phản hồi (tự động lưu hàng đợi cục bộ nếu ngoại tuyến).
 
 ## 🛠️ Công nghệ sử dụng
 

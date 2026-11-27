@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, cleanup, act } from "@testing-library/react";
+import { render, screen, fireEvent, cleanup, act, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi, afterEach } from "vitest";
 import TodayPage from "../page";
 import { useLang } from "@/i18n";
@@ -6,6 +6,14 @@ import { useLang } from "@/i18n";
 vi.mock("@/lib/api", () => ({
   api: {
     classes: vi.fn().mockResolvedValue({ data: [] }),
+    freeDayDisplay: vi.fn().mockResolvedValue({
+      data: {
+        event_type: "default_free",
+        sticker_path: "/stickers/03_ket_noi_loa.svg",
+        message: "Chúc mừng bạn đã được nghỉ ngơi!",
+        message_en: "Enjoy your day off!",
+      },
+    }),
   },
 }));
 
@@ -15,7 +23,8 @@ vi.mock("@/lib/useMounted", () => ({
 
 vi.mock("@/lib/store", () => ({
   useSettings: Object.assign(
-    (selector: (s: { setDefaultShowMap: () => void }) => unknown) => selector({ setDefaultShowMap: () => {} }),
+    (selector: (s: { setDefaultShowMap: () => void; cohort: string }) => unknown) =>
+      selector({ setDefaultShowMap: () => {}, cohort: "" }),
     { getState: () => ({ defaultShowMap: localStorage.getItem("uelpath.today.showMap") === "1" }) },
   ),
   useTimetable: () => ({
@@ -126,7 +135,7 @@ describe("TodayPage component", () => {
     expect(screen.getByText("Môn:")).toBeInTheDocument();
   });
 
-  it("hiển thị các tab chuyển lịch và không hiển thị các nút mũi tên ← → kế bên nút Hiện bản đồ", () => {
+  it("gom tuần trống thành một thẻ có sticker và lời chúc", async () => {
     render(<TodayPage />);
     const todayTab = screen.getByRole("tab", { name: /Hôm nay/i });
     const nextWeekTab = screen.getByRole("tab", { name: /Tuần sau/i });
@@ -143,9 +152,16 @@ describe("TodayPage component", () => {
     fireEvent.click(nextWeekTab);
     expect(nextWeekTab).toHaveAttribute("aria-selected", "true");
 
-    // Mỗi ngày trống chỉ hiện một thông báo bên dưới, không lặp ở dòng ngày.
-    expect(screen.getAllByText("Không phải lên UEL")).toHaveLength(7);
-    expect(document.querySelector("#panel-schedule")?.children).toHaveLength(7);
+    // Cả tuần trống được gom thành một thẻ khoảng ngày.
+    expect(screen.queryByText("Không phải lên UEL")).not.toBeInTheDocument();
+    expect(document.querySelector("#panel-schedule")?.children).toHaveLength(1);
+    const schedulePanel = document.querySelector<HTMLElement>("#panel-schedule")!;
+    expect(schedulePanel.querySelector("img")?.getAttribute("src")).toContain("/stickers/03_ket_noi_loa.svg");
+    await waitFor(() => {
+      expect(
+        within(schedulePanel).getByText("Chúc mừng bạn đã được nghỉ ngơi!"),
+      ).toBeInTheDocument();
+    });
 
     // Bấm quay lại tab hôm nay & mai
     fireEvent.click(todayTab);
@@ -156,6 +172,7 @@ describe("TodayPage component", () => {
   it("hiển thị đồng hồ thời gian chạy mỗi giây", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 10, 21, 10, 0, 0));
+    window.history.replaceState({}, "", "/today?demo=1");
 
     render(<TodayPage />);
     const clock = screen.getByLabelText("live-clock");

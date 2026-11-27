@@ -1,10 +1,9 @@
 "use client";
 
 import { Loading } from "@/components/ui";
-import { useRef, useState, type KeyboardEvent } from "react";
-import { ArrowLeft, ChevronDown, ChevronRight, Search } from "lucide-react";
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
+import { ArrowLeft, ChevronDown, ChevronRight, ChevronUp, Search } from "lucide-react";
 import { useT } from "@/i18n";
-import { useMaxVisibleItems } from "@/lib/useMaxVisibleItems";
 import {
   hasVerifiedUndergraduateTrack,
   type LookupDegree, type LookupMajor, type LookupOption, lookupTrack,
@@ -15,27 +14,68 @@ import { parseProgramCode } from "@/lib/programCode";
 const degrees = ["all", "dai_hoc", "thac_si", "tien_si"] as const;
 const optionClass = "flex w-full cursor-pointer items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-brand-50 focus-visible:bg-brand-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand-focus dark:hover:bg-slate-800 dark:focus-visible:bg-slate-800";
 
-export function ProgramLookup({ id, value, lookup, loading, onChange, onSave, primary }: {
+export function ProgramLookup({ id, value, description, lookup, loading, onChange, primary }: {
   id: string;
   value: string;
+  description?: string;
   lookup: ReturnType<typeof buildProgramLookup>;
   loading: boolean;
   onChange: (value: string) => void;
-  onSave: () => void;
   primary?: boolean;
 }) {
   const { t, lang } = useT();
-  const [open, setOpen] = useState(primary && !value);
+  const [open, setOpen] = useState(false);
   const [degree, setDegree] = useState<LookupDegree>("all");
   const [majorId, setMajorId] = useState("");
   const [browse, setBrowse] = useState(false);
+  const [showDescription, setShowDescription] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const resultsList = useRef<HTMLDivElement>(null);
   const query = parseLookupQuery(browse ? "" : value);
   const visible = !!open;
   const resultsId = `${id}-results`;
-  useMaxVisibleItems(resultsList, visible);
+  useEffect(() => {
+    if (!open) return;
+    const closeOutside = (event: PointerEvent) => {
+      if (event.target instanceof Node && !root.current?.contains(event.target)) setOpen(false);
+    };
+    document.addEventListener("pointerdown", closeOutside);
+    return () => document.removeEventListener("pointerdown", closeOutside);
+  }, [open]);
+  useLayoutEffect(() => {
+    const el = resultsList.current;
+    if (!el) return;
+
+    const apply = () => {
+      if (!visible) {
+        el.style.maxHeight = "";
+        el.classList.remove("dropdown-scroll");
+        return;
+      }
+
+      const items = Array.from(el.children).filter((child): child is HTMLElement =>
+        child instanceof HTMLElement && child.getClientRects().length > 0
+      );
+      if (items.length <= 3.5) {
+        el.style.maxHeight = "";
+        el.classList.remove("dropdown-scroll");
+        return;
+      }
+
+      const firstThreeHeight = items.slice(0, 3).reduce((sum, item) => sum + item.getBoundingClientRect().height, 0);
+      const fourthHeight = items[3].getBoundingClientRect().height;
+      const style = getComputedStyle(el);
+      const paddingTop = parseFloat(style.paddingTop) || 0;
+      const paddingBottom = parseFloat(style.paddingBottom) || 0;
+      el.style.maxHeight = `${Math.ceil(firstThreeHeight + fourthHeight * 0.5 + paddingTop + paddingBottom)}px`;
+      el.classList.add("dropdown-scroll");
+    };
+
+    apply();
+    window.addEventListener("resize", apply);
+    return () => window.removeEventListener("resize", apply);
+  });
   const majors = query.code ? [] : searchProgramMajors(lookup.majors, query, degree, lang);
   const selected = majors.find((major) => major.id === majorId);
   const parsedCode = query.code ? parseProgramCode(value) : null;
@@ -51,6 +91,7 @@ export function ProgramLookup({ id, value, lookup, loading, onChange, onSave, pr
 
   function choose(option: LookupOption) {
     onChange(option.code);
+    setShowDescription(true);
     setMajorId("");
     setBrowse(false);
     setOpen(false);
@@ -108,7 +149,7 @@ export function ProgramLookup({ id, value, lookup, loading, onChange, onSave, pr
   }
 
   return (
-    <div ref={root} onKeyDown={handleNavigation} className="space-y-2" onBlur={(event) => {
+    <div ref={root} onKeyDown={handleNavigation} className={`relative ${visible ? "z-50" : "z-0"}`} onBlur={(event) => {
       if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget)) setOpen(false);
     }}>
       <div className="relative">
@@ -119,9 +160,14 @@ export function ProgramLookup({ id, value, lookup, loading, onChange, onSave, pr
           aria-controls={visible ? resultsId : undefined}
           className="input min-h-11 pl-9 pr-10"
           placeholder={t(primary ? "profile.primaryPh" : "profile.secondaryPh")}
-          value={value}
+          value={showDescription && description ? description : value}
           autoComplete="off"
+          onClick={() => {
+            setShowDescription(false);
+            setOpen(true);
+          }}
           onChange={(event) => {
+            setShowDescription(false);
             onChange(event.target.value);
             setMajorId("");
             setBrowse(false);
@@ -135,8 +181,15 @@ export function ProgramLookup({ id, value, lookup, loading, onChange, onSave, pr
               else setOpen(true);
             } else if (event.key === "Enter") {
               event.preventDefault();
-              if (parseProgramCode(value) || !visible) onSave();
-              else focusResult();
+              const parsed = parseProgramCode(value);
+              if (parsed) {
+                const exact = lookup.exactCodes.find((option) => option.code === parsed.normalized);
+                onChange(exact?.code ?? parsed.normalized);
+                setShowDescription(true);
+                setOpen(false);
+              } else if (visible) {
+                focusResult();
+              }
             }
           }}
         />
@@ -153,10 +206,15 @@ export function ProgramLookup({ id, value, lookup, loading, onChange, onSave, pr
             setOpen(!visible);
           }}
         >
-          <ChevronDown className={`size-4 transition-transform ${visible ? "rotate-180" : ""}`} aria-hidden />
+          {visible ? (
+            <ChevronUp className="size-4" aria-hidden />
+          ) : (
+            <ChevronDown className="size-4" aria-hidden />
+          )}
         </button>
+      </div>
         {visible && (
-        <div id={resultsId} className="absolute inset-x-0 top-full z-30 mt-1 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900">
+        <div id={resultsId} className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900">
           {selected ? (
             <div className="border-b border-slate-200 px-2 py-1.5 dark:border-slate-700">
               <button type="button" onClick={() => { setMajorId(""); input.current?.focus(); }} className="flex min-h-10 cursor-pointer items-center gap-2 rounded-md px-2 text-sm font-medium text-brand-700 hover:bg-brand-50 dark:text-brand-300 dark:hover:bg-slate-800">
@@ -219,7 +277,6 @@ export function ProgramLookup({ id, value, lookup, loading, onChange, onSave, pr
           </div>
         </div>
         )}
-      </div>
     </div>
   );
 }

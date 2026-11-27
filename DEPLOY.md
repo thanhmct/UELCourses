@@ -17,6 +17,34 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 - Nhập dữ liệu thật từ `fetch_courses.py`: chép `data/courses.json` vào `api/data/` hoặc dùng `POST /api/import/classes` trên trang `/docs`.
 - Xây chỉ mục quy chế: `docker compose exec api python scripts/ingest_regulations.py`
 
+## Nhập bản sao Supabase vào PostgreSQL local
+
+API trong Compose luôn đọc PostgreSQL service `db`; file SQLite `data/db/uelplan.db` không được dùng. Script dưới đây chỉ đọc schema ứng dụng `public` từ Supabase, tạo backup local, rồi chỉ ghi vào service `db` sau khi bạn xác nhận rõ:
+
+```powershell
+# Điền SUPABASE_DB_HOST/PORT/USER/NAME trong .env; không lưu password.
+.\scripts\import_supabase_to_local.ps1
+```
+
+Script dùng PostgreSQL client 17 trong image `pgvector/pgvector:pg17`, hỗ trợ Direct connection hoặc Session pooler và mặc định `sslmode=require`. Password được hỏi bằng prompt ẩn và chỉ truyền vào container client qua biến môi trường. Dump cùng backup local nằm trong `%TEMP%\uelpath_supabase_import_<timestamp>`, bên ngoài repository. Script kiểm tra exit code, file khác rỗng và `pg_restore --list` trước khi restore; không migrate hay ghi lên Supabase và không xóa volume `pgdata`.
+
+Nếu thiếu cấu hình `.env`, có thể truyền các giá trị không bí mật:
+
+```powershell
+.\scripts\import_supabase_to_local.ps1 -SupabaseHost db.example.supabase.co -SupabasePort 5432 -SupabaseUser postgres -SupabaseDatabase postgres -SslMode require
+```
+
+Xác minh số bản ghi sau restore (cả hai lệnh chỉ đọc local):
+
+```powershell
+docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -P pager=off -c "SELECT schemaname, relname, n_live_tup AS estimated_rows FROM pg_stat_user_tables WHERE schemaname = ''public'' ORDER BY relname;"'
+docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atc "SELECT count(*) FROM public.<ten_bang>;"'
+docker compose up -d api
+docker compose logs --tail 100 api
+```
+
+Lỗi DNS/network, SSL, authentication, version mismatch hoặc archive hỏng sẽ dừng quy trình trước thao tác thay thế local và in hướng xử lý.
+
 ## 3. Production / staging
 
 ```bash

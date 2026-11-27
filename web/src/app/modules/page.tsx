@@ -569,7 +569,7 @@ export default function ModulesPage() {
       {codeSearch && !primaryProgramReq.loading && !secondaryProgramReq.loading && (
         <p className="text-sm text-slate-600 dark:text-slate-400">{t("profile.lookupByModuleHelp")}</p>
       )}
-      {error && <ErrorBox>{"offline" in error ? t("api.connectionError") : t("common.error", { message: error.message })}</ErrorBox>}
+      {error && <ErrorBox severity={"offline" in error ? "critical" : "error"}>{"offline" in error ? t("api.connectionError") : t("common.error", { message: error.message })}</ErrorBox>}
 
           {loading && items.length === 0 ? <Loading page /> : !error && items.length === 0 ? (
             <p className="rounded-md border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500 dark:border-slate-700">{t("mod.empty")}</p>

@@ -14,6 +14,14 @@ export interface Semester {
   teaching_end?: string | null;
 }
 
+export interface FreeDayDisplay {
+  event_type: "special_event" | "holiday" | "exam_week" | "default_free";
+  sticker_path: string;
+  message: string;
+  message_en?: string | null;
+  event_title?: string | null;
+}
+
 export interface ModuleRef {
   code: string;
   name: string;

@@ -5,9 +5,10 @@ import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "r
 import { api } from "@/lib/api";
 import { useMounted } from "@/lib/useMounted";
 import { useSettings, useTimetable } from "@/lib/store";
-import type { ClassSection, Lesson } from "@/lib/types";
+import type { ClassSection, FreeDayDisplay, Lesson } from "@/lib/types";
 import { getOccurrencesByDate, getTimetableOccurrences } from "@/lib/occurrences";
-import { Loading } from "@/components/ui";
+import { ErrorBox, Loading, LoadingDots } from "@/components/ui";
+import { OfflineSafeSticker } from "@/components/OfflineSafeSticker";
 import { useT } from "@/i18n";
 import { moduleName } from "@/i18n/names";
 import { formatLecturerName } from "@/lib/lecturers";
@@ -77,6 +78,9 @@ export default function TodayPage() {
   const [showMap, setShowMap] = useState(false);
   const setDefaultShowMap = useSettings((s) => s.setDefaultShowMap);
   const todayRoomColor = useSettings((s) => s.todayRoomColor);
+  const cohort = useSettings((s) => s.cohort);
+  const [freeDayDisplay, setFreeDayDisplay] = useState<FreeDayDisplay | null>(null);
+  const [freeDayDisplayError, setFreeDayDisplayError] = useState(false);
 
   useEffect(() => {
     setShowMap(useSettings.getState().defaultShowMap);
@@ -175,6 +179,37 @@ export default function TodayPage() {
       };
     });
   }, [activeTab, demoMode, displayedDays, occurrencesByDate, tt.info, lang]);
+
+  const groupedEmptyState =
+    daysWithLessons.length >= 2 && daysWithLessons.every((day) => day.lessons.length === 0);
+
+  useEffect(() => {
+    if (!groupedEmptyState) {
+      setFreeDayDisplay(null);
+      setFreeDayDisplayError(false);
+      return;
+    }
+
+    let active = true;
+    setFreeDayDisplay(null);
+    setFreeDayDisplayError(false);
+    api
+      .freeDayDisplay(
+        daysWithLessons[0].isoDate,
+        daysWithLessons[daysWithLessons.length - 1].isoDate,
+        cohort || undefined,
+      )
+      .then(({ data }) => {
+        if (active) setFreeDayDisplay(data);
+      })
+      .catch(() => {
+        if (active) setFreeDayDisplayError(true);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [groupedEmptyState, daysWithLessons, cohort]);
 
   // Lessons strictly for today (for Next Class banner)
   const todayDayItem = useMemo(() => {
@@ -339,9 +374,45 @@ export default function TodayPage() {
         </button>
       </div>
 
-      {/* Empty days use two compact rows instead of a tall empty card. */}
       <div id="panel-schedule" role="tabpanel" className="space-y-4">
-        {daysWithLessons.map((dayItem) => (
+        {groupedEmptyState ? (
+          <article
+            aria-label={t("today.noClass")}
+            aria-busy={!freeDayDisplay && !freeDayDisplayError}
+            className="card flex flex-col items-center gap-3 px-4 py-5 text-center sm:px-6"
+          >
+            <div className="flex flex-wrap items-center justify-center gap-2 text-base font-bold text-slate-900 dark:text-white">
+              <span>{daysWithLessons[0].label}</span>
+              {daysWithLessons[0].isToday && (
+                <span className="rounded bg-brand-100 px-2 py-0.5 text-xs font-semibold text-brand-700 dark:bg-brand-900/50 dark:text-brand-300">
+                  {t("today.todayTag")}
+                </span>
+              )}
+              <span aria-hidden="true">–</span>
+              <span>{daysWithLessons[daysWithLessons.length - 1].label}</span>
+            </div>
+            <OfflineSafeSticker
+              src={freeDayDisplay?.sticker_path ?? "/stickers/03_ket_noi_loa.svg"}
+              alt=""
+              width={220}
+              height={160}
+              className="h-32 w-auto max-w-full object-contain"
+            />
+            {freeDayDisplay ? (
+              <p className="text-base font-semibold text-brand-700 dark:text-brand-300">
+                {lang === "en" && freeDayDisplay.message_en
+                  ? freeDayDisplay.message_en
+                  : freeDayDisplay.message}
+              </p>
+            ) : freeDayDisplayError ? (
+              <ErrorBox severity="critical">{freeDayDisplayError}</ErrorBox>
+            ) : (
+              <p className="text-sm text-slate-600 dark:text-slate-300">
+                {t("today.displayLoading")}<LoadingDots />
+              </p>
+            )}
+          </article>
+        ) : daysWithLessons.map((dayItem) => (
           <div key={dayItem.isoDate} className="space-y-1.5">
             {/* Header: thứ + ngày/tháng (ví dụ "Thứ hai, 23/11") */}
             <div className="flex items-center justify-between border-b border-slate-200 pb-1.5 dark:border-slate-800">

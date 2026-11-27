@@ -42,6 +42,28 @@ describe("ProgramProfileDialog", () => {
     useSettings.getState().setProgramProfile("");
     useLang.getState().setLang("vi");
   });
+  it("starts closed, switches lists in one click and accepts lowercase code suffixes", async () => {
+    render(<ProgramProfileDialog open={true} onClose={() => {}} />);
+
+    const input = document.getElementById("profile-primary")!;
+    const secondary = document.getElementById("profile-secondary")!;
+    expect(document.getElementById("profile-primary-results")).toBeNull();
+    fireEvent.click(input);
+    expect(document.getElementById("profile-primary-results")).toHaveClass("absolute");
+    fireEvent.pointerDown(secondary);
+    fireEvent.click(secondary);
+    expect(document.getElementById("profile-primary-results")).toBeNull();
+    expect(document.getElementById("profile-secondary-results")).toHaveClass("absolute");
+    expect(screen.getByRole("dialog")).toHaveClass("overflow-visible");
+    fireEvent.pointerDown(input);
+    fireEvent.click(input);
+    fireEvent.change(input, { target: { value: "k26405e" } });
+    expect(await screen.findByRole("button", { name: "Kế toán · Tiếng Anh · Khóa 26 · K26405E" })).toBeInTheDocument();
+
+    fireEvent.change(input, { target: { value: "k26414h" } });
+    expect(await screen.findByRole("button", { name: /Công nghệ tài chính.*Coop.*K26414H/i })).toBeInTheDocument();
+  });
+
   it("groups name results by major, then lets the user select a cohort or look up a full code", async () => {
     render(<ProgramProfileDialog open={true} onClose={() => {}} />);
     const input = screen.getByLabelText(/^Ngành chính$/i);
@@ -50,7 +72,7 @@ describe("ProgramProfileDialog", () => {
     expect(screen.queryByRole("button", { name: /K26405/ })).not.toBeInTheDocument();
     fireEvent.click(major);
     fireEvent.click(screen.getByRole("button", { name: "Tiếng Việt · Khóa 26 · K26405" }));
-    expect(input).toHaveValue("K26405");
+    expect(input).toHaveValue("Khóa 2026, chương trình đào tạo ngành Kế toán, chương trình tiếng Việt.");
 
     fireEvent.change(input, { target: { value: "K26405E" } });
     expect(screen.getByRole("button", { name: "Kế toán · Tiếng Anh · Khóa 26 · K26405E" })).toBeInTheDocument();
@@ -122,14 +144,10 @@ describe("ProgramProfileDialog", () => {
     expect(dialog.queryByRole("checkbox")).toBeNull();
     const primaryInput = screen.getByLabelText(/^Ngành chính$/i);
     fireEvent.change(primaryInput, { target: { value: "K25405A" } });
+    fireEvent.keyDown(primaryInput, { key: "Enter" });
 
-    await waitFor(() => {
-      expect(
-        screen.getByText(
-          /→ Khóa 2025, chương trình đào tạo ngành Kế toán, chương trình tiếng Việt\./,
-        ),
-      ).toBeInTheDocument();
-    });
+    await waitFor(() => expect(primaryInput).toHaveValue("Khóa 2025, chương trình đào tạo ngành Kế toán, chương trình tiếng Việt."));
+    expect(screen.queryByText(/→/)).not.toBeInTheDocument();
   });
 
   it("renders English track description for suffix E1", async () => {
@@ -137,14 +155,9 @@ describe("ProgramProfileDialog", () => {
 
     const primaryInput = screen.getByLabelText(/^Ngành chính$/i);
     fireEvent.change(primaryInput, { target: { value: "K23406E1" } });
+    fireEvent.keyDown(primaryInput, { key: "Enter" });
 
-    await waitFor(() => {
-      expect(
-        screen.getByText(
-          /→ Khóa 2023, chương trình đào tạo ngành Hệ thống thông tin quản lý, chương trình tiếng Anh\./,
-        ),
-      ).toBeInTheDocument();
-    });
+    await waitFor(() => expect(primaryInput).toHaveValue("Khóa 2023, chương trình đào tạo ngành Hệ thống thông tin quản lý, chương trình tiếng Anh."));
   });
 
   it("renders Coop description for suffix H", async () => {
@@ -152,14 +165,23 @@ describe("ProgramProfileDialog", () => {
 
     const primaryInput = screen.getByLabelText(/^Ngành chính$/i);
     fireEvent.change(primaryInput, { target: { value: "K23406H" } });
+    fireEvent.keyDown(primaryInput, { key: "Enter" });
 
-    await waitFor(() => {
-      expect(
-        screen.getByText(
-          /→ Khóa 2023, chương trình đào tạo ngành Hệ thống thông tin quản lý, Coop Khóa 23\./,
-        ),
-      ).toBeInTheDocument();
-    });
+    await waitFor(() => expect(primaryInput).toHaveValue("Khóa 2023, ngành Hệ thống thông tin quản lý, chương trình Hợp tác doanh nghiệp."));
+  });
+
+  it("fills the English Coop description into the primary input on Enter", async () => {
+    useLang.getState().setLang("en");
+    render(<ProgramProfileDialog open={true} onClose={() => {}} />);
+
+    const primaryInput = screen.getByLabelText(/^Primary Major$/i);
+    fireEvent.change(primaryInput, { target: { value: "K23406H" } });
+    fireEvent.keyDown(primaryInput, { key: "Enter" });
+
+    await waitFor(() => expect(primaryInput).toHaveValue(
+      "Cohort 2023, Management Information Systems major, Corporate Partnership programme.",
+    ));
+    expect(screen.queryByText(/→/)).not.toBeInTheDocument();
   });
 
   it("renders major code fallback when program is not found in API", async () => {
@@ -167,14 +189,9 @@ describe("ProgramProfileDialog", () => {
 
     const primaryInput = screen.getByLabelText(/^Ngành chính$/i);
     fireEvent.change(primaryInput, { target: { value: "K26999A" } });
+    fireEvent.keyDown(primaryInput, { key: "Enter" });
 
-    await waitFor(() => {
-      expect(
-        screen.getByText(
-          /→ Khóa 2026, chương trình đào tạo mã ngành 999, chương trình tiếng Việt\./,
-        ),
-      ).toBeInTheDocument();
-    });
+    expect(primaryInput).toHaveValue("Khóa 2026, chương trình đào tạo mã ngành 999, chương trình tiếng Việt.");
   });
 
   it("describes secondary program code similarly", async () => {
@@ -182,14 +199,9 @@ describe("ProgramProfileDialog", () => {
 
     const secondaryInput = screen.getByLabelText(/Ngành học thứ hai/i);
     fireEvent.change(secondaryInput, { target: { value: "K25405A" } });
+    fireEvent.keyDown(secondaryInput, { key: "Enter" });
 
-    await waitFor(() => {
-      expect(
-        screen.getByText(
-          /→ Khóa 2025, chương trình đào tạo ngành Kế toán, chương trình tiếng Việt\./,
-        ),
-      ).toBeInTheDocument();
-    });
+    await waitFor(() => expect(secondaryInput).toHaveValue("Khóa 2025, chương trình đào tạo ngành Kế toán, chương trình tiếng Việt."));
   });
 
   it("renders Master's programme description and badge for C24601", async () => {
@@ -197,13 +209,10 @@ describe("ProgramProfileDialog", () => {
 
     const primaryInput = screen.getByLabelText(/^Ngành chính$/i);
     fireEvent.change(primaryInput, { target: { value: "C24601" } });
+    fireEvent.keyDown(primaryInput, { key: "Enter" });
 
     await waitFor(() => {
-      expect(
-        screen.getByText(
-          /→ Chương trình thạc sĩ ngành Kinh tế chính trị\./,
-        ),
-      ).toBeInTheDocument();
+      expect(primaryInput).toHaveValue("Chương trình thạc sĩ ngành Kinh tế chính trị.");
       expect(screen.getByText("Thạc sĩ")).toBeInTheDocument();
     });
   });
@@ -213,15 +222,12 @@ describe("ProgramProfileDialog", () => {
 
     const primaryInput = screen.getByLabelText(/^Ngành chính$/i);
     fireEvent.change(primaryInput, { target: { value: "N25701-1" } });
+    fireEvent.keyDown(primaryInput, { key: "Enter" });
 
     await waitFor(() => {
-      expect(
-        screen.getByText(
-          /→ Chương trình tiến sĩ ngành mã 701\./,
-        ),
-      ).toBeInTheDocument();
+      expect(primaryInput).toHaveValue("Chương trình tiến sĩ ngành mã 701.");
       expect(screen.getByText("Tiến sĩ")).toBeInTheDocument();
-      expect(screen.getByText(/Chưa có danh sách học phần/)).toBeInTheDocument();
+      expect(screen.queryByText(/Chưa có danh sách học phần/)).not.toBeInTheDocument();
     });
   });
 
@@ -232,7 +238,7 @@ describe("ProgramProfileDialog", () => {
     fireEvent.click(await screen.findByRole("button", { name: /^Accounting · Bachelor's/ }));
     expect(screen.queryByRole("button", { name: /K25405|K26405E$/ })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "English-language Talent Bachelor’s · Cohort 26 · K26405TE" }));
-    expect(screen.getByText(/undergraduate programme in Accounting, English-language Talent Bachelor programme/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Primary Major")).toHaveValue("Cohort 2026, undergraduate programme in Accounting, English-language Talent Bachelor programme.");
   });
 
   it("infers a master's programme and offers available directions without showing cohorts", async () => {
@@ -252,7 +258,7 @@ describe("ProgramProfileDialog", () => {
     render(<ProgramProfileDialog open onClose={() => {}} />);
     fireEvent.change(screen.getByLabelText("Ngành chính"), { target: { value: "tien si luat kinh te" } });
     fireEvent.click(await screen.findByRole("button", { name: /^Luật kinh tế · Tiến sĩ · 9380107/ }));
-    expect(screen.getByText(/Chưa có danh sách học phần/)).toBeInTheDocument();
+    expect(screen.queryByText(/Chưa có danh sách học phần/)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Lưu thông tin" }));
     expect(useSettings.getState().programCode).toBe("9380107");
     expect(useSettings.getState().degree).toBe("tien_si");
@@ -277,7 +283,7 @@ describe("ProgramProfileDialog", () => {
       expect(screen.getByRole("button", { name: `Tiếng Anh · Khóa ${cohort} · K${cohort}404E` })).toBeInTheDocument();
     }
     fireEvent.click(screen.getByRole("button", { name: "Tiếng Anh · Khóa 26 · K26404E" }));
-    expect(input).toHaveValue("K26404E");
+    expect(input).toHaveValue("Khóa 2026, chương trình đào tạo ngành Tài chính - Ngân hàng, chương trình tiếng Anh.");
     fireEvent.click(screen.getByRole("button", { name: "Lưu thông tin" }));
     expect(useSettings.getState().programCode).toBe("K26404E");
   });

@@ -124,8 +124,9 @@ export function LecturerReviewPanel({
         professor: professor.trim() || null,
         display_name: displayName.trim() || null,
         content: content.trim(),
-      });
-      setFormSuccess(res.message);
+      }, me?.user?.id);
+      const queued = "queued" in res;
+      setFormSuccess(queued ? t("lecturerReview.queuedNotice") : res.message);
       setRating(0);
       setDifficulty(0);
       setWorkload(0);
@@ -133,7 +134,7 @@ export function LecturerReviewPanel({
       setSemester("");
       setDisplayName("");
       setContent("");
-      if (res.status === "approved") {
+      if (!queued && res.status === "approved") {
         const r = await api.moduleReviews(moduleCode).catch(() => null);
         if (r) setReviewData(r);
       }

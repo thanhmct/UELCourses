@@ -98,7 +98,7 @@ function CommentReportForm({
 }) {
   const { t } = useT();
   const [reason, setReason] = useState("");
-  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "queued" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
 
   const submit = async (e: React.FormEvent) => {
@@ -111,18 +111,18 @@ function CommentReportForm({
     setStatus("sending");
     setError(null);
     try {
-      await api.reportModuleComment(moduleCode, comment.id, trimmed);
-      setStatus("sent");
+      const result = await api.reportModuleComment(moduleCode, comment.id, trimmed);
+      setStatus("queued" in result ? "queued" : "sent");
     } catch {
       setStatus("error");
       setError(t("comments.reportError"));
     }
   };
 
-  if (status === "sent") {
+  if (status === "sent" || status === "queued") {
     return (
       <div className="mt-2 rounded-md border border-emerald-200 bg-emerald-50 p-2.5 text-[11px] font-medium text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300">
-        {t("comments.reportSuccess")}
+        {t(status === "queued" ? "comments.reportQueued" : "comments.reportSuccess")}
       </div>
     );
   }
@@ -186,6 +186,7 @@ export function ModuleReviews({ moduleCode, semester, onSubmitted }: ModuleRevie
   const [selectedRating, setSelectedRating] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [formSuccess, setFormSuccess] = useState(false);
+  const [formQueued, setFormQueued] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
   const fetchComments = async () => {
@@ -255,12 +256,13 @@ export function ModuleReviews({ moduleCode, semester, onSubmitted }: ModuleRevie
         anon_id: anonId,
         ...(semester ? { semester } : {}),
       });
-
+      const queued = "queued" in res;
       setFormSuccess(true);
+      setFormQueued(queued);
       setBodyText("");
       setSelectedRating(null);
-      onSubmitted?.(res.status === "approved" ? "approved" : "pending");
-      if (res.status === "approved") fetchComments();
+      onSubmitted?.(!queued && res.status === "approved" ? "approved" : "pending");
+      if (!queued && res.status === "approved") fetchComments();
     } catch (err: any) {
       const status = err?.status;
       if (status === 409) {
@@ -283,8 +285,14 @@ export function ModuleReviews({ moduleCode, semester, onSubmitted }: ModuleRevie
     if (likeBusyId !== null) return;
     setLikeBusyId(id);
     try {
-      const res = await api.likeModuleComment(moduleCode, id, getAnonId());
-      setComments((prev) => prev.map((c) => (c.id === id ? { ...c, like_count: res.like_count } : c)));
+      const alreadyLiked = likedIds.has(id);
+      const res = await api.likeModuleComment(moduleCode, id, getAnonId(), alreadyLiked);
+      setComments((prev) => prev.map((c) => (c.id === id ? {
+        ...c,
+        like_count: "queued" in res
+          ? Math.max(0, (c.like_count ?? 0) + (res.liked ? 1 : -1))
+          : res.like_count,
+      } : c)));
       setLikedIds((prev) => {
         const next = new Set(prev);
         if (res.liked) next.add(id);
@@ -376,7 +384,7 @@ export function ModuleReviews({ moduleCode, semester, onSubmitted }: ModuleRevie
 
             {/* Thông báo inline trong form (không toast lớn) */}
             {formSuccess && (
-              <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">{t("comments.successNotice")}</p>
+              <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">{t(formQueued ? "comments.queuedNotice" : "comments.successNotice")}</p>
             )}
             {formError && <p className="text-xs font-semibold text-rose-600 dark:text-rose-400">{formError}</p>}
           </div>

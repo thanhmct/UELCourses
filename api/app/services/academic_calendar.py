@@ -28,6 +28,7 @@ VALID_EVENT_KINDS = {
     "language_cert",
     "graduation_review",
     "ceremony",
+    "special_event",
     "academic_review",
     "second_program",
     "registration",

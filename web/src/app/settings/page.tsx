@@ -481,6 +481,16 @@ export default function SettingsPage() {
           </a>
         )}
       </div>
+      <p
+        data-testid="settings-sticker-credit"
+        className="pt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400"
+      >
+        <span className="block font-semibold text-slate-700 dark:text-slate-300">
+          {t("settings.stickerCreditTitle")}
+        </span>
+        <span className="block">{t("settings.stickerCredit")}</span>
+        <span className="block">{t("settings.studentThanks")}</span>
+      </p>
     </div>
   );
 }

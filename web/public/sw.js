@@ -1,10 +1,11 @@
 // UELPATH Service Worker for PWA Offline Support
-const CACHE_NAME = "uelpath-cache-v3";
+const CACHE_NAME = "uelpath-cache-v4";
 const OFFLINE_URLS = [
   "/",
   "/today",
   "/modules",
   "/timetable",
+  "/timetable/optimize",
   "/planner",
   "/venues",
   "/equivalents",
@@ -14,16 +15,26 @@ const OFFLINE_URLS = [
   "/favicon.ico?v=uelpath-logo-20261126",
   "/icons/icon-192.png?v=uelpath-logo-20261126",
   "/icons/icon-512.png?v=uelpath-logo-20261126",
-  "/icons/icon-maskable-512.png?v=uelpath-logo-20261126"
+  "/icons/icon-maskable-512.png?v=uelpath-logo-20261126",
+  "/stickers/01_mat_truoc.svg",
+  "/stickers/02_mat_sau.svg",
+  "/stickers/03_ket_noi_loa.svg",
+  "/stickers/04_ket_noi_co.svg",
+  "/stickers/05_vuot_troi_may_tinh_bang.svg",
+  "/stickers/06_vuot_troi_laptop.svg",
+  "/stickers/07_nghien_cuu_kinh_lup.svg",
+  "/stickers/08_nghien_cuu_doc_sach.svg",
+  "/stickers/09_tien_phong_cam_co.svg",
+  "/stickers/10_tien_phong_dia_cau.svg"
 ];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(OFFLINE_URLS).catch((err) => {
-        console.warn("PWA pre-cache warning:", err);
-      });
-    })
+    caches.open(CACHE_NAME).then((cache) =>
+      Promise.all(OFFLINE_URLS.map((url) =>
+        cache.add(url).catch((err) => console.warn("PWA pre-cache warning:", url, err)),
+      )),
+    ),
   );
   self.skipWaiting();
 });

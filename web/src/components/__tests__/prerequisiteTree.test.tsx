@@ -20,9 +20,12 @@ describe("PrerequisiteTree", () => {
     }));
     render(<PrerequisiteTree code="BIM5022" programId="K24406" />);
     const loading = screen.getByRole("status");
-    expect(loading).toHaveTextContent("chờ xíu nhe");
+    expect(loading).toHaveTextContent("Chờ chíu đang kết nối...");
     expect(loading).toHaveClass("font-sans", "text-[1.75rem]");
-    expect(within(loading).getByText("🐣")).toHaveClass("text-4xl", "motion-safe:animate-bounce");
+    expect(loading.querySelector("img")).toHaveAttribute(
+      "src",
+      "/stickers/05_vuot_troi_may_tinh_bang.svg",
+    );
     expect(await screen.findByRole("link", { name: "BEFORE" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "AFTER" })).toBeInTheDocument();
     expect(api.moduleTree).toHaveBeenCalledWith("BIM5022", { program_id: "K24406", direction: "prereq", depth: 1 });

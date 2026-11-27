@@ -485,4 +485,62 @@ describe("Brief W28: Tiêu đề thẻ học kỳ trong Kế hoạch (Planner Se
       removeSpy.mockRestore();
     }
   });
+
+  it("marks a term red for a valid score below 4.0, but not at 4.0", () => {
+    render(<PlannerPage />);
+    openTerm("t_sem1");
+
+    expect(screen.queryByText("Đã đạt")).not.toBeInTheDocument();
+    expect(screen.queryByText("Đủ điều kiện")).not.toBeInTheDocument();
+    expect(screen.queryByText("Bị chặn")).not.toBeInTheDocument();
+
+    const chip = document.querySelector<HTMLElement>('[data-term-chip="t_sem1"]')!;
+    expect(within(chip).queryByRole("img")).not.toBeInTheDocument();
+    const scoreInput = screen.getByRole("textbox", { name: "Điểm hệ 10 của TOAN1" });
+    fireEvent.change(scoreInput, { target: { value: "3.9" } });
+    expect(within(chip).getByRole("img", { name: /cần học lại hoặc bị chặn/i })).toBeInTheDocument();
+
+    fireEvent.change(scoreInput, { target: { value: "4.0" } });
+    expect(within(chip).queryByRole("img")).not.toBeInTheDocument();
+  });
+
+  it("marks a term red when a course has an unmet prerequisite", () => {
+    usePlanner.setState((state) => ({
+      catalog: {
+        ...state.catalog,
+        PLDC: { ...state.catalog.PLDC, prerequisites: ["PREREQ"] },
+      },
+    }));
+    render(<PlannerPage />);
+
+    const chip = document.querySelector<HTMLElement>('[data-term-chip="t_sem2"]')!;
+    expect(within(chip).getByRole("img", { name: /cần học lại hoặc bị chặn/i })).toBeInTheDocument();
+  });
+
+  it("shows a red failed status for a completed course below 4.0 and restores the default status when cleared", () => {
+    act(() => {
+      usePlanner.setState({ completed: ["TOAN1"] });
+      localStorage.setItem("uelcourses-user-scores", JSON.stringify({ TOAN1: 2.9 }));
+    });
+    render(<PlannerPage />);
+    openTerm("t_sem1");
+
+    const courseCard = within(document.querySelector('[data-planner-module="TOAN1"]')!);
+    const failedCheckbox = courseCard.getByRole("checkbox", { name: "Rớt môn" });
+    expect(failedCheckbox).toBeChecked();
+    expect(failedCheckbox.closest("label")).toHaveClass("text-red-700");
+
+    fireEvent.click(failedCheckbox);
+    expect(courseCard.getByRole("checkbox", { name: "Hoàn thành" })).not.toBeChecked();
+
+    fireEvent.click(courseCard.getByRole("checkbox", { name: "Hoàn thành" }));
+    expect(courseCard.getByRole("checkbox", { name: "Rớt môn" })).toBeChecked();
+
+    const scoreInput = screen.getByRole("textbox", { name: "Điểm hệ 10 của TOAN1" });
+    fireEvent.change(scoreInput, { target: { value: "" } });
+    fireEvent.blur(scoreInput);
+    const completedCheckbox = courseCard.getByRole("checkbox", { name: "Hoàn thành" });
+    expect(completedCheckbox).toBeChecked();
+    expect(completedCheckbox.closest("label")).not.toHaveClass("text-red-700");
+  });
 });

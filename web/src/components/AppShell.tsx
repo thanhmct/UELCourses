@@ -47,6 +47,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const isToday = pathname === "/today";
   // Kế hoạch ngắn khi các kỳ đang ẩn: để chân trang bám sát nội dung thay vì dồn xuống đáy màn hình.
   const isPlanner = pathname === "/planner";
+  const isOfflineFirstPage = isToday || pathname === "/timetable" || pathname === "/timetable/optimize" || isPlanner;
   // Phòng học: bỏ khoảng trắng dưới nội dung trên máy tính (không còn thanh điều hướng đáy).
   const isVenues = pathname === "/venues";
   // Thời khóa biểu: lưới đã tự co theo nội dung, không cần kéo chân trang xuống đáy màn hình.
@@ -70,7 +71,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* flex-1 + flex-col keeps the footer at the bottom of the screen on short pages */}
       <div className={`flex ${isPlanner || isVenues || isTimetable ? "flex-none" : "flex-1"} flex-col desk:pl-[13.25rem] ${isToday ? "desk:grid desk:h-[calc(100dvh-4.125rem)] desk:flex-none desk:grid-rows-[minmax(0,1fr)_auto]" : ""}`}>
         <main className={`mx-auto w-full max-w-[87.5rem] ${isPlanner || isTimetable ? "flex-none pb-4" : isVenues ? "flex-none pb-24 desk:pb-4" : "flex-1 pb-24"} px-3 py-4 md:px-5${isToday ? " desk:flex desk:min-h-0 desk:flex-col desk:pb-4" : ""}`}>
-          {!isSettings && <ConnectionNotice />}
+          {!isSettings && !isOfflineFirstPage && <ConnectionNotice />}
           <HolidayAppearanceProvider showViewportEffects={!isSettings}>{children}</HolidayAppearanceProvider>
         </main>
         <AppFooter />

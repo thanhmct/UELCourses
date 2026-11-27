@@ -201,7 +201,7 @@ export function ProgramProfileDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="flex max-h-[calc(100dvh-2rem)] w-full max-w-[640px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900"
+        className="flex max-h-[calc(100dvh-2rem)] w-full max-w-[640px] flex-col overflow-visible rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900"
         onKeyDown={(event) => {
           if (event.key !== "Tab") return;
           const controls = event.currentTarget.querySelectorAll<HTMLElement>("button:not(:disabled), input:not(:disabled)");
@@ -235,7 +235,7 @@ export function ProgramProfileDialog({
           </button>
         </div>
 
-        <div className="min-h-0 space-y-4 overflow-y-auto overscroll-contain px-4 pt-1 pb-4 sm:px-6">
+        <div className="space-y-4 px-4 pt-1 pb-4 sm:px-6">
           <ExchangeStudentToggle id="profile-exchange-student" variant="button" />
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
@@ -261,24 +261,16 @@ export function ProgramProfileDialog({
               lookup={lookup}
               loading={loading}
               value={primary}
+              description={primaryParsed ? describeProgramCodeFull(primaryParsed, primaryInfo.name, lang) : undefined}
               onChange={(value) => {
                 setPrimary(value);
                 setPrimaryError("");
               }}
-              onSave={handleSave}
             />
             {primaryError ? (
               <p role="alert" className="text-sm text-red-600 dark:text-red-400">{primaryError}</p>
             ) : !primaryGroupValidation.valid && primaryGroupValidation.error ? (
               <p className="text-xs text-red-600 dark:text-red-400">{primaryGroupValidation.error}</p>
-            ) : primaryParsed ? (
-              <div className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700 dark:bg-slate-800/60 dark:text-slate-300">
-                <p>{`→ ${describeProgramCodeFull(primaryParsed, primaryInfo.name, lang)}`}</p>
-                {(primaryParsed.degree !== "dai_hoc" || hasVerifiedUndergraduateTrack(primaryParsed.contextualProgramId)) && !loading
-                  && !lookup.hasCurriculum(primaryParsed.contextualProgramId) && (
-                    <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">{t("profile.lookupByModuleHelp")}</p>
-                  )}
-              </div>
             ) : null}
           </div>
 
@@ -313,23 +305,21 @@ export function ProgramProfileDialog({
               lookup={lookup}
               loading={loading}
               value={secondary}
+              description={secondaryParsed ? describeProgramCodeFull(secondaryParsed, secondaryInfo.name, lang) : undefined}
               onChange={(value) => {
                 setSecondary(value);
                 setSecondaryError("");
               }}
-              onSave={handleSave}
             />
             {secondaryError ? (
               <p className="text-xs text-red-600 dark:text-red-400">{secondaryError}</p>
             ) : !secondaryGroupValidation.valid && secondaryGroupValidation.error ? (
               <p className="text-xs text-red-600 dark:text-red-400">{secondaryGroupValidation.error}</p>
-            ) : (
+            ) : !secondaryParsed ? (
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                {secondaryParsed
-                  ? `→ ${describeProgramCodeFull(secondaryParsed, secondaryInfo.name, lang)}`
-                  : t("profile.secondaryHelp")}
+                {t("profile.secondaryHelp")}
               </p>
-            )}
+            ) : null}
           </div>
         </div>
 

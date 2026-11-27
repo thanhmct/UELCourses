@@ -127,7 +127,7 @@ describe("describeProgramCodeFull (Brief W5 requirements)", () => {
     const parsed = parseProgramCode("K25405H")!;
     const desc = describeProgramCodeFull(parsed, "Kế toán", "vi");
     expect(desc).toBe(
-      "Khóa 2025, chương trình đào tạo ngành Kế toán, Coop Khóa 25.",
+      "Khóa 2025, ngành Kế toán, chương trình Hợp tác doanh nghiệp.",
     );
   });
 
@@ -140,7 +140,7 @@ describe("describeProgramCodeFull (Brief W5 requirements)", () => {
       "Chương trình đào tạo Coop Kế toán",
     );
     expect(desc).toBe(
-      "Khóa 2025, chương trình đào tạo ngành Kế toán, Coop Khóa 25.",
+      "Khóa 2025, ngành Kế toán, chương trình Hợp tác doanh nghiệp.",
     );
   });
 
@@ -148,7 +148,7 @@ describe("describeProgramCodeFull (Brief W5 requirements)", () => {
     const parsed = parseProgramCode("K25405H")!;
     const desc = describeProgramCodeFull(parsed, "Kế toán Coop", "vi");
     expect(desc).toBe(
-      "Khóa 2025, chương trình đào tạo ngành Kế toán Coop, Coop Khóa 25.",
+      "Khóa 2025, ngành Kế toán, chương trình Hợp tác doanh nghiệp.",
     );
   });
 
@@ -205,7 +205,7 @@ describe("describeProgramCodeFull (Brief W5 requirements)", () => {
       const parsed = parseProgramCode("K25405H")!;
       const desc = describeProgramCodeFull(parsed, "Accounting", "en");
       expect(desc).toBe(
-        "Cohort 2025, undergraduate programme in Accounting, Co-op Cohort 25.",
+        "Cohort 2025, Accounting major, Corporate Partnership programme.",
       );
     });
 
@@ -218,7 +218,7 @@ describe("describeProgramCodeFull (Brief W5 requirements)", () => {
         "Enterprise Accounting Co-op",
       );
       expect(desc).toBe(
-        "Cohort 2025, undergraduate programme in Accounting, Co-op Cohort 25.",
+        "Cohort 2025, Accounting major, Corporate Partnership programme.",
       );
     });
 

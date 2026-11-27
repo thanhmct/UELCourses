@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from datetime import date, datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.models import AcademicEvent
-from app.schemas import AcademicEventOut, CalendarPhaseOut
+from app.models import AcademicEvent, CalendarSticker
+from app.schemas import AcademicEventOut, CalendarPhaseOut, FreeDayDisplayOut
 from app.services.academic_calendar import _matches_cohort, phase_for
 
 VN_TZ = timezone(timedelta(hours=7))
@@ -49,6 +49,59 @@ def get_calendar_events(
         events = [e for e in events if _matches_cohort(e.cohorts, cohort)]
 
     return [AcademicEventOut.model_validate(e) for e in events]
+
+
+@router.get(
+    "/calendar/free-day-display",
+    response_model=FreeDayDisplayOut,
+    summary="Sticker và lời chúc cho khoảng ngày không có lịch",
+)
+def get_free_day_display(
+    from_date: date = Query(..., alias="from", description="Ngày bắt đầu (YYYY-MM-DD)"),
+    to_date: date = Query(..., alias="to", description="Ngày kết thúc (YYYY-MM-DD)"),
+    cohort: str | None = Query(None, description="Khóa sinh viên, vd K24, K26"),
+    db: Session = Depends(get_db),
+):
+    if from_date > to_date:
+        raise HTTPException(status_code=422, detail="'from' must be on or before 'to'")
+
+    stmt = (
+        select(AcademicEvent)
+        .where(
+            AcademicEvent.verified.is_(True),
+            AcademicEvent.start_date <= to_date,
+            func.coalesce(AcademicEvent.end_date, AcademicEvent.start_date) >= from_date,
+        )
+        .order_by(AcademicEvent.start_date.asc(), AcademicEvent.id.asc())
+    )
+    matching = [
+        event
+        for event in db.scalars(stmt)
+        if (
+            _matches_cohort(event.cohorts, cohort)
+            if cohort
+            else not event.cohorts or "all" in event.cohorts
+        )
+    ]
+
+    event_types = {
+        "special_event": [e for e in matching if e.kind in {"special_event", "ceremony"}],
+        "holiday": [e for e in matching if e.kind in {"holiday", "break"}],
+        "exam_week": [e for e in matching if e.kind in {"midterm_exam", "final_exam"}],
+    }
+    selected_type = next((kind for kind, events in event_types.items() if events), "default_free")
+    sticker = db.get(CalendarSticker, selected_type)
+    if sticker is None:
+        raise HTTPException(status_code=503, detail=f"Missing calendar sticker configuration: {selected_type}")
+
+    event = event_types.get(selected_type, [])
+    return FreeDayDisplayOut(
+        event_type=sticker.event_type,
+        sticker_path=sticker.sticker_path,
+        message=sticker.message,
+        message_en=sticker.message_en,
+        event_title=event[0].title if event else None,
+    )
 
 
 @router.get("/calendar/today", response_model=CalendarPhaseOut, summary="Giai đoạn đào tạo hôm nay hoặc ngày chỉ định")

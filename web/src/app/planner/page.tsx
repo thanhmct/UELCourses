@@ -31,7 +31,7 @@ import {
 import { creditLoad, totalCredits } from "@/lib/credits";
 import { cohortStartYear, latestEnrollmentCohort } from "@/lib/semesters";
 import { plannerTermColorVariables } from "@/lib/appearance";
-import { calculateGpa, isExcludedFromGpa } from "@/lib/gpa";
+import { calculateGpa, isExcludedFromGpa, parseScore10Input, scoreToLetter } from "@/lib/gpa";
 import { api } from "@/lib/api";
 import { Loading, PageHeader, RequiredBadge } from "@/components/ui";
 import { ModuleSearch } from "@/components/ModuleSearch";
@@ -171,6 +171,8 @@ function ModuleCard({ code, warn, score, onScoreChange, completedOnly = false }:
   const p = usePlanner();
   const m = p.catalog[code];
   const done = p.completed.includes(code);
+  const scoreValue = parseScore10Input(score);
+  const failed = done && scoreValue !== null && scoreValue < 4;
   const isBlocked = !!(warn && warn.length > 0);
 
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: code });
@@ -215,19 +217,6 @@ function ModuleCard({ code, warn, score, onScoreChange, completedOnly = false }:
               · {creditsLine({ credits: m?.credits, finalAssessment: (m as { final_assessment?: string } | undefined)?.final_assessment || getCachedFinalAssessmentKind(code) }, lang)}
             </span>
             <RequiredBadge required={(m as { required?: boolean } | undefined)?.required} lang={lang} />
-            {done ? (
-              <span className="rounded bg-emerald-100 px-1.5 text-[10px] font-semibold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                {t("pl.doneBadge")}
-              </span>
-            ) : isBlocked ? (
-              <span className="rounded bg-red-100 px-1.5 text-[10px] font-semibold text-red-800 dark:bg-red-950 dark:text-red-300">
-                {t("pl.blockedBadge")}
-              </span>
-            ) : (
-              <span className="rounded bg-blue-50 px-1.5 text-[10px] font-semibold text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">
-                {t("pl.eligible")}
-              </span>
-            )}
           </div>
 
           <div className="mt-0.5 break-words text-xs text-slate-600 dark:text-slate-300">{m ? moduleName(m, lang) : ""}</div>
@@ -235,9 +224,11 @@ function ModuleCard({ code, warn, score, onScoreChange, completedOnly = false }:
       </div>
 
       {!completedOnly && <div className="mt-2 flex flex-wrap items-center gap-2 pl-6 text-xs">
-        <label className="flex cursor-pointer items-center gap-1 font-medium text-slate-700 dark:text-slate-300">
+        <label className={`flex cursor-pointer items-center gap-1 font-medium ${
+          failed ? "text-red-700 dark:text-red-300" : "text-slate-700 dark:text-slate-300"
+        }`}>
           <input type="checkbox" checked={done} onChange={() => p.toggleCompleted(code)} className="accent-brand-600" />
-          {t("pl.completedCheck")}
+          {t(failed ? "pl.failedCheck" : "pl.completedCheck")}
         </label>
         {repl.length > 0 && (
           <button className="text-violet-700 hover:underline dark:text-violet-300" onClick={() => setShowRepl((v) => !v)}>
@@ -527,7 +518,16 @@ export default function PlannerPage() {
   const destination = target === COMPLETED_WITHOUT_TERM ? target : targetTerm ? targetTerm.id : "backlog";
   const warnings = useMemo(() => prerequisiteWarnings({ ...p, terms: sortedTerms }), [p, sortedTerms]);
   const warnMap = useMemo(() => Object.fromEntries(warnings.map((w) => [w.code, w.missing])), [warnings]);
-  const blockedTermIds = useMemo(() => new Set(warnings.map((w) => w.termId)), [warnings]);
+  const blockedTermIds = useMemo(() => {
+    const ids = new Set(warnings.map((w) => w.termId));
+    for (const term of sortedTerms) {
+      if (term.modules.some((code) => {
+        const score = scores[code];
+        return score !== undefined && score < 4 && scoreToLetter(score) !== null;
+      })) ids.add(term.id);
+    }
+    return ids;
+  }, [scores, sortedTerms, warnings]);
 
   useEffect(() => {
     if (previewing) {
@@ -683,23 +683,6 @@ export default function PlannerPage() {
               </div>
             </div>
           } />
-
-        {allCodes.length > 0 && (
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600 dark:text-slate-400">
-            <span className="flex items-center gap-1.5" title={t("pl.legendDone")}>
-              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-              {t("pl.legendDoneShort")}
-            </span>
-            <span className="flex items-center gap-1.5" title={t("pl.legendOk")}>
-              <span className="h-2.5 w-2.5 rounded-full bg-blue-500" />
-              {t("pl.legendOkShort")}
-            </span>
-            <span className="flex items-center gap-1.5" title={t("pl.legendBlocked")}>
-              <span className="h-2.5 w-2.5 rounded-full bg-red-500" />
-              {t("pl.legendBlockedShort")}
-            </span>
-          </div>
-        )}
 
         <TrashZone />
         <div className="flex flex-col gap-3">

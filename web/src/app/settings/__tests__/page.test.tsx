@@ -50,6 +50,18 @@ describe("SettingsPage — Mức độ hài lòng card", () => {
   it("luôn hiển thị mục Mức độ hài lòng (kể cả khi already_rated=true) và cho phép gửi đánh giá", async () => {
     render(<SettingsPage />);
 
+    const credit = screen.getByTestId("settings-sticker-credit");
+    expect(credit.tagName).toBe("P");
+    expect(within(credit).getByText("Lời cảm ơn")).toBeInTheDocument();
+    expect(
+      within(credit).getByText(
+        "Bộ nhãn dán độc quyền từ nhà tài trợ thiết kế, chị Đào Hồ Trúc Giang khóa 22 khoa Tài chính - Ngân hàng!",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(credit).getByText("Các bạn sinh viên UEL đã đồng hành cùng người phát triển ứng dụng"),
+    ).toBeInTheDocument();
+
     const heading = screen.getByRole("heading", { name: "Mức độ hài lòng" });
     expect(heading).toBeInTheDocument();
 

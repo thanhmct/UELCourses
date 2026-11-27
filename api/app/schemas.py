@@ -565,6 +565,14 @@ class AcademicEventOut(ORM):
     updated_at: datetime | None = None
 
 
+class FreeDayDisplayOut(ORM):
+    event_type: str
+    sticker_path: str
+    message: str
+    message_en: str | None = None
+    event_title: str | None = None
+
+
 class AcademicEventIn(BaseModel):
     academic_year: str = Field(min_length=4, max_length=16)
     kind: str = Field(min_length=1, max_length=32)

@@ -52,6 +52,7 @@ const EVENT_KIND_LABELS: Record<string, { labelKey: string; colorClass: string }
   registration: { labelKey: "admin.kindRegistration", colorClass: "bg-yellow-100 text-yellow-800 dark:bg-yellow-950/60 dark:text-yellow-300" },
   registration_adjust: { labelKey: "admin.kindRegistrationAdjust", colorClass: "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300" },
   other: { labelKey: "admin.kindOther", colorClass: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300" },
+  special_event: { labelKey: "admin.kindSpecialEvent", colorClass: "bg-fuchsia-100 text-fuchsia-800 dark:bg-fuchsia-950/60 dark:text-fuchsia-300" },
 };
 
 export default function AdminCalendarPage() {

@@ -9,14 +9,12 @@ describe("ConnectionNotice", () => {
     useDataSource.setState({ offline: false, mock: false });
   });
 
-  it("hiển thị gà con nở trứng nhún cạnh thông báo mất kết nối", () => {
+  it("hiển thị sticker máy tính bảng và câu kết nối có dấu chấm nhảy", () => {
     useDataSource.setState({ offline: true, mock: false });
     render(<ConnectionNotice />);
 
     const notice = screen.getByRole("status");
-    expect(notice).toHaveTextContent("🐣");
-    expect(notice).toHaveTextContent("Chờ tí UELer, tui quay lại giờ!!!");
-    expect(screen.getByText("🐣")).toHaveAttribute("aria-hidden", "true");
-    expect(screen.getByText("🐣")).toHaveClass("animate-bounce", "motion-reduce:animate-none");
+    expect(notice).toHaveTextContent("Chờ chíu đang kết nối...");
+    expect(notice.querySelector("img")?.getAttribute("src")).toContain("/stickers/05_vuot_troi_may_tinh_bang.svg");
   });
 });

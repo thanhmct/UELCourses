@@ -706,7 +706,7 @@ export function TimetableWorkspace(props: TimetableWorkspaceProps) {
   const optimizerEntries = entries.filter((entry) => !entry.hidden);
   const optimizerFailures = optimizerEntries.map(({ code }) => classFailures[code]);
   const optimizerLoadError = optimizerFailures.includes("offline")
-    ? t("api.connectionError")
+    ? t("tt.optimize.loadError")
     : optimizerFailures.includes("other") ? t("tt.optimize.loadError") : null;
 
   function saveOptimizedDraft(classes: Record<string, string>, asynchronous: string[]) {
@@ -1231,7 +1231,7 @@ export function TimetableWorkspace(props: TimetableWorkspaceProps) {
                     </div>
                     {classFailures[e.code] && list === undefined ? (
                       <p className="text-xs text-rose-700 dark:text-rose-300">
-                        {t(classFailures[e.code] === "offline" ? "api.connectionError" : "tt.optimize.loadError")}
+                        {t("tt.optimize.loadError")}
                       </p>
                     ) : list === undefined ? (
                       <Loading compact />

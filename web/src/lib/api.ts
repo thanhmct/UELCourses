@@ -21,6 +21,7 @@ import type {
   CompareResponse,
   EquivalentItem,
   FeedbackPayload,
+  FreeDayDisplay,
   ModuleDetail,
   ModuleAskResponse,
   ModuleSummary,
@@ -47,6 +48,7 @@ import { matches } from "./text";
 import { venuesFromSections, filterVenues } from "./venues";
 import { parseSchedules } from "./schedule";
 import { connectionErrorMessage, isConnectionError, useDataSource } from "./dataSource";
+import { enqueueRequest } from "./offlineQueue";
 import type { AcademicHoliday } from "./holidays";
 import type { ChatContext } from "./chatContext";
 
@@ -114,6 +116,63 @@ const TIMEOUT_MS = 4000;
 const ASK_TIMEOUT_MS = 65_000;
 const RETRY_AFTER_MS = 30_000;
 let downSince = 0;
+const API_CACHE_PREFIX = "uelcourses-api-cache-v1:";
+const API_CACHE_INDEX_KEY = `${API_CACHE_PREFIX}index`;
+const API_CACHE_MAX_CHARS = 1_400_000;
+const API_CACHE_MAX_ENTRIES = 24;
+
+function cachedGetKey(url: string) {
+  return `${API_CACHE_PREFIX}${encodeURIComponent(url)}`;
+}
+
+function readCacheIndex(): { url: string; size: number }[] {
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem(API_CACHE_INDEX_KEY) ?? "[]");
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((entry): entry is { url: string; size: number } =>
+      entry && typeof entry.url === "string" && typeof entry.size === "number",
+    );
+  } catch {
+    return [];
+  }
+}
+
+function readCachedGet<T>(url: string): { found: boolean; data?: T } {
+  if (typeof window === "undefined") return { found: false };
+  try {
+    const stored = localStorage.getItem(cachedGetKey(url));
+    if (stored === null) return { found: false };
+    return { found: true, data: JSON.parse(stored) as T };
+  } catch (error) {
+    console.warn("Could not read cached API response", error);
+    return { found: false };
+  }
+}
+
+function writeCachedGet(url: string, data: unknown) {
+  if (typeof window === "undefined") return;
+  const key = cachedGetKey(url);
+  const serialized = JSON.stringify(data);
+  if (serialized.length > API_CACHE_MAX_CHARS) return;
+  try {
+    const entries = readCacheIndex().filter((entry) => entry.url !== url);
+    let totalChars = entries.reduce((sum, entry) => sum + entry.size, serialized.length);
+    while (
+      entries.length >= API_CACHE_MAX_ENTRIES ||
+      totalChars > API_CACHE_MAX_CHARS
+    ) {
+      const oldest = entries.shift();
+      if (!oldest) break;
+      totalChars -= oldest.size;
+      localStorage.removeItem(cachedGetKey(oldest.url));
+    }
+    localStorage.setItem(key, serialized);
+    entries.push({ url, size: serialized.length });
+    localStorage.setItem(API_CACHE_INDEX_KEY, JSON.stringify(entries));
+  } catch (error) {
+    console.warn("Could not cache API response for offline use", error);
+  }
+}
 
 export class ApiError extends Error {
   constructor(
@@ -136,6 +195,10 @@ export class AuthApiError extends ApiError {
 }
 
 async function authFetch<T>(path: string, init?: RequestInit, timeoutMs = TIMEOUT_MS): Promise<T> {
+  if (typeof window !== "undefined" && !navigator.onLine) {
+    markOffline(true);
+    throw new AuthApiError(0, connectionErrorMessage());
+  }
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
@@ -193,19 +256,35 @@ function markOffline(offline: boolean) {
 async function raw<T>(path: string, init?: RequestInit, timeoutMs = TIMEOUT_MS): Promise<T> {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  const url = `${API_URL}${path}`;
+  const cacheable = (init?.method ?? "GET").toUpperCase() === "GET";
+  if (typeof window !== "undefined" && !navigator.onLine) {
+    clearTimeout(timer);
+    markOffline(true);
+    if (cacheable) {
+      const cached = readCachedGet<T>(url);
+      if (cached.found) return cached.data as T;
+    }
+    throw new ApiError(0, connectionErrorMessage());
+  }
   try {
-    const res = await fetch(`${API_URL}${path}`, {
+    const res = await fetch(url, {
       ...init,
       signal: ctrl.signal,
       headers: { Accept: "application/json", ...(init?.body && typeof init.body === "string" ? { "Content-Type": "application/json" } : {}), ...init?.headers },
     });
     if (!res.ok) throw new ApiError(res.status, `HTTP ${res.status}`);
     const data = (res.status === 204 ? undefined : await res.json()) as T;
+    if (cacheable) writeCachedGet(url, data);
     markOffline(false);
     return data;
   } catch (error) {
     if (mocksEnabled() || (error instanceof ApiError && !isConnectionError(error))) throw error;
     markOffline(true);
+    if (cacheable && (!(error instanceof ApiError) || isConnectionError(error))) {
+      const cached = readCachedGet<T>(url);
+      if (cached.found) return cached.data as T;
+    }
     throw new ApiError(error instanceof ApiError ? error.status : 0, connectionErrorMessage());
   } finally {
     clearTimeout(timer);
@@ -369,6 +448,11 @@ function matchesModuleQuery(module: ModuleSummary, query: string | undefined): b
 }
 
 export const api = {
+  async freeDayDisplay(from: string, to: string, cohort?: string): Promise<ApiResult<FreeDayDisplay>> {
+    const query = new URLSearchParams({ from, to });
+    if (cohort) query.set("cohort", cohort);
+    return { data: await raw<FreeDayDisplay>(`/api/calendar/free-day-display?${query}`), mock: false };
+  },
   async academicHolidays(academicYear: string, cohort?: string): Promise<ApiResult<AcademicHoliday[]>> {
     const query = new URLSearchParams({ academic_year: academicYear, kind: "holiday" });
     if (cohort) query.set("cohort", cohort);
@@ -642,16 +726,12 @@ export const api = {
       });
       return { data: { ok: true }, mock: false };
     } catch (e) {
-      if (e instanceof ApiError && e.status === 422) throw e;
-      // Keep locally so nothing is lost; can be re-sent later.
-      try {
-        const key = "uelcourses-feedback-queue";
-        const q = JSON.parse(localStorage.getItem(key) ?? "[]");
-        q.push({ ...payload, queued_at: new Date().toISOString() });
-        localStorage.setItem(key, JSON.stringify(q));
-      } catch {
-        /* ignore */
-      }
+      if (e instanceof ApiError && !isConnectionError(e)) throw e;
+      enqueueRequest(`${API_URL}/api/feedback`, {
+        method: "POST",
+        body: JSON.stringify(payload),
+        credentials: payload.quick_rating ? "include" : "same-origin",
+      });
       return { data: { ok: true }, mock: true };
     }
   },
@@ -702,8 +782,16 @@ export const api = {
       body: JSON.stringify({ question, cohort, language }),
     }, ASK_TIMEOUT_MS),
 
-  rateAnswer: (scope: AskScope, answer_id: string, helpful: boolean) =>
-    raw<void>("/api/ask/feedback", { method: "POST", body: JSON.stringify({ scope, answer_id, helpful }) }),
+  rateAnswer: async (scope: AskScope, answer_id: string, helpful: boolean) => {
+    const path = "/api/ask/feedback";
+    const request = { method: "POST", body: JSON.stringify({ scope, answer_id, helpful }) };
+    try {
+      await raw<void>(path, request);
+    } catch (error) {
+      if (error instanceof ApiError && !isConnectionError(error)) throw error;
+      enqueueRequest(`${API_URL}${path}`, request);
+    }
+  },
 
   compare: (topic: string, cohorts: string[]) =>
     withFallback<CompareResponse>("/api/regulations/compare", async () =>
@@ -848,33 +936,59 @@ export const api = {
       }
     ),
 
-  postModuleComment: (
+  postModuleComment: async (
     code: string,
     payload: { body: string; rating?: number; anon_id?: string; semester?: string }
-  ) =>
-    raw<ModuleComment>(`/api/modules/${encodeURIComponent(code)}/comments`, {
+  ) => {
+    const path = `/api/modules/${encodeURIComponent(code)}/comments`;
+    const request: RequestInit = {
       method: "POST",
-      // Gửi cookie đăng nhập (nếu có) để bình luận hiện biệt danh của tài khoản.
       credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
-    }),
+    };
+    try {
+      return await raw<ModuleComment>(path, request);
+    } catch (error) {
+      if (error instanceof ApiError && !isConnectionError(error)) throw error;
+      enqueueRequest(`${API_URL}${path}`, request);
+      return { queued: true as const };
+    }
+  },
 
   /** Thích / bỏ thích một bình luận (không cần đăng nhập, chống thích trùng bằng anon_id). */
-  likeModuleComment: (code: string, commentId: number, anonId: string) =>
-    raw<CommentLikeResponse>(`/api/modules/${encodeURIComponent(code)}/comments/${commentId}/like`, {
+  likeModuleComment: async (code: string, commentId: number, anonId: string, currentlyLiked: boolean) => {
+    const path = `/api/modules/${encodeURIComponent(code)}/comments/${commentId}/like`;
+    const request = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ anon_id: anonId }),
-    }),
+    };
+    try {
+      return await raw<CommentLikeResponse>(path, request);
+    } catch (error) {
+      if (error instanceof ApiError && !isConnectionError(error)) throw error;
+      enqueueRequest(`${API_URL}${path}`, request);
+      return { liked: !currentlyLiked, queued: true as const };
+    }
+  },
 
   /** Báo cáo một bình luận vi phạm — không cần đăng nhập, chỉ cần nêu lý do. */
-  reportModuleComment: (code: string, commentId: number, reason: string) =>
-    raw<CommentReportResponse>(`/api/modules/${encodeURIComponent(code)}/comments/${commentId}/report`, {
+  reportModuleComment: async (code: string, commentId: number, reason: string) => {
+    const path = `/api/modules/${encodeURIComponent(code)}/comments/${commentId}/report`;
+    const request = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ reason }),
-    }),
+    };
+    try {
+      return await raw<CommentReportResponse>(path, request);
+    } catch (error) {
+      if (error instanceof ApiError && !isConnectionError(error)) throw error;
+      enqueueRequest(`${API_URL}${path}`, request);
+      return { ok: true, queued: true as const };
+    }
+  },
 
   authProviders: () => authFetch<AuthProvidersResponse>("/api/auth/providers"),
 
@@ -894,9 +1008,15 @@ export const api = {
   moduleReviews: (code: string, page = 1, size = 20) =>
     authFetch<LecturerReviewList>(`/api/modules/${encodeURIComponent(code)}/reviews${qs({ page, size })}`),
 
-  postModuleReview: (code: string, payload: PostLecturerReviewPayload) =>
-    authFetch<{ id: number; status: string; message: string }>(`/api/modules/${encodeURIComponent(code)}/reviews`, {
-      method: "POST",
-      body: JSON.stringify(payload),
-    }),
+  postModuleReview: async (code: string, payload: PostLecturerReviewPayload, expectedUserId?: number) => {
+    const path = `/api/modules/${encodeURIComponent(code)}/reviews`;
+    const request = { method: "POST", body: JSON.stringify(payload) };
+    try {
+      return await authFetch<{ id: number; status: string; message: string }>(path, request);
+    } catch (error) {
+      if (!(error instanceof ApiError) || !isConnectionError(error)) throw error;
+      enqueueRequest(`${API_URL}${path}`, { ...request, credentials: "include" }, expectedUserId);
+      return { queued: true as const };
+    }
+  },
 };

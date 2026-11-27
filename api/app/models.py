@@ -814,6 +814,37 @@ class AcademicEvent(Base):
     updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+class CalendarSticker(Base):
+    """Sticker and message shown for a free-day calendar event type."""
+
+    __tablename__ = "calendar_stickers"
+    __table_args__ = (
+        CheckConstraint(
+            "event_type IN ('special_event', 'holiday', 'exam_week', 'default_free')",
+            name="ck_calendar_stickers_event_type",
+        ),
+    )
+
+    event_type: Mapped[str] = mapped_column(String(24), primary_key=True)
+    sticker_path: Mapped[str] = mapped_column(String(512))
+    message: Mapped[str] = mapped_column(Text)
+    message_en: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class StickerAsset(Base):
+    """A sticker file distributed by the web app and registered in the database."""
+
+    __tablename__ = "stickers"
+    __table_args__ = (
+        UniqueConstraint("file_name", name="uq_stickers_file_name"),
+        UniqueConstraint("sticker_path", name="uq_stickers_sticker_path"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    file_name: Mapped[str] = mapped_column(String(128))
+    sticker_path: Mapped[str] = mapped_column(String(512))
+
+
 # =============================================================================
 # Nhật ký thao tác quản trị (audit_log) và Cài đặt quản trị (admin_settings)
 # =============================================================================

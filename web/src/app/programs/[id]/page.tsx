@@ -97,7 +97,7 @@ export default function ProgramDetailPage() {
   }, [selectedCode, graph, byCode, lang]);
 
   if (!mounted || progReq.loading) return <Loading page />;
-  if (progReq.offline) return <ErrorBox>{t("api.connectionError")}</ErrorBox>;
+  if (progReq.offline) return <ErrorBox severity="critical">{t("api.connectionError")}</ErrorBox>;
   if (!p) {
     return (
       <Empty>

@@ -615,6 +615,7 @@ export const LOCAL_KEYS = [
   "uelcourses-timetable",
   "uelcourses-planner",
   "uelcourses-feedback-queue",
+  "uelcourses-offline-queue-v1",
   "uelcourses-reg-workspace",
   "uelcourses-reg-notes",
 ];

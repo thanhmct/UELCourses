@@ -194,3 +194,67 @@ def test_calendar_api(client, db):
     assert resp_tet.status_code == 200
     data_tet = resp_tet.json()
     assert data_tet["phase"] == "holiday"
+
+
+def test_free_day_display_prioritizes_special_holiday_exam_and_filters_cohort(client, db):
+    db.add_all(
+        [
+            AcademicEvent(
+                academic_year="2026-2027",
+                kind=kind,
+                title=kind,
+                start_date=date(2027, 1, 15),
+                end_date=date(2027, 1, 16) if kind == "special_event" else date(2027, 1, 21),
+                cohorts=["K24"],
+                verified=True,
+                source="test",
+            )
+            for kind in ("midterm_exam", "holiday", "special_event")
+        ]
+    )
+    db.add(
+        AcademicEvent(
+            academic_year="2026-2027",
+            kind="final_exam",
+            title="Thi cuối kỳ",
+            start_date=date(2027, 1, 22),
+            end_date=date(2027, 1, 28),
+            cohorts=["K24"],
+            verified=True,
+            source="test",
+        )
+    )
+    db.commit()
+
+    params = {"from": "2027-01-15", "to": "2027-01-21", "cohort": "K24"}
+    special = client.get("/api/calendar/free-day-display", params=params)
+    assert special.status_code == 200
+    assert special.json()["event_type"] == "special_event"
+
+    holiday = client.get(
+        "/api/calendar/free-day-display",
+        params={**params, "from": "2027-01-17"},
+    )
+    assert holiday.status_code == 200
+    assert holiday.json()["event_type"] == "holiday"
+
+    exam = client.get(
+        "/api/calendar/free-day-display",
+        params={"from": "2027-01-22", "to": "2027-01-28", "cohort": "K24"},
+    )
+    assert exam.status_code == 200
+    assert exam.json()["event_type"] == "exam_week"
+
+    other_cohort = client.get(
+        "/api/calendar/free-day-display",
+        params={**params, "cohort": "K25"},
+    )
+    assert other_cohort.status_code == 200
+    assert other_cohort.json()["event_type"] == "default_free"
+
+    default = client.get(
+        "/api/calendar/free-day-display",
+        params={"from": "2027-02-01", "to": "2027-02-07", "cohort": "K24"},
+    )
+    assert default.status_code == 200
+    assert default.json()["event_type"] == "default_free"

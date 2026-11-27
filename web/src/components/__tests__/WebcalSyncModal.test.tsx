@@ -6,7 +6,7 @@ import { encodeTimetable, type SharedTimetable } from "@/lib/shareUrl";
 
 const sampleData: SharedTimetable = {
   semester: "2026-2027-1",
-  entries: [{ code: "BAA1001", class_code: "BAA1001.01", hidden: false }],
+  entries: [{ code: "BAA1001", class_code: "BAA1001.01", color: 0, hidden: false }],
 };
 
 describe("WebcalSyncModal", () => {

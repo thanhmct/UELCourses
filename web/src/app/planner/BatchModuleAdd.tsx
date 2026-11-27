@@ -10,6 +10,7 @@ import { moduleName } from "@/i18n/names";
 import { useApi } from "@/lib/useApi";
 import { useDebounced } from "@/lib/useDebounced";
 import { activeToken, finishedCodes, parseCodes, rankSuggestions, replaceActiveToken } from "@/lib/codeTokens";
+import { usePlanner } from "@/lib/store";
 
 export function BatchModuleAdd({ onAdd }: {
   onAdd: (module: PlannedModule) => void;
@@ -18,6 +19,7 @@ export function BatchModuleAdd({ onAdd }: {
   const [busy, setBusy] = useState(false);
   const [report, setReport] = useState<{ code: string; ok: boolean; msg: string }[]>([]);
   const { t, lang } = useT();
+  const catalog = usePlanner((s) => s.catalog);
 
   // Gợi ý mã khớp với phần đang gõ (đoạn sau dấu phẩy cuối cùng); mỗi dấu phẩy bắt đầu một mã mới.
   const { token } = activeToken(text);
@@ -26,10 +28,19 @@ export function BatchModuleAdd({ onAdd }: {
     () => (dq.length >= 2 ? api.modules({ q: dq, size: 12 }) : Promise.resolve({ data: { items: [], total: 0 }, mock: false })),
     [dq],
   );
-  const suggestions = useMemo(
-    () => (dq.length >= 2 && token.trim().length >= 2 ? rankSuggestions(suggestReq.data?.items ?? [], token, finishedCodes(text)).slice(0, 8) : []),
-    [suggestReq.data, dq, token, text],
-  );
+  const suggestions = useMemo(() => {
+    if (dq.length < 2 || token.trim().length < 2) return [];
+    const seen = new Set<string>();
+    return rankSuggestions(
+      [...(suggestReq.data?.items ?? []), ...Object.values(catalog)],
+      token,
+      finishedCodes(text),
+    ).filter((item) => {
+      if (seen.has(item.code)) return false;
+      seen.add(item.code);
+      return true;
+    }).slice(0, 8);
+  }, [suggestReq.data, catalog, dq, token, text]);
 
   const add = async () => {
     const codes = parseCodes(text);
@@ -38,6 +49,12 @@ export function BatchModuleAdd({ onAdd }: {
     const rows: { code: string; ok: boolean; msg: string }[] = [];
     for (const code of codes) {
       try {
+        const cached = catalog[code];
+        if (cached) {
+          onAdd(cached);
+          rows.push({ code, ok: true, msg: moduleName(cached, lang) });
+          continue;
+        }
         const detail = (await api.module(code)).data;
         if (!detail) {
           rows.push({ code, ok: false, msg: t("gpa.add.notFound") });
@@ -53,7 +70,7 @@ export function BatchModuleAdd({ onAdd }: {
         });
         rows.push({ code, ok: true, msg: moduleName(detail, lang) });
       } catch (error) {
-        rows.push({ code, ok: false, msg: t(isConnectionError(error) ? "api.connectionError" : "gpa.add.loadError") });
+        rows.push({ code, ok: false, msg: t(isConnectionError(error) ? "common.loadFailure" : "gpa.add.loadError") });
       }
     }
     setReport(rows);
@@ -78,9 +95,7 @@ export function BatchModuleAdd({ onAdd }: {
           <p className="border-b border-slate-100 px-3 py-1.5 text-xs text-slate-500 dark:border-slate-800">
             {suggestReq.loading
               ? <Loading compact />
-              : suggestReq.offline
-                ? t("api.connectionError")
-                : suggestions.length > 0
+              : suggestions.length > 0
                   ? t("gpa.add.matches", { token: token.trim() })
                   : t("gpa.add.noMatches", { token: token.trim() })}
           </p>
