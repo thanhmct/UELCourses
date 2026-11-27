@@ -48,6 +48,8 @@ class OutlineLinkOut(BaseModel):
 
 
 class ModuleAssessmentOut(BaseModel):
+    source: str | None = None
+    applies_to_cohorts: list[str] = Field(default_factory=list)
     process_ratio: float | None = Field(None, description="Quá trình - Tỉ lệ điểm (0.0 đến 1.0)")
     process_form: str | None = Field(None, description="Quá trình - Hình thức đánh giá")
     midterm_ratio: float | None = Field(None, description="Giữa kỳ - Tỉ lệ điểm (0.0 đến 1.0)")
@@ -61,6 +63,8 @@ class ModuleAssessmentOut(BaseModel):
 
 
 class ModuleTextbookOut(BaseModel):
+    source: str | None = None
+    applies_to_cohorts: list[str] = Field(default_factory=list)
     name: str | None = Field(None, description="Tên giáo trình / tài liệu chính")
     url: str | None = Field(None, description="Đường link tới tài liệu (nếu có)")
     document_code: str | None = Field(None, description="Mã tài liệu")

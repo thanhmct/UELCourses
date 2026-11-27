@@ -167,6 +167,7 @@ class ModuleAssessment(Base):
     exam_duration: Mapped[str | None] = mapped_column(String(64), nullable=True)
     final_assessment_kind: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     source: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    applies_to_cohorts: Mapped[list[str] | None] = mapped_column(JsonType, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
     module: Mapped[Module] = relationship(back_populates="assessment")
@@ -186,6 +187,8 @@ class ModuleTextbook(Base):
     document_code: Mapped[str | None] = mapped_column(String(128), nullable=True)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_main: Mapped[bool] = mapped_column(Boolean, default=True)
+    source: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    applies_to_cohorts: Mapped[list[str] | None] = mapped_column(JsonType, nullable=True)
 
     module: Mapped[Module] = relationship(back_populates="textbooks")
 

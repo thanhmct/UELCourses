@@ -37,6 +37,7 @@ from app.models import (
 )
 from app.routers.equivalents import codes_with_equivalents, equivalents_for, like_escape
 from app.services.exchange_stats import exchange_stat_items, exchange_totals_subquery
+from app.services.program_tracks import get_program_track_codes, resolve_program_and_track
 from app.schemas import (
     ClassRoom,
     CommentLikeIn,
@@ -849,6 +850,26 @@ def _get_module(db: Session, code: str) -> Module:
     return public_module(db, code)
 
 
+def _validated_program_cohort(
+    db: Session, module: Module, program_id: str | None, cohort: str | None
+) -> tuple[str | None, bool]:
+    """Resolve profile context and prove that module, degree and cohort agree."""
+    if not program_id:
+        return (cohort.strip().upper() if cohort else None), True
+    program, _is_english, _contextual_id = resolve_program_and_track(db, program_id)
+    if program.degree != module.degree:
+        raise HTTPException(409, "Bậc đào tạo của học phần không khớp chương trình đã chọn.")
+    belongs = module.code in get_program_track_codes(db, program_id)
+    resolved_cohort = program.cohort or (cohort.strip().upper() if cohort else None)
+    if cohort and resolved_cohort and cohort.strip().upper() != resolved_cohort:
+        raise HTTPException(409, "Khóa tuyển sinh không khớp chương trình đã chọn.")
+    return resolved_cohort, belongs
+
+
+def _applies_to_cohort(applies: list[str] | None, cohort: str | None) -> bool:
+    return not applies or not cohort or cohort in applies
+
+
 @router.get("/modules/{code}", response_model=ModuleDetail, summary="Chi tiết học phần")
 def get_module(
     code: str,
@@ -858,6 +879,7 @@ def get_module(
     db: Session = Depends(get_db),
 ):
     m = _get_module(db, code)
+    effective_cohort, belongs_to_program = _validated_program_cohort(db, m, program_id, cohort)
     eqs = equivalents_for(db, m.code)
     sems = sorted(s for s in db.scalars(
         select(ClassSection.semester_id).where(ClassSection.module_code == m.code).distinct()
@@ -891,7 +913,7 @@ def get_module(
     if not avail_years and (has_outline or m.outline_url):
         avail_years.add(2025)
 
-    req_year = resolve_ctdt_year(cohort, ctdt_year)
+    req_year = resolve_ctdt_year(effective_cohort, ctdt_year)
     chosen_year: int | None = None
     fallback_year: bool = False
 
@@ -934,8 +956,10 @@ def get_module(
 
     # Assessment & Textbooks (Brief D4)
     assessment_out = None
-    if m.assessment:
+    if m.assessment and belongs_to_program and _applies_to_cohort(m.assessment.applies_to_cohorts, effective_cohort):
         assessment_out = ModuleAssessmentOut(
+            source=m.assessment.source,
+            applies_to_cohorts=m.assessment.applies_to_cohorts or [],
             process_ratio=m.assessment.process_ratio,
             process_form=m.assessment.process_form,
             midterm_ratio=m.assessment.midterm_ratio,
@@ -949,6 +973,8 @@ def get_module(
         )
     textbooks_out = [
         ModuleTextbookOut(
+            source=tb.source,
+            applies_to_cohorts=tb.applies_to_cohorts or [],
             name=tb.name,
             url=tb.url,
             document_code=tb.document_code,
@@ -956,6 +982,7 @@ def get_module(
             is_main=tb.is_main,
         )
         for tb in (m.textbooks or [])
+        if belongs_to_program and _applies_to_cohort(tb.applies_to_cohorts, effective_cohort)
     ]
 
     return ModuleDetail(
@@ -1037,11 +1064,15 @@ def _doc_info(c: OutlineCourse, d: OutlineDocument) -> OutlineDocumentInfo:
 @router.get("/modules/{code}/outline", response_model=OutlineOut, summary="Đề cương chi tiết của học phần (từ PDF/Word đề cương)")
 def get_module_outline(
     code: str,
+    program_id: str | None = Query(None, description="Mã CTĐT đã chọn để kiểm tra đúng bậc, khóa và học phần"),
     cohort: str | None = Query(None, description="Khóa sinh viên (vd K24, K23) để lấy đề cương đúng năm CTĐT"),
     ctdt_year: int | None = Query(None, description="Năm CTĐT (vd 2023, 2025)"),
     db: Session = Depends(get_db),
 ):
     m = _get_module(db, code)
+    effective_cohort, belongs_to_program = _validated_program_cohort(db, m, program_id, cohort)
+    if program_id and not belongs_to_program:
+        raise HTTPException(404, f"Học phần {m.code} không thuộc chương trình đào tạo {program_id}.")
     links = list(
         db.execute(
             select(OutlineModuleLink.document_id, OutlineModuleLink.ctdt_year)
@@ -1072,7 +1103,9 @@ def get_module_outline(
     if not avail_years:
         avail_years.add(2025)
 
-    req_year = resolve_ctdt_year(cohort, ctdt_year)
+    # Không có hồ sơ CTĐT/khóa: req_year=None và nhánh dưới chọn max(avail_years),
+    # tức đề cương được cập nhật mới nhất.
+    req_year = resolve_ctdt_year(effective_cohort, ctdt_year)
     chosen_year: int | None = None
     fallback_year: bool = False
 

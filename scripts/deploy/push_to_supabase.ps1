@@ -1,5 +1,5 @@
 ﻿[CmdletBinding()]
-param([switch]$DryRun)
+param([switch]$DryRun, [switch]$ConfirmReplace)
 
 $ErrorActionPreference = 'Stop'
 
@@ -90,10 +90,12 @@ try {
         -FailureMessage 'Bản dump SQL rỗng hoặc không tạo được.' | Out-Null
 
     Write-Host ("Thao tác này sẽ XÓA toàn bộ schema public trên Supabase ({0})." -f $connectionEnvironment.PGUSER)
-    $confirmation = Read-Host 'Nhập XOA PUBLIC để xác nhận'
-    if ($confirmation -cne 'XOA PUBLIC') {
-        Write-Output 'Đã hủy. Supabase chưa được kết nối.'
-        return
+    if (-not $ConfirmReplace) {
+        $confirmation = Read-Host 'Nhập XOA PUBLIC để xác nhận'
+        if ($confirmation -cne 'XOA PUBLIC') {
+            Write-Output 'Đã hủy. Supabase chưa được kết nối.'
+            return
+        }
     }
 
     foreach ($name in $connectionEnvironment.Keys) {
